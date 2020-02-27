@@ -1,0 +1,130 @@
+type Allegation implements Node{
+    id: ID!,
+    by: Agent!,
+    entities: [MembershipAllegation]
+}
+
+type MembershipAllegation {
+    entity: KSpacePointer!,
+    confidence: Float,
+    memberof: [KSpacePointer!]
+}
+
+"""Pointer to a region within Semantic/Knowledge-Space"""
+type KSpacePointer implements Node{
+    id: ID!,
+
+    # how would the agent know which entities they are referring to?
+    # I suppose the UI could remember a list of entities which are being 
+    # converged in the rendering. Not really in love with the fact that
+    # the Agent has to pick specific entities as a representative sample
+    # Of the cluster they're actually referring to, but it will suffice
+    # for now I think.
+
+    """A list of entities which serve as a representative sample of the K-Space cluster"""
+    members: [Entity!],
+    spread_factor: Float,
+
+    # Here's a slightly different way, but still not great
+    # median_entity: Entity,
+    # radius: Float
+}
+
+interface Entity {
+    id: ID!,
+}
+
+"""Unit is a uniquely identifiable 0-tuple, which is nameless, and occupies
+a region in K-Space which is indeterminate at the time of its creation"""
+type Unit implements Node & Entity {
+    id: ID!,
+    # Yup. No other fields
+}
+
+# Arguably an Agent is also an Artifact, but this probably isn't crucial
+type Agent implements Node & Entity {
+    id: ID!,
+    pubkey: String!,
+}
+
+type Artifact implements Node & Entity {
+    id: ID!,
+    
+    # Can't implement an interface for an interface, nor union of unions
+    # Could move each ArtifactBody into `union Entity`, but I think the
+    # intention is somewhat Clearer this way for now
+    body: ArtifactBody,
+}
+
+union ArtifactBody = Url | FlatText | DataGraph | DataNode
+# | Corpus | Document | Paragraph | Sentence | NounPhrase | VerbPhrase | Verb | Determiner | Noun
+
+type Url implements Node {
+    id: ID!,
+    url: String!
+}
+
+"""Text of nonspecific structure, origin, and language"""
+type FlatText implements Node {
+    id: ID!,
+    text: String
+}
+
+# Technically we could implement ALL the Artifact types using DataGraph/DataNode
+# But it may be a good idea to encourage certain specific patterns of use by 
+# defining their Artifacts explicitly.
+
+"""Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
+This can be used to store XML or JSON documents, or other application specific formats"""
+type DataGraph implements Node {
+    id: ID!,
+    type: KSpacePointer!,
+    bytes: Int, // Optional
+    """Must contain all unreachable nodes. Optionally reachable nodes may be present"""
+    nodes: [DataNode!],
+}
+
+type DataNode implements Node {
+    id: ID!,
+    type: KSpacePointer,
+    data: String,
+    relations: [DataNodeRelation!]
+}
+
+type DataNodeRelation {
+    to: DataNode!,
+    type: KSpacePointer!,
+}
+
+# type Corpus implements Node {
+#     id: ID!,
+#     type: KSpacePointer!,
+# }
+# type Document implements Node {
+#     id: ID!,
+#     # Encourage reuse of corpus
+#     corpuses: [Corpus] 
+# }
+# type Paragraph implements Node {
+#     id: ID!,
+#     //
+#     documents: [Document]
+# }
+# type Sentence implements Node {
+#     id: ID!,
+# }
+# type NounPhrase implements Node {
+#     id: ID!,
+# }
+# type VerbPhrase implements Node {
+#     id: ID!,
+# }
+# type Verb implements Node {
+#     id: ID!,
+# }
+# type Determiner implements Node {
+#     id: ID!,
+# }
+# type Noun implements Node {
+#     id: ID!,
+# }

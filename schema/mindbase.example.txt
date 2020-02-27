@@ -1,0 +1,84 @@
+# This file contains example (pseudo) data which corresponts to a 
+# rough first pass at a sample schema. There are likely numberous
+# things wrong with this
+# Please see mindbase.graphql for schema information
+
+# Priming the pump – Strictly speaking, an alien civilization should be able
+# To fill this system with their own concepts, and use it without our data.
+
+# That said, we want to encourage certain patterns of use, at least as a demonstration
+# of the capabilities of the system, and also for practical purposes, so the user 
+# doesn't have to invent the universe. As such, the database would be pre initialized
+# with something like the following pseudo-data. (shorthand/some fields omitted)
+# KSP is shorthand for KSpacePointer
+
+Agent(A1, "Mindbase Authors")  # Using "A" to denote [A]gent ID
+
+FlatText(T1, "English Words")
+FlatText(T2, "the")
+FlatText(T3, "dog")
+FlatText(T4, "jumped")
+
+Allegation{L1: by A1, [ # using "L" to denote a[L]egation
+    {KSP([T2]), 1.0, memberof KSP([T1]) },
+    {KSP([T3]), 1.0, memberof KSP([T1]) }
+    {KSP([T4]), 1.0, memberof KSP([T1]) }
+]}
+
+# The Mindbase authors allege with a high degree of confidence that "The" "dog" and "jumped" are
+# in the category of "English words" (with a narrower-than-usual set of entities selected for each
+# KSpacePointer, because the mindbase authors just defined all of the above)
+
+They mindbase authors also proactively record the following artifacts:
+
+FlatText(T5, "Constituency Tree")
+FlatText(T6, "Sentence")
+FlatText(T7, "Noun Phrase")
+FlatText(T8, "Verb Phrase")
+FlatText(T9, "verb")
+FlatText(T10, "determiner")
+FlatText(T11, "noun")
+
+# For brevity, Skipping the part where the mindbase authors (G1) allege that these are all "English words"
+
+# Now, Lets say that Alice wishes to allege that "The dog jumped"
+# Lets assume she has looked up these Entities (FlatText is an Artifact, which is an Entity)
+# and is ok with fully-subordinating to those defintions ( though there may be hundreds of )
+
+# Lets assume that hundreds, or thousands of other parties have defined similar terms as the above
+# to describe the element types of a language constituency parse tree. They may have done so with
+# FlatText artifacts, or they may have done so with labelless "Units" (lets look at Alice, who has
+done the latter)
+
+#first we record an agent for Alice
+Agent(A2, "Alice") # [A]gent ID 2
+
+# Now Alice has decided to declare un-labeled Entity IDs (remember, an Entity may be a Unit, Agent, or Artifact)
+# as types for her parse tree, because she's difficult, or somehow hasn't seen, or doesn't want to subordinate 
+# to the Parse-tree node type Entities created by the mindbase authors.
+
+Unit(U1) // Alice creates this as a unique identifier type for constituency trees
+Unit(U2) // She creates this as a unique identifier type for sentences
+Unit(U3) // She creates this as a unique identifier type for noun phrases
+Unit(U4) // She creates this as a unique identifier type for verb phrases
+
+# Alice then uses these to allege that "the dog jumped":
+# First she records the raw text, because that's nice to have around for auditing purposes.
+# She could do it using a FlatText Artifact, or she could just record it in the graph.
+# somewhat maddeningly though... she uses the unlabeled Units defined above for the graph/node types.
+
+DataGraph(G1, type: KSP([U1]), data: "the dog jumped", nodes: [D1])
+Data(D1, type: KSP([U2]), data: "the dog jumped", relations: [
+    Data(D2, type: KSP([U3]), data: "the dog" ) # relations implied for brevity
+    Data(D3, type: KSP([U3]), data: "jumped" )
+])
+
+... WIP: Left off here
+
+Allegation{A1: by G1, [
+    {KSpacePointer([T2]), 1.0, memberof KSpacePointer([T1]) },
+    {KSpacePointer([T3]), 1.0, memberof KSpacePointer([T1]) }
+    {KSpacePointer([T4]), 1.0, memberof KSpacePointer([T1]) }
+]}
+
+FlatText(T13, "Things that occurred on October 9th 2017")
