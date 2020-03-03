@@ -1,0 +1,18 @@
+[package]
+name = "mindbase"
+version = "0.1.0"
+authors = ["Daniel Norman <daniel@danielnorman.net>"]
+edition = "2018"
+
+[dependencies]
+base64 = "0.11.0"
+tempfile = "3.1.0"
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0.48"
+bincode = "1.2.1"
+sled = "0.31.0"
+rusty_ulid = "0.9.3"
+rustyline = "6.0.0"
+# ncurses = { version = "5.99.0", features=["wide"] }
+# pancurses = "0.16.1"
+# cursive = "0.14.0";
