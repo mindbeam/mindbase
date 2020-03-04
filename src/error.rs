@@ -4,6 +4,7 @@ pub enum Error {
     SerdeJson(serde_json::Error),
     Bincode(bincode::Error),
     IoError(std::io::Error),
+    AgentHandleNotFound,
 }
 
 impl From<sled::Error> for Error {
