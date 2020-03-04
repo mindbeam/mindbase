@@ -16,6 +16,7 @@ sha2 = "0.8"
 ed25519-dalek = { version = "0.9", features = ["serde"] }
 rusty_ulid = "0.9.3"
 rustyline = "6.0.0"
+chrono = { version = "0.4.10", features = ["serde"] }
 # ncurses = { version = "5.99.0", features=["wide"] }
 # pancurses = "0.16.1"
 # cursive = "0.14.0";
