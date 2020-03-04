@@ -1,5 +1,5 @@
 use crate::entity::{
-    Agent,
+    AgentId,
     Entity,
 };
 use ed25519_dalek::{
@@ -49,8 +49,8 @@ impl AgentHandle {
 
     pub fn entity(&self) -> Entity {
         Entity::Agent(match self {
-                          Self::Genesis => Agent::Genesis,
-                          Self::Keyed { keypair } => Agent::Keyed { pubkey: keypair.public.as_bytes().clone(), },
+                          Self::Genesis => AgentId::Genesis,
+                          Self::Keyed { keypair } => AgentId::Keyed { pubkey: keypair.public.as_bytes().clone(), },
                       })
     }
 }

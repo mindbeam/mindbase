@@ -134,7 +134,7 @@ pub enum Entity {
     /// Unit is a uniquely identifiable 0-tuple, which is nameless, and occupies a region in K-Space which is indeterminate at
     /// the time of its creation
     Unit(EntityId),
-    Agent(Agent),
+    Agent(AgentId),
     Allegation(Allegation),
     Artifact(Artifact),
 }
@@ -168,12 +168,12 @@ impl Entity {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum Agent {
+pub enum AgentId {
     Genesis,
     Keyed { pubkey: [u8; 32] },
 }
 
-impl Agent {
+impl AgentId {
     pub fn pubkey_short(&self) -> String {
         match self {
             Self::Genesis => "genesis".to_string(),
