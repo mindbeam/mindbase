@@ -14,15 +14,14 @@ use serde::{
 };
 use sha2::Sha512;
 
-// TODO 1 rename Agent to AgentId and AgentHandle to Agent
 /// Arguably an Agent is also an Artifact, but this probably isn't crucial
 #[derive(Serialize, Deserialize, Debug)]
-pub enum AgentHandle {
+pub enum Agent {
     Genesis,
     Keyed { keypair: Keypair },
 }
 
-impl AgentHandle {
+impl Agent {
     pub fn new() -> Self {
         let mut csprng: OsRng = OsRng::new().unwrap();
         let keypair: Keypair = Keypair::generate::<Sha512, _>(&mut csprng);
@@ -55,7 +54,7 @@ impl AgentHandle {
     }
 }
 
-impl std::fmt::Display for AgentHandle {
+impl std::fmt::Display for Agent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use base64::STANDARD_NO_PAD;
         match self {

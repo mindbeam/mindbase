@@ -1,9 +1,9 @@
-mod agenthandle;
+mod agent;
 mod entity;
 mod error;
 mod genesis;
 pub use self::{
-    agenthandle::*,
+    agent::*,
     entity::*,
     error::Error,
 };
@@ -43,7 +43,7 @@ impl MindBase {
         Ok(())
     }
 
-    pub fn default_agent(&self) -> Result<AgentHandle, Error> {
+    pub fn default_agent(&self) -> Result<Agent, Error> {
         match self.agents.get(b"latest")? {
             None => self.create_agent(),
             Some(pubkey) => {
@@ -68,8 +68,8 @@ impl MindBase {
     }
 
     #[allow(unused)]
-    pub fn create_agent(&self) -> Result<AgentHandle, Error> {
-        let agenthandle = AgentHandle::new();
+    pub fn create_agent(&self) -> Result<Agent, Error> {
+        let agenthandle = Agent::new();
 
         let entity = agenthandle.entity();
 
@@ -94,7 +94,7 @@ impl MindBase {
     }
 
     #[allow(unused)]
-    pub fn alledge(&self, agenthandle: &AgentHandle, analogy: Analogy) -> Result<Entity, Error> {
+    pub fn alledge(&self, agenthandle: &Agent, analogy: Analogy) -> Result<Entity, Error> {
         let entity = Entity::Allegation(Allegation { id: EntityId::new(),
                                                      by: agenthandle.entity().id(),
                                                      analogy });
