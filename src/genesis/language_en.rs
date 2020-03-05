@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub fn genesis(mb: &MindBase) -> Result<(), Error> {
-    let _words = mb.make_artifact(ArtifactKind::FlatText(FlatText { text: "English words".to_string(), }))?;
+    let _words = mb.assert_artifact(ArtifactKind::FlatText(FlatText { text: "English words".to_string(), }))?;
 
     Ok(())
 }

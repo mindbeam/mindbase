@@ -13,7 +13,8 @@ fn main() -> Result<(), std::io::Error> {
     println!("Using Agent {}", agent);
 
     // TODO 1 - Look this artifact up based on my agent ID
-    let isaid = mb.make_artifact(ArtifactKind::FlatText(FlatText { text: "Things that I said".to_string(), }))
+
+    let isaid = mb.assert_entity(ArtifactKind::FlatText(FlatText { text: "Things that I said".to_string(), }))
                   .unwrap();
 
     // `()` can be used when no completer is required
@@ -26,14 +27,14 @@ fn main() -> Result<(), std::io::Error> {
         let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                let statement = mb.make_artifact(ArtifactKind::FlatText(FlatText { text: line.clone() }))
+                let statement = mb.assert_artifact(ArtifactKind::FlatText(FlatText { text: line.clone() }))
                                   .unwrap();
 
                 let allegation = mb.alledge(&agent, Analogy::declare(statement.narrow_concept(), isaid.narrow_concept()))
                                    .unwrap();
 
                 rl.add_history_entry(line.as_str());
-                println!("{}", allegation.to_string(),);
+                println!("{}", allegation);
             },
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");

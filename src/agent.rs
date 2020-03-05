@@ -1,7 +1,6 @@
-use crate::entity::{
-    AgentId,
-    Entity,
-};
+mod signature;
+
+use crate::allegation::Allegation;
 use ed25519_dalek::{
     Keypair,
     PublicKey,
@@ -13,6 +12,36 @@ use serde::{
     Serialize,
 };
 use sha2::Sha512;
+use std::fmt;
+
+#[derive(Serialize, Deserialize, PartialEq)]
+pub enum AgentId {
+    Genesis,
+    Keyed { pubkey: [u8; 32] },
+}
+
+impl AgentId {
+    pub fn pubkey_short(&self) -> String {
+        match self {
+            Self::Genesis => "genesis".to_string(),
+            Self::Keyed { pubkey } => {
+                use base64::STANDARD_NO_PAD;
+                base64::encode_config(&pubkey[0..12], STANDARD_NO_PAD)
+            },
+        }
+    }
+}
+
+impl fmt::Display for AgentId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.pubkey_short())
+    }
+}
+impl fmt::Debug for AgentId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "AgentId:{}", &self.pubkey_short())
+    }
+}
 
 /// Arguably an Agent is also an Artifact, but this probably isn't crucial
 #[derive(Serialize, Deserialize, Debug)]
@@ -39,18 +68,18 @@ impl Agent {
         }
     }
 
+    pub fn keypair(&self) -> Option<&Keypair> {
+        match self {
+            Self::Genesis => None,
+            Self::Keyed { keypair } => Some(&keypair),
+        }
+    }
+
     pub fn pubkey(&self) -> Option<&PublicKey> {
         match self {
             Self::Genesis => None,
             Self::Keyed { keypair } => Some(&keypair.public),
         }
-    }
-
-    pub fn entity(&self) -> Entity {
-        Entity::Agent(match self {
-                          Self::Genesis => AgentId::Genesis,
-                          Self::Keyed { keypair } => AgentId::Keyed { pubkey: keypair.public.as_bytes().clone(), },
-                      })
     }
 }
 

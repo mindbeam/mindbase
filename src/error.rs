@@ -5,6 +5,8 @@ pub enum Error {
     Bincode(bincode::Error),
     IoError(std::io::Error),
     AgentHandleNotFound,
+    SignatureError,
+    TryFromSlice,
 }
 
 impl From<sled::Error> for Error {

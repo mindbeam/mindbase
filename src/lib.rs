@@ -1,16 +1,37 @@
 mod agent;
-mod entity;
+mod allegation;
+mod analogy;
+mod artifact;
+mod concept;
 mod error;
 mod genesis;
+mod util;
+
 pub use self::{
-    agent::*,
-    entity::*,
+    agent::{
+        Agent,
+        AgentId,
+    },
+    allegation::{
+        Allegation,
+        AllegationId,
+    },
+    artifact::ArtifactId,
     error::Error,
 };
 
 pub struct MindBase {
-    entities: sled::Tree,
-    agents:   sled::Tree,
+    /// Sig-Addressable store for Entities (EntityId())
+    allegations: sled::Tree,
+
+    /// Content-addressable store for artifacts. ArtifactId(Sha512Trunc256)
+    artifacts: sled::Tree,
+
+    /// Credential storage for all agents we manage
+    my_agents: sled::Tree,
+
+    ///
+    known_agents: sled::Tree,
 }
 
 impl MindBase {
@@ -20,10 +41,16 @@ impl MindBase {
 
         let db = sled::open(pathbuf.as_path())?;
 
-        let entities = db.open_tree("entities")?;
-        let agents = db.open_tree("agents")?;
+        let my_agents = db.open_tree("agents")?;
+        let artifacts = db.open_tree("artifacts")?;
+        let allegations = db.open_tree("allegations")?;
 
-        let me = MindBase { entities, agents };
+        let known_agents = db.open_tree("known_agents")?;
+
+        let me = MindBase { allegations,
+                            my_agents,
+                            artifacts,
+                            known_agents };
 
         me.genesis()?;
 
@@ -44,10 +71,10 @@ impl MindBase {
     }
 
     pub fn default_agent(&self) -> Result<Agent, Error> {
-        match self.agents.get(b"latest")? {
+        match self.my_agents.get(b"latest")? {
             None => self.create_agent(),
             Some(pubkey) => {
-                match self.agents.get(pubkey)? {
+                match self.my_agents.get(pubkey)? {
                     None => Err(Error::AgentHandleNotFound),
                     Some(v) => {
                         let agenthandle = bincode::deserialize(&v)?;
@@ -58,13 +85,16 @@ impl MindBase {
         }
     }
 
-    fn write_entity(&self, entity: &Entity) -> Result<(), Error> {
-        let encoded: Vec<u8> = bincode::serialize(&entity).unwrap();
+    #[allow(unused)]
+    pub fn alledge(&self, agent: &Agent, body: allegation::Body) -> Result<AllegationId, Error> {
+        let allegation = Allegation::new(agent, body);
 
-        self.entities.insert(&entity.id(), encoded)?;
-        self.entities.flush()?;
+        let encoded: Vec<u8> = bincode::serialize(&allegation).unwrap();
 
-        Ok(())
+        self.allegations.insert(&allegation.id(), encoded)?;
+        self.allegations.flush()?;
+
+        Ok(allegation)
     }
 
     #[allow(unused)]
@@ -74,38 +104,34 @@ impl MindBase {
         let entity = agenthandle.entity();
 
         let encoded: Vec<u8> = bincode::serialize(&agenthandle).unwrap();
-        self.agents.insert(agenthandle.pubkey().unwrap().as_bytes(), encoded)?;
-        self.agents.insert(b"latest", agenthandle.pubkey().unwrap().as_bytes())?;
-        self.agents.flush()?;
+        self.my_agents.insert(agenthandle.pubkey().unwrap().as_bytes(), encoded)?;
+        self.my_agents.insert(b"latest", agenthandle.pubkey().unwrap().as_bytes())?;
+        self.my_agents.flush()?;
 
-        self.write_entity(&entity)?;
+        self.alledge(&entity)?;
 
         Ok(agenthandle)
     }
 
-    #[allow(unused)]
-    pub fn make_artifact(&self, kind: ArtifactKind) -> Result<Entity, Error> {
-        let entity = Entity::Artifact(Artifact { id: EntityId::new(),
-                                                 kind });
+    fn assert_artifact(&self, artifact: Artifact) -> Result<ArtifactId, Error> {
+        let (id, bytes) = artifact.get_id_and_bytes();
 
-        self.write_entity(&entity)?;
+        use sled::CompareAndSwapError;
+        match self.artifacts.compare_and_swap(&id, None::<&[u8]>, Some(bytes))? {
+            Ok(_) => {
+                // inserted
+            },
+            Err(CompareAndSwapError { .. }) => {
+                // already existed
+            },
+        }
+        self.artifacts.flush()?;
 
-        Ok(entity)
-    }
-
-    #[allow(unused)]
-    pub fn alledge(&self, agenthandle: &Agent, analogy: Analogy) -> Result<Entity, Error> {
-        let entity = Entity::Allegation(Allegation { id: EntityId::new(),
-                                                     by: agenthandle.entity().id(),
-                                                     analogy });
-
-        self.write_entity(&entity)?;
-
-        Ok(entity)
+        Ok(id)
     }
 
     fn entity_iter(&self) -> Iter {
-        Iter { iter: self.entities.iter(), }
+        Iter { iter: self.allegations.iter(), }
     }
 
     #[allow(unused)]
@@ -124,8 +150,8 @@ impl MindBase {
     #[allow(unused)]
     pub fn load_json<T: std::io::BufRead>(&self, mut reader: T) -> Result<(), Error> {
         for line in reader.lines() {
-            let entity: Entity = serde_json::from_str(&line?[..])?;
-            self.write_entity(&entity);
+            let entity: Allegation = serde_json::from_str(&line?[..])?;
+            self.alledge(&entity);
         }
         Ok(())
     }
@@ -136,7 +162,7 @@ struct Iter {
 }
 
 impl Iterator for Iter {
-    type Item = Result<Entity, crate::Error>;
+    type Item = Result<Allegation, crate::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Did we find it?
@@ -149,7 +175,7 @@ impl Iterator for Iter {
                 match retrieval {
                     Err(e) => Some(Err(e.into())),
                     Ok((_key, value)) => {
-                        match bincode::deserialize::<Entity>(&value[..]) {
+                        match bincode::deserialize::<Allegation>(&value[..]) {
                             Err(e) => Some(Err(e.into())),
                             Ok(entity) => Some(Ok(entity)),
                         }
@@ -165,16 +191,16 @@ mod tests {
     use crate::*;
 
     #[test]
-    fn init() {
+    fn init() -> Result<(), Error> {
         let tmpdir = tempfile::tempdir().unwrap();
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath).unwrap();
 
         let agent = mb.create_agent().unwrap();
-        let statement = mb.make_artifact(ArtifactKind::FlatText(FlatText { text: "I like turtles".to_string(), }))
+        let statement = mb.assert_artifact(FlatText { text: "I like turtles".to_string(), }.into())
                           .unwrap();
 
-        let category = mb.make_artifact(ArtifactKind::FlatText(FlatText { text: "Things that I said".to_string(), }))
+        let category = mb.assert_artifact(FlatText { text: "Things that I said".to_string(), })
                          .unwrap();
 
         let _allegation = mb.alledge(&agent,
