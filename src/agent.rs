@@ -1,6 +1,5 @@
-mod signature;
+pub mod signature;
 
-use crate::allegation::Allegation;
 use ed25519_dalek::{
     Keypair,
     PublicKey,
@@ -28,6 +27,14 @@ impl AgentId {
                 use base64::STANDARD_NO_PAD;
                 base64::encode_config(&pubkey[0..12], STANDARD_NO_PAD)
             },
+        }
+    }
+}
+impl std::convert::AsRef<[u8]> for AgentId {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            Self::Genesis => b"genesis",
+            Self::Keyed { pubkey } => pubkey,
         }
     }
 }
@@ -59,6 +66,13 @@ impl Agent {
 
     pub fn genesis() -> Self {
         Self::Genesis
+    }
+
+    pub fn id(&self) -> AgentId {
+        match self {
+            Self::Genesis => AgentId::Genesis,
+            Self::Keyed { keypair } => AgentId::Keyed { pubkey: keypair.public.as_bytes().clone(), },
+        }
     }
 
     pub fn is_genesis(&self) -> bool {

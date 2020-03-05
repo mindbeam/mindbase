@@ -1,6 +1,11 @@
 use crate::{
-    agent::AgentId,
+    agent::{
+        signature::Signature,
+        AgentId,
+    },
+    analogy::Analogy,
     artifact::ArtifactId,
+    concept::Concept,
     Agent,
 };
 
@@ -16,7 +21,7 @@ pub struct AllegationId(#[serde(serialize_with = "crate::util::serde_helper::as_
                         pub(crate) [u8; 16]);
 
 impl AllegationId {
-    pub fn new(agent: &Agent, body: Body) -> Self {
+    pub fn new() -> Self {
         AllegationId(generate_ulid_bytes())
     }
 
@@ -46,16 +51,26 @@ impl fmt::Debug for AllegationId {
 
 #[derive(Serialize, Deserialize)]
 pub struct Allegation {
-    pub id:   AllegationId,
-    pub by:   AgentId,
-    pub body: Body,
-
-    #[serde(serialize_with = "crate::util::array64::ser_as_base64",
-            deserialize_with = "crate::util::array64::de_from_base64")]
-    pub signature: [u8; 64],
+    pub id:        AllegationId,
+    pub agent_id:  AgentId,
+    // TODO 2 - Context (Date, time, place, etc)
+    pub body:      Body,
+    pub signature: Signature,
 }
 
 impl Allegation {
+    pub fn new(agent: &Agent, body: Body) -> Self {
+        let id = AllegationId::new();
+        let agent_id = agent.id();
+
+        let signature = Signature::new(agent, (&id, &agent_id, &body))?;
+
+        Allegation { id,
+                     agent_id,
+                     body,
+                     signature }
+    }
+
     /// Create a concept which points exclusively to this allegation
     /// Narrow concepts should be created ONLY when referring to some other entities we just created
     /// Otherwise it is lazy, and will result in a non-convergent graph
@@ -88,7 +103,6 @@ impl fmt::Display for Body {
         match self {
             Body::Unit => write!(f, "Unit()"),
             Body::Agent(a) => write!(f, "Agent({})", a),
-            Body::Allegation(a) => write!(f, "Allegation({})", a),
             Body::Artifact(a) => write!(f, "Artifact({})", a),
         }
     }

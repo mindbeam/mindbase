@@ -1,3 +1,4 @@
+use crate::allegation::AllegationId;
 use serde::{
     Deserialize,
     Serialize,

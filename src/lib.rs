@@ -99,18 +99,18 @@ impl MindBase {
 
     #[allow(unused)]
     pub fn create_agent(&self) -> Result<Agent, Error> {
-        let agenthandle = Agent::new();
+        let agent = Agent::new();
 
-        let entity = agenthandle.entity();
+        let entity = agent.entity();
 
-        let encoded: Vec<u8> = bincode::serialize(&agenthandle).unwrap();
-        self.my_agents.insert(agenthandle.pubkey().unwrap().as_bytes(), encoded)?;
-        self.my_agents.insert(b"latest", agenthandle.pubkey().unwrap().as_bytes())?;
+        let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
+        self.my_agents.insert(agent.pubkey().unwrap().as_bytes(), encoded)?;
+        self.my_agents.insert(b"latest", agent.pubkey().unwrap().as_bytes())?;
         self.my_agents.flush()?;
 
         self.alledge(&entity)?;
 
-        Ok(agenthandle)
+        Ok(agent)
     }
 
     fn assert_artifact(&self, artifact: Artifact) -> Result<ArtifactId, Error> {

@@ -1,3 +1,4 @@
+use crate::allegation::AllegationId;
 use serde::{
     Deserialize,
     Deserializer,
@@ -5,13 +6,12 @@ use serde::{
     Serializer,
 };
 
+use crate::concept::Concept;
 use sha2::{
     Digest,
     Sha512Trunc256,
 };
 use std::fmt;
-
-use crate::entity::*;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct ArtifactId(#[serde(serialize_with = "as_base64", deserialize_with = "from_base64")] pub(crate) [u8; 32]);
