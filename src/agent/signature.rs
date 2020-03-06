@@ -50,20 +50,25 @@ trait HashHelper {
     fn hash(&self, hasher: &Sha512) {}
 }
 
-impl<T> HashHelper for (T,) where T: AsRef<[u8]>
+impl<A> HashHelper for (A,) where A: AsRef<[u8]>
 {
     fn hash(&self, hasher: &Sha512) {
         hasher.input(self.0.as_ref());
     }
 }
-impl<T> HashHelper for (T, T) where T: AsRef<[u8]>
+impl<A, B> HashHelper for (A, B)
+    where A: AsRef<[u8]>,
+          B: AsRef<[u8]>
 {
     fn hash(&self, hasher: &Sha512) {
         hasher.input(self.0.as_ref());
         hasher.input(self.1.as_ref());
     }
 }
-impl<T> HashHelper for (T, T, T) where T: AsRef<[u8]>
+impl<A, B, C> HashHelper for (A, B, C)
+    where A: AsRef<[u8]>,
+          B: AsRef<[u8]>,
+          C: AsRef<[u8]>
 {
     fn hash(&self, hasher: &Sha512) {
         hasher.input(self.0.as_ref());
@@ -71,7 +76,11 @@ impl<T> HashHelper for (T, T, T) where T: AsRef<[u8]>
         hasher.input(self.2.as_ref());
     }
 }
-impl<T> HashHelper for (T, T, T, T) where T: AsRef<[u8]>
+impl<A, B, C, D> HashHelper for (A, B, C, D)
+    where A: AsRef<[u8]>,
+          B: AsRef<[u8]>,
+          C: AsRef<[u8]>,
+          D: AsRef<[u8]>
 {
     fn hash(&self, hasher: &Sha512) {
         hasher.input(self.0.as_ref());

@@ -6,6 +6,7 @@ use crate::{
     analogy::Analogy,
     artifact::ArtifactId,
     concept::Concept,
+    error::Error,
     Agent,
 };
 
@@ -29,6 +30,11 @@ impl AllegationId {
         use base64::STANDARD_NO_PAD;
         base64::encode_config(&self.0, STANDARD_NO_PAD)
     }
+
+    pub fn narrow_concept(&self) -> Concept {
+        Concept { members:       vec![self.clone()],
+                  spread_factor: 0.0, }
+    }
 }
 
 impl std::convert::AsRef<[u8]> for AllegationId {
@@ -49,6 +55,17 @@ impl fmt::Debug for AllegationId {
     }
 }
 
+/// # Allegation
+/// To the degree that you possess a "Self", so too do you possess agency over your thoughts, feelings, and perceptions.
+/// Unfortunately, that's about the extent if your agency, epistemologically speaking. Much To the chagrin of narcisists
+/// everywhere, they (and you) possess no agency hatsoever over objectivity or objective truth.
+///
+/// So whatever shall we do to make sense of the world?
+///
+/// In MindBase an Allegation is essentially an opinion of, or measurement about the world which is attributable to a specific
+/// Agent. Agents may then form `Concepts` from a collection of allegations which are believed to one degree of confidence or
+/// another to be referring to approximately the "same" thing
+/// See [`mindbase::concept::Concept`][Concept] for more details
 #[derive(Serialize, Deserialize)]
 pub struct Allegation {
     pub id:        AllegationId,
@@ -59,22 +76,25 @@ pub struct Allegation {
 }
 
 impl Allegation {
-    pub fn new(agent: &Agent, body: Body) -> Self {
+    pub fn new<T>(agent: &Agent, body: T) -> Result<Self, Error>
+        where T: Into<Body>
+    {
+        let body: Body = body.into();
         let id = AllegationId::new();
         let agent_id = agent.id();
 
         let signature = Signature::new(agent, (&id, &agent_id, &body))?;
 
-        Allegation { id,
-                     agent_id,
-                     body,
-                     signature }
+        Ok(Allegation { id,
+                        agent_id,
+                        body,
+                        signature })
     }
 
     /// Create a concept which points exclusively to this allegation
     /// Narrow concepts should be created ONLY when referring to some other entities we just created
     /// Otherwise it is lazy, and will result in a non-convergent graph
-    pub fn narrow_concept(&self) -> Concept {
+    pub fn to_narrow_concept(&self) -> Concept {
         Concept { members:       vec![self.id().clone()],
                   spread_factor: 0.0, }
     }
@@ -90,12 +110,29 @@ impl fmt::Display for Allegation {
     }
 }
 
+impl Into<Concept> for Allegation {
+    fn into(self) -> Concept {
+        self.to_narrow_concept()
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Body {
+    /// A Unit Allegation a globally unique entity with no payload
     Unit,
+
+    /// An Agent Allegation is a globally unique reference to an actual Agent
+    /// It is conceivabe that someone could want to construct different Allegations referencing the same AgentId
+    /// Which are otherwise identical except for their AllegationId.
     Agent(AgentId),
     Analogy(Analogy),
     Artifact(ArtifactId),
+}
+
+impl Into<Vec<u8>> for Body {
+    fn into(&self) -> Vec<u8> {
+        bincode::serialize(self).unwrap()
+    }
 }
 
 impl fmt::Display for Body {

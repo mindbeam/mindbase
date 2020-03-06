@@ -12,10 +12,12 @@ pub struct Analogy {
 }
 
 impl Analogy {
-    pub fn declare(concept: Concept, memberof: Concept) -> Self {
-        Analogy { concept,
+    pub fn declare<T>(concept: T, memberof: T) -> Self
+        where T: Into<Concept>
+    {
+        Analogy { concept:    concept.into(),
                   confidence: 1.0,
-                  memberof }
+                  memberof:   memberof.into(), }
     }
 
     pub fn declare_neg(concept: Concept, memberof: Concept) -> Self {
@@ -29,5 +31,11 @@ impl Analogy {
                 self.concept.to_string(),
                 self.memberof.to_string(),
                 self.confidence).to_string()
+    }
+}
+
+impl Into<crate::allegation::Body> for Analogy {
+    fn into(self) -> crate::allegation::Body {
+        crate::allegation::Body::Analogy(self)
     }
 }

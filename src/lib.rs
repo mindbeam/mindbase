@@ -19,6 +19,7 @@ pub use self::{
     artifact::ArtifactId,
     error::Error,
 };
+use artifact::Artifact;
 
 pub struct MindBase {
     /// Sig-Addressable store for Entities (EntityId())
@@ -86,34 +87,31 @@ impl MindBase {
     }
 
     #[allow(unused)]
-    pub fn alledge(&self, agent: &Agent, body: allegation::Body) -> Result<AllegationId, Error> {
-        let allegation = Allegation::new(agent, body);
-
+    pub fn put_allegation(&self, allegation: &Allegation) -> Result<(), Error> {
         let encoded: Vec<u8> = bincode::serialize(&allegation).unwrap();
 
-        self.allegations.insert(&allegation.id(), encoded)?;
+        self.allegations.insert(allegation.id(), encoded)?;
         self.allegations.flush()?;
 
-        Ok(allegation)
+        Ok(())
     }
 
     #[allow(unused)]
     pub fn create_agent(&self) -> Result<Agent, Error> {
         let agent = Agent::new();
 
-        let entity = agent.entity();
-
         let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
         self.my_agents.insert(agent.pubkey().unwrap().as_bytes(), encoded)?;
         self.my_agents.insert(b"latest", agent.pubkey().unwrap().as_bytes())?;
         self.my_agents.flush()?;
 
-        self.alledge(&entity)?;
-
         Ok(agent)
     }
 
-    fn assert_artifact(&self, artifact: Artifact) -> Result<ArtifactId, Error> {
+    fn assert_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
+        where T: Into<Artifact>
+    {
+        let artifact: Artifact = artifact.into();
         let (id, bytes) = artifact.get_id_and_bytes();
 
         use sled::CompareAndSwapError;
@@ -150,9 +148,10 @@ impl MindBase {
     #[allow(unused)]
     pub fn load_json<T: std::io::BufRead>(&self, mut reader: T) -> Result<(), Error> {
         for line in reader.lines() {
-            let entity: Allegation = serde_json::from_str(&line?[..])?;
-            self.alledge(&entity);
+            let allegation: Allegation = serde_json::from_str(&line?[..])?;
+            self.put_allegation(&allegation)?;
         }
+
         Ok(())
     }
 }
@@ -189,28 +188,30 @@ impl Iterator for Iter {
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use analogy::Analogy;
+    use artifact::FlatText;
 
     #[test]
     fn init() -> Result<(), Error> {
-        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdir = tempfile::tempdir()?;
         let tmpdirpath = tmpdir.path();
-        let mb = MindBase::open(&tmpdirpath).unwrap();
+        let mb = MindBase::open(&tmpdirpath)?;
 
-        let agent = mb.create_agent().unwrap();
-        let statement = mb.assert_artifact(FlatText { text: "I like turtles".to_string(), }.into())
-                          .unwrap();
+        let agent = mb.create_agent()?;
+        let statement = mb.assert_artifact(FlatText::new("I like turtles".to_string()))?
+                          .alledge(&agent)?;
 
-        let category = mb.assert_artifact(FlatText { text: "Things that I said".to_string(), })
-                         .unwrap();
+        let category = mb.assert_artifact(FlatText::new("Things that I said".to_string()))?
+                         .alledge(&agent)?;
 
-        let _allegation = mb.alledge(&agent,
-                                     Analogy::declare(statement.narrow_concept(), category.narrow_concept()))
-                            .unwrap();
+        let allegation = Allegation::new(&agent, Analogy::declare(statement, category))?;
+        mb.put_allegation(&allegation)?;
 
         let stdout = std::io::stdout();
         let handle = stdout.lock();
 
         mb.dump_json(handle).unwrap();
+        Ok(())
     }
 
     #[test]

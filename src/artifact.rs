@@ -6,7 +6,12 @@ use serde::{
     Serializer,
 };
 
-use crate::concept::Concept;
+use crate::{
+    agent::Agent,
+    allegation::Allegation,
+    concept::Concept,
+    error::Error,
+};
 use sha2::{
     Digest,
     Sha512Trunc256,
@@ -49,6 +54,18 @@ impl fmt::Debug for ArtifactId {
 impl std::convert::AsRef<[u8]> for ArtifactId {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl Into<crate::allegation::Body> for ArtifactId {
+    fn into(self) -> crate::allegation::Body {
+        crate::allegation::Body::Artifact(self)
+    }
+}
+
+impl ArtifactId {
+    pub fn alledge(self, agent: &Agent) -> Result<Allegation, Error> {
+        Allegation::new(agent, self)
     }
 }
 
@@ -106,10 +123,14 @@ pub struct Url {
 /// Text of nonspecific structure, origin, and language
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct FlatText {
-    pub text: String,
+    text: String,
 }
 
 impl FlatText {
+    pub fn new(text: String) -> Self {
+        FlatText { text }
+    }
+
     pub fn to_string(&self) -> String {
         self.text.clone()
     }
