@@ -35,11 +35,15 @@ impl AllegationId {
         Concept { members:       vec![self.clone()],
                   spread_factor: 0.0, }
     }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
 }
 
-impl std::convert::AsRef<[u8]> for AllegationId {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
+impl crate::agent::signature::AsBytes for &AllegationId {
+    fn as_bytes(&self) -> Vec<u8> {
+        self.0[..].to_vec()
     }
 }
 
@@ -129,8 +133,8 @@ pub enum Body {
     Artifact(ArtifactId),
 }
 
-impl Into<Vec<u8>> for Body {
-    fn into(&self) -> Vec<u8> {
+impl crate::agent::signature::AsBytes for &Body {
+    fn as_bytes(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }
 }
@@ -140,6 +144,7 @@ impl fmt::Display for Body {
         match self {
             Body::Unit => write!(f, "Unit()"),
             Body::Agent(a) => write!(f, "Agent({})", a),
+            Body::Analogy(a) => write!(f, "Analogy({})", a),
             Body::Artifact(a) => write!(f, "Artifact({})", a),
         }
     }

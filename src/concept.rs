@@ -3,6 +3,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use std::fmt;
 
 /// Pointer to a region within Semantic/Knowledge-Space
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -21,9 +22,9 @@ pub struct Concept {
      * # radius: Float */
 }
 
-impl Concept {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for Concept {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let parts: Vec<String> = self.members.iter().map(|e| format!("{}", e)).collect();
-        format!("[{}]", parts.join(","))
+        write!(f, "[{}]", parts.join(","))
     }
 }

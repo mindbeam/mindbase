@@ -1,4 +1,5 @@
 use crate::concept::Concept;
+use std::fmt;
 
 use serde::{
     Deserialize,
@@ -37,5 +38,13 @@ impl Analogy {
 impl Into<crate::allegation::Body> for Analogy {
     fn into(self) -> crate::allegation::Body {
         crate::allegation::Body::Analogy(self)
+    }
+}
+
+impl fmt::Display for Analogy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,
+               "{} is in the category of {} ({})",
+               self.concept, self.memberof, self.confidence)
     }
 }

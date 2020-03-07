@@ -102,16 +102,16 @@ impl Artifact {
 
         (ArtifactId(result.into()), encoded)
     }
+}
 
-    pub fn to_string(&self) -> String {
-        let text = match self {
+impl fmt::Display for Artifact {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             Self::Url(_u) => unimplemented!(),
-            Self::FlatText(t) => t.to_string(),
+            Self::FlatText(t) => write!(f, "Artifact({})", t),
             Self::DataGraph(_d) => unimplemented!(),
             Self::DataNode(_n) => unimplemented!(),
-        };
-
-        format!("Artifact({})", text)
+        }
     }
 }
 
@@ -130,9 +130,11 @@ impl FlatText {
     pub fn new(text: String) -> Self {
         FlatText { text }
     }
+}
 
-    pub fn to_string(&self) -> String {
-        self.text.clone()
+impl fmt::Display for FlatText {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.text)
     }
 }
 

@@ -15,6 +15,8 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, PartialEq)]
 pub enum AgentId {
+    // TODO 1 - get rid of Genesis. This should just be a known pubkey.
+    // There may in fact be several geneses (AKA charismatically offered sets)
     Genesis,
     Keyed { pubkey: [u8; 32] },
 }
@@ -30,11 +32,11 @@ impl AgentId {
         }
     }
 }
-impl std::convert::AsRef<[u8]> for AgentId {
-    fn as_ref(&self) -> &[u8] {
+impl crate::agent::signature::AsBytes for &AgentId {
+    fn as_bytes(&self) -> Vec<u8> {
         match self {
-            Self::Genesis => b"genesis",
-            Self::Keyed { pubkey } => pubkey,
+            AgentId::Genesis => b"genesis"[..].to_vec(),
+            AgentId::Keyed { pubkey } => pubkey[..].to_vec(),
         }
     }
 }

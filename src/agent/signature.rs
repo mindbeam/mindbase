@@ -18,14 +18,14 @@ pub struct Signature(#[serde(serialize_with = "crate::util::array64::ser_as_base
                      pub(crate) [u8; 64]);
 
 impl Signature {
-    pub fn new<T>(agent: &Agent, content: T) -> Result<Self, Error>
+    pub(crate) fn new<T>(agent: &Agent, content: T) -> Result<Self, Error>
         where T: HashHelper
     {
         match agent.keypair() {
             None => Err(Error::SignatureError),
             Some(keypair) => {
-                let hasher: Sha512 = Sha512::default();
-                content.hash(&hasher);
+                let mut hasher: Sha512 = Sha512::default();
+                content.hash(&mut hasher);
 
                 let sig = keypair.sign_prehashed(hasher, Some(b"allegation"));
                 Ok(Signature(sig.to_bytes()))
@@ -46,46 +46,50 @@ impl fmt::Debug for Signature {
     }
 }
 
-trait HashHelper {
-    fn hash(&self, hasher: &Sha512) {}
+pub(crate) trait AsBytes {
+    fn as_bytes(&self) -> Vec<u8>;
+}
+// TODO 1 - switch back to AsRef<[u8]> after CapnProto implementation
+pub(crate) trait HashHelper {
+    fn hash(&self, hasher: &mut Sha512) {}
 }
 
-impl<A> HashHelper for (A,) where A: AsRef<[u8]>
+impl<A> HashHelper for (A,) where A: AsBytes
 {
-    fn hash(&self, hasher: &Sha512) {
-        hasher.input(self.0.as_ref());
+    fn hash(&self, hasher: &mut Sha512) {
+        hasher.input(self.0.as_bytes());
     }
 }
 impl<A, B> HashHelper for (A, B)
-    where A: AsRef<[u8]>,
-          B: AsRef<[u8]>
+    where A: AsBytes,
+          B: AsBytes
 {
-    fn hash(&self, hasher: &Sha512) {
-        hasher.input(self.0.as_ref());
-        hasher.input(self.1.as_ref());
+    fn hash(&self, hasher: &mut Sha512) {
+        hasher.input(self.0.as_bytes());
+        hasher.input(self.1.as_bytes());
     }
 }
 impl<A, B, C> HashHelper for (A, B, C)
-    where A: AsRef<[u8]>,
-          B: AsRef<[u8]>,
-          C: AsRef<[u8]>
+    where A: AsBytes,
+          B: AsBytes,
+          C: AsBytes
 {
-    fn hash(&self, hasher: &Sha512) {
-        hasher.input(self.0.as_ref());
-        hasher.input(self.1.as_ref());
-        hasher.input(self.2.as_ref());
+    fn hash(&self, hasher: &mut Sha512) {
+        hasher.input(self.0.as_bytes());
+        hasher.input(self.1.as_bytes());
+        hasher.input(self.2.as_bytes());
     }
 }
 impl<A, B, C, D> HashHelper for (A, B, C, D)
-    where A: AsRef<[u8]>,
-          B: AsRef<[u8]>,
-          C: AsRef<[u8]>,
-          D: AsRef<[u8]>
+    where A: AsBytes,
+          B: AsBytes,
+          C: AsBytes,
+          D: AsBytes
 {
-    fn hash(&self, hasher: &Sha512) {
-        hasher.input(self.0.as_ref());
-        hasher.input(self.1.as_ref());
-        hasher.input(self.2.as_ref());
-        hasher.input(self.3.as_ref());
+    fn hash(&self, hasher: &mut Sha512) {
+        hasher.input(self.0.as_bytes());
+        hasher.input(self.1.as_bytes());
+        hasher.input(self.2.as_bytes());
+        hasher.input(self.3.as_bytes());
     }
 }
