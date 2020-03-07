@@ -6,6 +6,7 @@ mod concept;
 mod error;
 mod genesis;
 mod util;
+mod xport;
 
 pub use self::{
     agent::{
@@ -20,6 +21,8 @@ pub use self::{
     error::Error,
 };
 use artifact::Artifact;
+use core::marker::PhantomData;
+use serde::de::DeserializeOwned;
 
 // pub mod allegation_capnp {
 //     include!(concat!(env!("OUT_DIR"), "/capnp/allegation_capnp.rs"));
@@ -94,7 +97,7 @@ impl MindBase {
     pub fn put_allegation(&self, allegation: &Allegation) -> Result<(), Error> {
         let encoded: Vec<u8> = bincode::serialize(&allegation).unwrap();
 
-        self.allegations.insert(allegation.id(), encoded)?;
+        self.allegations.insert(allegation.id().as_bytes(), encoded)?;
         self.allegations.flush()?;
 
         Ok(())
@@ -132,40 +135,25 @@ impl MindBase {
         Ok(id)
     }
 
-    fn entity_iter(&self) -> Iter {
-        Iter { iter: self.allegations.iter(), }
+    fn artifact_iter(&self) -> Iter<Artifact> {
+        Iter { iter:    self.artifacts.iter(),
+               phantom: PhantomData, }
     }
 
-    #[allow(unused)]
-    pub fn dump_json<T: std::io::Write>(&self, mut writer: T) -> Result<(), Error> {
-        for maybe_entity in self.entity_iter() {
-            let entity = maybe_entity?; // we may have failed to retrieve/decode one of them
-
-            let entity_string = serde_json::to_string(&entity)?;
-            writer.write(entity_string.as_bytes())?;
-            writer.write(b"\n");
-        }
-
-        Ok(())
-    }
-
-    #[allow(unused)]
-    pub fn load_json<T: std::io::BufRead>(&self, mut reader: T) -> Result<(), Error> {
-        for line in reader.lines() {
-            let allegation: Allegation = serde_json::from_str(&line?[..])?;
-            self.put_allegation(&allegation)?;
-        }
-
-        Ok(())
+    fn allegation_iter(&self) -> Iter<Allegation> {
+        Iter { iter:    self.allegations.iter(),
+               phantom: PhantomData, }
     }
 }
 
-struct Iter {
-    iter: sled::Iter,
+struct Iter<T> {
+    iter:    sled::Iter,
+    phantom: std::marker::PhantomData<T>,
 }
 
-impl Iterator for Iter {
-    type Item = Result<Allegation, crate::Error>;
+impl<T> Iterator for Iter<T> where T: DeserializeOwned
+{
+    type Item = Result<T, crate::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Did we find it?
@@ -178,9 +166,9 @@ impl Iterator for Iter {
                 match retrieval {
                     Err(e) => Some(Err(e.into())),
                     Ok((_key, value)) => {
-                        match bincode::deserialize::<Allegation>(&value[..]) {
+                        match bincode::deserialize::<T>(&value[..]) {
                             Err(e) => Some(Err(e.into())),
-                            Ok(entity) => Some(Ok(entity)),
+                            Ok(v) => Some(Ok(v)),
                         }
                     },
                 }
@@ -214,7 +202,7 @@ mod tests {
         let stdout = std::io::stdout();
         let handle = stdout.lock();
 
-        mb.dump_json(handle).unwrap();
+        crate::xport::dump_json(&mb, handle).unwrap();
         Ok(())
     }
 
@@ -232,6 +220,6 @@ mod tests {
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath).unwrap();
 
-        mb.load_json(cursor).unwrap();
+        crate::xport::load_json(&mb, cursor).unwrap();
     }
 }
