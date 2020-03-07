@@ -21,6 +21,10 @@ pub use self::{
 };
 use artifact::Artifact;
 
+// pub mod allegation_capnp {
+//     include!(concat!(env!("OUT_DIR"), "/capnp/allegation_capnp.rs"));
+// }
+
 pub struct MindBase {
     /// Sig-Addressable store for Entities (EntityId())
     allegations: sled::Tree,

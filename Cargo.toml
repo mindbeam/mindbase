@@ -3,6 +3,7 @@ name = "mindbase"
 version = "0.1.0"
 authors = ["Daniel Norman <daniel@danielnorman.net>"]
 edition = "2018"
+# build = "build.rs"
 
 [dependencies]
 base64 = "0.11.0"
@@ -17,6 +18,7 @@ ed25519-dalek = { version = "0.9", features = ["serde"] }
 rusty_ulid = "0.9.3"
 rustyline = "6.0.0"
 chrono = { version = "0.4.10", features = ["serde"] }
-# ncurses = { version = "5.99.0", features=["wide"] }
-# pancurses = "0.16.1"
-# cursive = "0.14.0";
+# capnp = "0.12.1"
+
+[build-dependencies]
+capnpc = "0.12.1"
