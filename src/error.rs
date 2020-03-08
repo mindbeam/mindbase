@@ -30,10 +30,16 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl Into<std::io::Error> for Error {
-    fn into(self) -> std::io::Error {
+impl std::convert::From<Error> for std::io::Error {
+    fn from(error: Error) -> Self {
         use std::io::ErrorKind;
-
-        std::io::Error::new(ErrorKind::Other, format!("{:?}", self))
+        std::io::Error::new(ErrorKind::Other, format!("{:?}", error))
     }
 }
+// impl Into<std::io::Error> for Error {
+//     fn into(self) -> std::io::Error {
+//         use std::io::ErrorKind;
+
+//         std::io::Error::new(ErrorKind::Other, format!("{:?}", self))
+//     }
+// }

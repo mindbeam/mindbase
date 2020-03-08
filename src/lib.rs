@@ -17,7 +17,11 @@ pub use self::{
         Allegation,
         AllegationId,
     },
-    artifact::ArtifactId,
+    analogy::Analogy,
+    artifact::{
+        ArtifactId,
+        FlatText,
+    },
     error::Error,
 };
 use artifact::Artifact;
@@ -96,13 +100,14 @@ impl MindBase {
     }
 
     #[allow(unused)]
-    pub fn put_allegation(&self, allegation: &Allegation) -> Result<(), Error> {
+    pub fn put_allegation(&self, allegation: &Allegation) -> Result<AllegationId, Error> {
         let encoded: Vec<u8> = bincode::serialize(&allegation).unwrap();
 
-        self.allegations.insert(allegation.id().as_bytes(), encoded)?;
+        let id = allegation.id().clone();
+        self.allegations.insert(id.as_bytes(), encoded)?;
         self.allegations.flush()?;
 
-        Ok(())
+        Ok(id)
     }
 
     #[allow(unused)]
@@ -117,7 +122,7 @@ impl MindBase {
         Ok(agent)
     }
 
-    fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
+    pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
         where T: Into<Artifact>
     {
         let artifact: Artifact = artifact.into();
@@ -139,6 +144,15 @@ impl MindBase {
         self.artifacts.flush()?;
 
         Ok(id)
+    }
+
+    pub fn alledge_artifact<T>(&self, agent: &Agent, artifact: T) -> Result<AllegationId, Error>
+        where T: Into<crate::artifact::Artifact>
+    {
+        let artifact_id = self.put_artifact(artifact.into())?;
+
+        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
+        self.put_allegation(&allegation)
     }
 
     fn artifact_iter(&self) -> Iter<ArtifactId, Artifact> {
@@ -208,13 +222,10 @@ mod tests {
         let mb = MindBase::open(&tmpdirpath)?;
 
         let agent = mb.create_agent()?;
-        let statement = mb.put_artifact(FlatText::new("I like turtles".to_string()))?
-                          .alledge(&agent, &mb)?;
+        let statement = mb.alledge_artifact(&agent, FlatText::new("I like turtles".to_string()))?;
+        let category = mb.alledge_artifact(&agent, FlatText::new("Things that I said".to_string()))?;
 
-        let category = mb.put_artifact(FlatText::new("Things that I said".to_string()))?
-                         .alledge(&agent, &mb)?;
-
-        let allegation = Allegation::new(&agent, Analogy::declare(statement, category))?;
+        let allegation = Allegation::new(&agent, Analogy::declare(statement.narrow(), category.narrow()))?;
         mb.put_allegation(&allegation)?;
 
         let stdout = std::io::stdout();

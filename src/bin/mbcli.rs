@@ -14,8 +14,7 @@ fn main() -> Result<(), std::io::Error> {
 
     // TODO 1 - Look this artifact up based on my agent ID
 
-    let isaid = mb.assert_entity(ArtifactKind::FlatText(FlatText { text: "Things that I said".to_string(), }))
-                  .unwrap();
+    let isaid = mb.alledge_artifact(&agent, FlatText::new("Things that I said".to_string()))?;
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -27,12 +26,14 @@ fn main() -> Result<(), std::io::Error> {
         let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                let statement = mb.assert_artifact(ArtifactKind::FlatText(FlatText { text: line.clone() }))
-                                  .unwrap();
+                let statement = mb.alledge_artifact(&agent, FlatText::new(line.clone()))?;
 
-                let allegation = mb.alledge(&agent, Analogy::declare(statement.narrow_concept(), isaid.narrow_concept()))
-                                   .unwrap();
+                let allegation = Allegation::new(&agent, Analogy::declare(statement.narrow(), isaid.narrow()))?;
+                mb.put_allegation(&allegation)?;
 
+                // TODO 3 - create a linkage between this allegation and the previous one:
+                // * [A1] Screw you
+                // * [A2 ]...and the horse you rode in on (in the category of [things that follow A1])
                 rl.add_history_entry(line.as_str());
                 println!("{}", allegation);
             },

@@ -31,7 +31,12 @@ impl AllegationId {
         base64::encode_config(&self.0, STANDARD_NO_PAD)
     }
 
-    pub fn to_narrow_concept(&self) -> Concept {
+    /// Create a "Narrow" Concept which refers exclusively to this Allegation
+    /// As a general rule, we should avoid using narrow concepts whenever possible
+    /// This is because we want to be convergent with our neighbors. I am not an island.
+    /// Narrow concepts should be created ONLY when referring to some other entities we just
+    /// created, and no clustering is possible
+    pub fn narrow(&self) -> Concept {
         Concept { members:       vec![self.clone()],
                   spread_factor: 0.0, }
     }
@@ -103,10 +108,12 @@ impl Allegation {
                         signature })
     }
 
-    /// Create a concept which points exclusively to this allegation
-    /// Narrow concepts should be created ONLY when referring to some other entities we just created
-    /// Otherwise it is lazy, and will result in a non-convergent graph
-    pub fn to_narrow_concept(&self) -> Concept {
+    /// Create a "Narrow" Concept which refers exclusively to this Allegation
+    /// As a general rule, we should avoid using narrow concepts whenever possible
+    /// This is because we want to be convergent with our neighbors. I am not an island.
+    /// Narrow concepts should be created ONLY when referring to some other entities we just
+    /// created, and no clustering is possible
+    pub fn narrow(&self) -> Concept {
         Concept { members:       vec![self.id().clone()],
                   spread_factor: 0.0, }
     }
@@ -119,17 +126,6 @@ impl Allegation {
 impl fmt::Display for Allegation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.id, self.body)
-    }
-}
-
-impl Into<Concept> for Allegation {
-    fn into(self) -> Concept {
-        self.to_narrow_concept()
-    }
-}
-impl Into<Concept> for AllegationId {
-    fn into(self) -> Concept {
-        self.to_narrow_concept()
     }
 }
 

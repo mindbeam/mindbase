@@ -65,10 +65,9 @@ impl Into<crate::allegation::Body> for ArtifactId {
 }
 
 impl ArtifactId {
-    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<Allegation, Error> {
+    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<AllegationId, Error> {
         let allegation = Allegation::new(agent, self)?;
-        mb.put_allegation(&allegation)?;
-        Ok(allegation)
+        mb.put_allegation(&allegation)
     }
 }
 
