@@ -46,6 +46,8 @@ pub struct MindBase {
 
     ///
     known_agents: sled::Tree,
+
+    default_agent: Agent,
 }
 
 impl MindBase {
@@ -59,12 +61,14 @@ impl MindBase {
         let artifacts = db.open_tree("artifacts")?;
         let allegations = db.open_tree("allegations")?;
 
+        let default_agent = _default_agent(&my_agents)?;
         let known_agents = db.open_tree("known_agents")?;
 
         let me = MindBase { allegations,
                             my_agents,
                             artifacts,
-                            known_agents };
+                            known_agents,
+                            default_agent };
 
         me.genesis()?;
 
@@ -85,18 +89,7 @@ impl MindBase {
     }
 
     pub fn default_agent(&self) -> Result<Agent, Error> {
-        match self.my_agents.get(b"latest")? {
-            None => self.create_agent(),
-            Some(pubkey) => {
-                match self.my_agents.get(pubkey)? {
-                    None => Err(Error::AgentHandleNotFound),
-                    Some(v) => {
-                        let agenthandle = bincode::deserialize(&v)?;
-                        Ok(agenthandle)
-                    },
-                }
-            },
-        }
+        _default_agent(&self.my_agents)
     }
 
     #[allow(unused)]
@@ -112,14 +105,7 @@ impl MindBase {
 
     #[allow(unused)]
     pub fn create_agent(&self) -> Result<Agent, Error> {
-        let agent = Agent::new();
-
-        let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
-        self.my_agents.insert(agent.pubkey().unwrap().as_bytes(), encoded)?;
-        self.my_agents.insert(b"latest", agent.pubkey().unwrap().as_bytes())?;
-        self.my_agents.flush()?;
-
-        Ok(agent)
+        _create_agent(&self.my_agents)
     }
 
     pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
@@ -146,6 +132,13 @@ impl MindBase {
         Ok(id)
     }
 
+    // Alledge an Alledgable thing using the default agent
+    pub fn alledge<T>(&self, thing: T) -> Result<Allegation, Error>
+        where T: crate::allegation::Alledgable
+    {
+        thing.alledge(self, &self.default_agent)
+    }
+
     pub fn alledge_artifact<T>(&self, agent: &Agent, artifact: T) -> Result<AllegationId, Error>
         where T: Into<crate::artifact::Artifact>
     {
@@ -166,6 +159,32 @@ impl MindBase {
                phantomkey:   PhantomData,
                phantomvalue: PhantomData, }
     }
+}
+
+fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, Error> {
+    match my_agents.get(b"latest")? {
+        None => _create_agent(my_agents),
+        Some(pubkey) => {
+            match my_agents.get(pubkey)? {
+                None => Err(Error::AgentHandleNotFound),
+                Some(v) => {
+                    let agenthandle = bincode::deserialize(&v)?;
+                    Ok(agenthandle)
+                },
+            }
+        },
+    }
+}
+
+fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, Error> {
+    let agent = Agent::new();
+
+    let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
+    my_agents.insert(agent.pubkey().unwrap().as_bytes(), encoded)?;
+    my_agents.insert(b"latest", agent.pubkey().unwrap().as_bytes())?;
+    my_agents.flush()?;
+
+    Ok(agent)
 }
 
 struct Iter<K, V> {
@@ -221,12 +240,9 @@ mod tests {
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;
 
-        let agent = mb.create_agent()?;
-        let statement = mb.alledge_artifact(&agent, FlatText::new("I like turtles".to_string()))?;
-        let category = mb.alledge_artifact(&agent, FlatText::new("Things that I said".to_string()))?;
-
-        let allegation = Allegation::new(&agent, Analogy::declare(statement.narrow(), category.narrow()))?;
-        mb.put_allegation(&allegation)?;
+        let statement = mb.alledge(FlatText::new("I like turtles"))?;
+        let category = mb.alledge(FlatText::new("Things that I said"))?;
+        let analogy = mb.alledge(Analogy::declare(statement.narrow(), category.narrow()))?;
 
         let stdout = std::io::stdout();
         let handle = stdout.lock();

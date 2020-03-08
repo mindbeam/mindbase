@@ -8,7 +8,10 @@ use serde::{
 
 use crate::{
     agent::Agent,
-    allegation::Allegation,
+    allegation::{
+        Alledgable,
+        Allegation,
+    },
     concept::Concept,
     error::Error,
     MindBase,
@@ -138,7 +141,11 @@ pub struct FlatText {
 }
 
 impl FlatText {
-    pub fn new(text: String) -> Self {
+    pub fn new(text: &str) -> Self {
+        FlatText { text: text.to_string() }
+    }
+
+    pub fn string(text: String) -> Self {
         FlatText { text }
     }
 }
@@ -181,6 +188,16 @@ pub struct DataNode {
 impl Into<Artifact> for DataNode {
     fn into(self) -> Artifact {
         Artifact::DataNode(self)
+    }
+}
+
+impl<T> Alledgable for T where T: Into<Artifact>
+{
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+        let artifact_id = mb.put_artifact(self)?;
+        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
+        mb.put_allegation(&allegation)?;
+        Ok(allegation)
     }
 }
 

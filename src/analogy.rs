@@ -1,4 +1,12 @@
-use crate::concept::Concept;
+use crate::{
+    allegation::Alledgable,
+    concept::Concept,
+    Agent,
+    Allegation,
+    AllegationId,
+    Error,
+    MindBase,
+};
 use std::fmt;
 
 use serde::{
@@ -46,5 +54,13 @@ impl fmt::Display for Analogy {
         write!(f,
                "{} is in the category of {} ({})",
                self.concept, self.memberof, self.confidence)
+    }
+}
+
+impl Alledgable for Analogy {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+        let allegation = Allegation::new(agent, crate::allegation::Body::Analogy(self))?;
+        mb.put_allegation(&allegation)?;
+        Ok(allegation)
     }
 }

@@ -8,6 +8,7 @@ use crate::{
     concept::Concept,
     error::Error,
     Agent,
+    MindBase,
 };
 
 use rusty_ulid::generate_ulid_bytes;
@@ -157,4 +158,8 @@ impl fmt::Display for Body {
             Body::Artifact(a) => write!(f, "Artifact({})", a),
         }
     }
+}
+
+pub trait Alledgable {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error>;
 }

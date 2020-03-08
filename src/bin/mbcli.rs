@@ -14,7 +14,7 @@ fn main() -> Result<(), std::io::Error> {
 
     // TODO 1 - Look this artifact up based on my agent ID
 
-    let isaid = mb.alledge_artifact(&agent, FlatText::new("Things that I said".to_string()))?;
+    let isaid = mb.alledge_artifact(&agent, FlatText::new("Things that I said"))?;
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -26,16 +26,14 @@ fn main() -> Result<(), std::io::Error> {
         let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                let statement = mb.alledge_artifact(&agent, FlatText::new(line.clone()))?;
-
-                let allegation = Allegation::new(&agent, Analogy::declare(statement.narrow(), isaid.narrow()))?;
-                mb.put_allegation(&allegation)?;
+                let statement = mb.alledge(FlatText::new(&line))?;
+                let analogy = mb.alledge(Analogy::declare(statement.narrow(), isaid.narrow()))?;
 
                 // TODO 3 - create a linkage between this allegation and the previous one:
                 // * [A1] Screw you
                 // * [A2 ]...and the horse you rode in on (in the category of [things that follow A1])
                 rl.add_history_entry(line.as_str());
-                println!("{}", allegation);
+                println!("{}", analogy);
             },
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
