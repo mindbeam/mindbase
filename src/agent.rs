@@ -32,7 +32,7 @@ impl AgentId {
         }
     }
 }
-impl crate::agent::signature::AsBytes for &AgentId {
+impl crate::util::AsBytes for &AgentId {
     fn as_bytes(&self) -> Vec<u8> {
         match self {
             AgentId::Genesis => b"genesis"[..].to_vec(),

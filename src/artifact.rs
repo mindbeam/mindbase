@@ -11,6 +11,7 @@ use crate::{
     allegation::Allegation,
     concept::Concept,
     error::Error,
+    MindBase,
 };
 use sha2::{
     Digest,
@@ -64,8 +65,19 @@ impl Into<crate::allegation::Body> for ArtifactId {
 }
 
 impl ArtifactId {
-    pub fn alledge(self, agent: &Agent) -> Result<Allegation, Error> {
-        Allegation::new(agent, self)
+    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<Allegation, Error> {
+        let allegation = Allegation::new(agent, self)?;
+        mb.put_allegation(&allegation)?;
+        Ok(allegation)
+    }
+}
+
+impl std::convert::TryFrom<sled::IVec> for ArtifactId {
+    type Error = Error;
+
+    fn try_from(ivec: sled::IVec) -> Result<Self, Error> {
+        use std::convert::TryInto;
+        Ok(Self((&ivec[..]).try_into().map_err(|_| Error::TryFromSlice)?))
     }
 }
 

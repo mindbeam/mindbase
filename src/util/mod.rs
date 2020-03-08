@@ -1,3 +1,15 @@
+use crate::Error;
+
+pub(crate) trait AsBytes {
+    fn as_bytes(&self) -> Vec<u8>;
+}
+
+pub(crate) trait TryFromBytes
+    where Self: Sized
+{
+    fn from_bytes(bytes: &[u8]) -> Result<Self, Error>;
+}
+
 pub(crate) mod array64 {
     use crate::error::Error;
     use serde::{

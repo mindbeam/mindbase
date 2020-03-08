@@ -23,6 +23,8 @@ pub use self::{
 use artifact::Artifact;
 use core::marker::PhantomData;
 use serde::de::DeserializeOwned;
+use sled::IVec;
+use util::TryFromBytes;
 
 // pub mod allegation_capnp {
 //     include!(concat!(env!("OUT_DIR"), "/capnp/allegation_capnp.rs"));
@@ -115,10 +117,14 @@ impl MindBase {
         Ok(agent)
     }
 
-    fn assert_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
+    fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
         where T: Into<Artifact>
     {
         let artifact: Artifact = artifact.into();
+        // TODO 5 - consider whether we want to validate this against an allegation in order to store it,
+        // or if we just want to take what we are given. How do we prevent feeding in random junk?
+        // It probably doesn't make sense to store the ArifactId in the storage buffer, because it'll be used as the storage key.
+        // Does this mean we also shouldn't include it in the network buffer?
         let (id, bytes) = artifact.get_id_and_bytes();
 
         use sled::CompareAndSwapError;
@@ -135,25 +141,30 @@ impl MindBase {
         Ok(id)
     }
 
-    fn artifact_iter(&self) -> Iter<Artifact> {
-        Iter { iter:    self.artifacts.iter(),
-               phantom: PhantomData, }
+    fn artifact_iter(&self) -> Iter<ArtifactId, Artifact> {
+        Iter { iter:         self.artifacts.iter(),
+               phantomkey:   PhantomData,
+               phantomvalue: PhantomData, }
     }
 
-    fn allegation_iter(&self) -> Iter<Allegation> {
-        Iter { iter:    self.allegations.iter(),
-               phantom: PhantomData, }
+    fn allegation_iter(&self) -> Iter<AllegationId, Allegation> {
+        Iter { iter:         self.allegations.iter(),
+               phantomkey:   PhantomData,
+               phantomvalue: PhantomData, }
     }
 }
 
-struct Iter<T> {
-    iter:    sled::Iter,
-    phantom: std::marker::PhantomData<T>,
+struct Iter<K, V> {
+    iter:         sled::Iter,
+    phantomkey:   std::marker::PhantomData<K>,
+    phantomvalue: std::marker::PhantomData<V>,
 }
 
-impl<T> Iterator for Iter<T> where T: DeserializeOwned
+impl<K, V> Iterator for Iter<K, V>
+    where K: std::convert::TryFrom<IVec>,
+          V: DeserializeOwned
 {
-    type Item = Result<T, crate::Error>;
+    type Item = Result<(K, V), crate::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Did we find it?
@@ -163,13 +174,20 @@ impl<T> Iterator for Iter<T> where T: DeserializeOwned
 
             // We got one
             Some(retrieval) => {
+                use std::convert::TryInto;
                 match retrieval {
                     Err(e) => Some(Err(e.into())),
-                    Ok((_key, value)) => {
-                        match bincode::deserialize::<T>(&value[..]) {
-                            Err(e) => Some(Err(e.into())),
-                            Ok(v) => Some(Ok(v)),
-                        }
+                    Ok((key, value)) => {
+                        let k: K = match key.try_into() {
+                            Ok(k) => k,
+                            Err(_) => return Some(Err(Error::TryFromSlice)),
+                        };
+                        let v: V = match bincode::deserialize::<V>(&value[..]) {
+                            Ok(v) => v,
+                            Err(e) => return Some(Err(Error::Bincode(e))),
+                        };
+
+                        Some(Ok((k, v)))
                     },
                 }
             },
@@ -190,11 +208,11 @@ mod tests {
         let mb = MindBase::open(&tmpdirpath)?;
 
         let agent = mb.create_agent()?;
-        let statement = mb.assert_artifact(FlatText::new("I like turtles".to_string()))?
-                          .alledge(&agent)?;
+        let statement = mb.put_artifact(FlatText::new("I like turtles".to_string()))?
+                          .alledge(&agent, &mb)?;
 
-        let category = mb.assert_artifact(FlatText::new("Things that I said".to_string()))?
-                         .alledge(&agent)?;
+        let category = mb.put_artifact(FlatText::new("Things that I said".to_string()))?
+                         .alledge(&agent, &mb)?;
 
         let allegation = Allegation::new(&agent, Analogy::declare(statement, category))?;
         mb.put_allegation(&allegation)?;
@@ -208,12 +226,12 @@ mod tests {
 
     #[test]
     fn load() {
-        let dump = r#"{"Artifact":{"id":"AXCjJ5rLDlMbRQihFvx8mA","kind":{"FlatText":{"text":"English words"}}}}
-        {"Artifact":{"id":"AXCjJ5tx/kk8rsyDspVjXg","kind":{"FlatText":{"text":"I like turtles"}}}}
-        {"Artifact":{"id":"AXCjJ5uHNNfmMyoGab4q7g","kind":{"FlatText":{"text":"Things that I said"}}}}
-        {"Allegation":{"id":"AXCjJ5ueWgGaXe7lIpctyg","by":"hN3uQFEAPwYBu10I/KvQtQ","analogy":{"id":"AXCjJ5ue6smgJ6Y8dxmlvw","concept":{"members":["AXCjJ5tx/kk8rsyDspVjXg"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXCjJ5uHNNfmMyoGab4q7g"],"spread_factor":0.0}}}}
-        {"Agent":{"Keyed":{"pubkey":[132,221,238,64,81,0,63,6,1,187,93,8,252,171,208,181,61,72,95,246,235,30,7,28,218,34,249,119,152,0,39,33]}}}
-        {"Agent":{"Keyed":{"pubkey":[147,251,227,23,240,69,73,16,226,8,208,189,132,200,122,25,142,83,53,44,239,65,254,156,156,146,157,91,230,30,60,214]}}}"#;
+        let dump = r#"{"Artifact":["JoknyHnm5yhldjHDMT8gE3IihPQ61OWznrkZqd83h9Q",{"FlatText":{"text":"Things that I said"}}]}
+        {"Artifact":["VTZwkrIDfCExVen33D7jNX+a5WRqj+BRtzql3AcWfbA",{"FlatText":{"text":"I like turtles"}}]}
+        {"Artifact":["ZneF/bMFv7Fx4r4eU5NTXJPPBSxrUzWLLZ+jFcm8GAs",{"FlatText":{"text":"English words"}}]}
+        {"Allegation":["AXC4CwQMGexNcUI16LGEBg",{"id":"AXC4CwQMGexNcUI16LGEBg","agent_id":{"Keyed":{"pubkey":[61,87,75,219,56,163,250,184,22,56,135,245,60,69,241,154,143,251,177,53,180,208,242,83,156,145,59,190,106,230,28,141]}},"body":{"Artifact":"VTZwkrIDfCExVen33D7jNX+a5WRqj+BRtzql3AcWfbA"},"signature":"ipudz5kAWVqiWyaYljLF/CXqYqowdpwMH/b2D4CoqeEo3TZL+6wGENmxcTy2+Bx5ybp+5WWduK1p0f/I57jzCQ"}]}
+        {"Allegation":["AXC4CwQr3jbbOjtkmCBAqQ",{"id":"AXC4CwQr3jbbOjtkmCBAqQ","agent_id":{"Keyed":{"pubkey":[61,87,75,219,56,163,250,184,22,56,135,245,60,69,241,154,143,251,177,53,180,208,242,83,156,145,59,190,106,230,28,141]}},"body":{"Artifact":"JoknyHnm5yhldjHDMT8gE3IihPQ61OWznrkZqd83h9Q"},"signature":"XBhndD7rqkzFixkOad8MzKHqJh667PQkoTz524Ei4JNNVsGf0p/Ttj4itPJSHSawJhrD8YaN6LGYdIo0mkivAg"}]}
+        {"Allegation":["AXC4CwQ+4nm3NlliFPoM2A",{"id":"AXC4CwQ+4nm3NlliFPoM2A","agent_id":{"Keyed":{"pubkey":[61,87,75,219,56,163,250,184,22,56,135,245,60,69,241,154,143,251,177,53,180,208,242,83,156,145,59,190,106,230,28,141]}},"body":{"Analogy":{"concept":{"members":["AXC4CwQMGexNcUI16LGEBg"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXC4CwQr3jbbOjtkmCBAqQ"],"spread_factor":0.0}}},"signature":"1EJZn/O2SV+0C0mNlQQ1E9SI+zGO4z/2t3Fbs+5Wq2WHeijBl1ZTH4UaVRtRIthKxZ61GHZ1C24xVBWPJMpXDg"}]}"#;
         let cursor = std::io::Cursor::new(dump);
 
         let tmpdir = tempfile::tempdir().unwrap();

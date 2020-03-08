@@ -31,7 +31,7 @@ impl AllegationId {
         base64::encode_config(&self.0, STANDARD_NO_PAD)
     }
 
-    pub fn narrow_concept(&self) -> Concept {
+    pub fn to_narrow_concept(&self) -> Concept {
         Concept { members:       vec![self.clone()],
                   spread_factor: 0.0, }
     }
@@ -40,8 +40,16 @@ impl AllegationId {
         &self.0
     }
 }
+impl std::convert::TryFrom<sled::IVec> for AllegationId {
+    type Error = Error;
 
-impl crate::agent::signature::AsBytes for &AllegationId {
+    fn try_from(ivec: sled::IVec) -> Result<Self, Error> {
+        use std::convert::TryInto;
+        Ok(Self((&ivec[..]).try_into().map_err(|_| Error::TryFromSlice)?))
+    }
+}
+
+impl crate::util::AsBytes for &AllegationId {
     fn as_bytes(&self) -> Vec<u8> {
         self.0[..].to_vec()
     }
@@ -119,6 +127,11 @@ impl Into<Concept> for Allegation {
         self.to_narrow_concept()
     }
 }
+impl Into<Concept> for AllegationId {
+    fn into(self) -> Concept {
+        self.to_narrow_concept()
+    }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Body {
@@ -133,7 +146,7 @@ pub enum Body {
     Artifact(ArtifactId),
 }
 
-impl crate::agent::signature::AsBytes for &Body {
+impl crate::util::AsBytes for &Body {
     fn as_bytes(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }

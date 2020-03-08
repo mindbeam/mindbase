@@ -5,7 +5,7 @@ use crate::{
 };
 
 pub fn genesis(mb: &MindBase) -> Result<(), Error> {
-    let _words = mb.assert_artifact(FlatText::new("English words".to_string()))?;
+    let _words = mb.put_artifact(FlatText::new("English words".to_string()))?;
 
     Ok(())
 }

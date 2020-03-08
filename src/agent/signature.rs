@@ -1,6 +1,7 @@
 use crate::{
     agent::Agent,
     error::Error,
+    util::AsBytes,
 };
 use serde::{
     Deserialize,
@@ -46,9 +47,6 @@ impl fmt::Debug for Signature {
     }
 }
 
-pub(crate) trait AsBytes {
-    fn as_bytes(&self) -> Vec<u8>;
-}
 // TODO 1 - switch back to AsRef<[u8]> after CapnProto implementation
 pub(crate) trait HashHelper {
     fn hash(&self, hasher: &mut Sha512) {}
