@@ -14,7 +14,27 @@ fn main() -> Result<(), std::io::Error> {
 
     // TODO 1 - Look this artifact up based on my agent ID
 
-    let isaid = mb.alledge_artifact(&agent, FlatText::new("Things that I said"))?;
+    let general = mb.put_artifact(FlatText::new("In general"))?;
+    let things = mb.put_artifact(FlatText::new("Things that I said"))?;
+
+    let isaid = mb.ground_symbol(&agent, vec![general, things])?;
+
+    // I want to conjure/scrounge/locate/triangulate/intersect a Concept based on:
+    // My AgentId + ArtifactId
+    // And what else?
+    // There needs to be something that this is rooted.
+
+    // What situations might have precipitated that would lead me to conjuring a non-narrow concept?
+
+    // A: Hey, do you want to take a [trip1] with me? -- Narrow concept conjured from new allegation I just made
+    // B: Sure, I'll take a [trip2,trip1] with you    -- Create a new allegation to represent interpreted meaning (same artifact)
+    // A: What's a good day for our [trip1,trip2]?    -- "trip" Concept broadens to 2 allegations
+    // B: How about tuesday? A: Great, I'll get the psilocybin
+    // B: Whoa, I thought you meant a [trip2] not a [trip1] -- {negative analogy between [trip1] and [trip2]}
+
+    // Things that I said
+    // Where "I" is my agent ( Agent is an allegation too? )
+    // (bit of a bootstrapping dilemma here)
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -27,7 +47,7 @@ fn main() -> Result<(), std::io::Error> {
         match readline {
             Ok(line) => {
                 let statement = mb.alledge(FlatText::new(&line))?;
-                let analogy = mb.alledge(Analogy::declare(statement.narrow(), isaid.narrow()))?;
+                let analogy = mb.alledge(Analogy::declare(statement.narrow(), isaid))?;
 
                 // TODO 3 - create a linkage between this allegation and the previous one:
                 // * [A1] Screw you

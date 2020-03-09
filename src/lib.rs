@@ -25,6 +25,7 @@ pub use self::{
     error::Error,
 };
 use artifact::Artifact;
+use concept::Concept;
 use core::marker::PhantomData;
 use serde::de::DeserializeOwned;
 use sled::IVec;
@@ -47,6 +48,8 @@ pub struct MindBase {
     ///
     known_agents: sled::Tree,
 
+    // TODO 1 - inverted index by artifact id / allegation id
+    // QUESTION: Should these be two different trees? or one?
     default_agent: Agent,
 }
 
@@ -139,6 +142,13 @@ impl MindBase {
         thing.alledge(self, &self.default_agent)
     }
 
+    // Alledge an Alledgable thing using specified agent
+    pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Allegation, Error>
+        where T: crate::allegation::Alledgable
+    {
+        thing.alledge(self, agent)
+    }
+
     pub fn alledge_artifact<T>(&self, agent: &Agent, artifact: T) -> Result<AllegationId, Error>
         where T: Into<crate::artifact::Artifact>
     {
@@ -158,6 +168,19 @@ impl MindBase {
         Iter { iter:         self.allegations.iter(),
                phantomkey:   PhantomData,
                phantomvalue: PhantomData, }
+    }
+
+    pub fn ground_symbol(&self, agent: &Agent, artifacts: Vec<ArtifactId>) -> Result<Concept, Error> {
+        // TODO 1 - fetch allegations which are:
+        // * Made by the specified agent
+        // * "contain" all of the specified artifacts. (How?)
+
+        // QUESTION: should we also include allegations which are highly converged with ours?
+        // Or is it always going to be a narrow concept which we return?
+
+        // SIDEBAR: Consider another word instead of narrow - perhaps unilateral, or subjective vs intersubjective?
+
+        unimplemented!()
     }
 }
 
