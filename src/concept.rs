@@ -1,4 +1,8 @@
-use crate::allegation::AllegationId;
+use crate::{
+    allegation::AllegationId,
+    error::Error,
+    MindBase,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -26,5 +30,15 @@ impl fmt::Display for Concept {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let parts: Vec<String> = self.members.iter().map(|e| format!("{}", e)).collect();
         write!(f, "[{}]", parts.join(","))
+    }
+}
+
+impl Concept {
+    pub fn is_subjective(&self, mb: &MindBase) -> Result<bool, Error> {
+        unimplemented!()
+    }
+
+    pub fn is_intersubjective(&self, mb: &MindBase) -> Result<bool, Error> {
+        unimplemented!()
     }
 }
