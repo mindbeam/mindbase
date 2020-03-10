@@ -7,6 +7,7 @@ pub enum Error {
     AgentHandleNotFound,
     SignatureError,
     TryFromSlice,
+    Base64Error,
 }
 
 impl From<sled::Error> for Error {
