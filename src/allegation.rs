@@ -143,8 +143,8 @@ impl Allegation {
 
             // AgentID(32 bytes) ArtifactId(16 bytes)
             Body::Artifact(ref artifact_id) => {
-                let mut parts: Vec<u8> = Vec::with_capacity(2);
                 use crate::util::AsBytes;
+                let mut parts: Vec<u8> = Vec::with_capacity(2);
                 parts.extend((&self.agent_id).as_bytes());
                 parts.extend(artifact_id.as_ref());
                 Some(parts)

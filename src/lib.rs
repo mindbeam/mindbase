@@ -5,6 +5,7 @@ mod artifact;
 mod concept;
 mod error;
 mod genesis;
+mod policy;
 mod util;
 mod xport;
 
@@ -27,6 +28,7 @@ pub use self::{
 use artifact::Artifact;
 use concept::Concept;
 use core::marker::PhantomData;
+use policy::Policy;
 use serde::de::DeserializeOwned;
 use sled::IVec;
 use std::convert::TryInto;
@@ -48,8 +50,10 @@ pub struct MindBase {
     /// Credential storage for all agents we manage
     my_agents: sled::Tree,
 
-    ///
+    /// I forget why I would actually need known agents
     known_agents: sled::Tree,
+
+    ground_symbol_agents: sled::Tree,
 
     // TODO 1 - inverted index by artifact id / allegation id
     // QUESTION: Should these be two different trees? or one?
@@ -72,12 +76,14 @@ impl MindBase {
 
         let default_agent = _default_agent(&my_agents)?;
         let known_agents = db.open_tree("known_agents")?;
+        let ground_symbol_agents = db.open_tree("ground_symbol_agents")?;
 
         let me = MindBase { allegations,
                             my_agents,
                             artifacts,
                             known_agents,
                             allegation_rev,
+                            ground_symbol_agents,
                             default_agent };
 
         me.genesis()?;
@@ -112,8 +118,10 @@ impl MindBase {
 
         // TODO 2 - convert this into an iterator
         if let Some(rev) = allegation.reverse_lookup() {
+            use crate::util::AsBytes;
+
             // TODO 2 - don't just overwrite this. Implement merge logic
-            self.allegation_rev.merge(rev, id.as_bytes());
+            self.allegation_rev.merge(&rev[..], id.as_bytes());
         }
 
         Ok(id)
@@ -205,6 +213,14 @@ impl MindBase {
         }
     }
 
+    pub fn add_ground_symbol_agent(&self, agent_id: &AgentId) -> Result<(), Error> {
+        use crate::util::AsBytes;
+        // TODO 2 - Build the policy system and convert this to a policy
+        self.ground_symbol_agents.insert(agent_id.as_bytes(), b"")?;
+
+        Ok(())
+    }
+
     pub fn ground_symbol<A>(&self, artifact: A) -> Result<Concept, Error>
         where A: Into<crate::artifact::Artifact>
     {
@@ -215,6 +231,10 @@ impl MindBase {
         // TODO 1 - fetch allegations which are:
         // * Made by the specified agent
         // * "contain" all of the specified artifacts. (How?)
+    }
+
+    pub fn add_policy(&self, policy: Policy) -> Result<(), Error> {
+        unimplemented!()
     }
 }
 
@@ -391,6 +411,8 @@ mod tests {
 
         let saturdays = mb.get_allegations_for_agent_and_artifact(&mb.default_agent, &s)?;
         assert_eq!(saturdays, Some(vec![s1, s2, s3]));
+
+        // LOLOLOL - the issue is that the agent id is diferent :facepalm:
 
         Ok(())
     }

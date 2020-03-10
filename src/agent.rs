@@ -5,6 +5,14 @@ use ed25519_dalek::{
     PublicKey,
 };
 
+use crate::{
+    allegation::{
+        Alledgable,
+        Allegation,
+    },
+    error::Error,
+    MindBase,
+};
 use rand::rngs::OsRng;
 use serde::{
     Deserialize,
@@ -76,6 +84,14 @@ impl Agent {
         // TODO 2 - pre-register a "genesis_en" agent, and include it here
         //
         vec![self.id()]
+    }
+}
+
+impl Alledgable for Agent {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+        let allegation = Allegation::new(agent, crate::allegation::Body::Agent(self.id()))?;
+        mb.put_allegation(&allegation)?;
+        Ok(allegation)
     }
 }
 
