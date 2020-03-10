@@ -22,16 +22,12 @@ impl Signature {
     pub(crate) fn new<T>(agent: &Agent, content: T) -> Result<Self, Error>
         where T: HashHelper
     {
-        match agent.keypair() {
-            None => Err(Error::SignatureError),
-            Some(keypair) => {
-                let mut hasher: Sha512 = Sha512::default();
-                content.hash(&mut hasher);
+        let mut hasher: Sha512 = Sha512::default();
+        content.hash(&mut hasher);
 
-                let sig = keypair.sign_prehashed(hasher, Some(b"allegation"));
-                Ok(Signature(sig.to_bytes()))
-            },
-        }
+        let sig = agent.keypair.sign_prehashed(hasher, Some(b"allegation"));
+
+        Ok(Signature(sig.to_bytes()))
     }
 }
 
