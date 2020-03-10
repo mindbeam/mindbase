@@ -3,7 +3,6 @@ use crate::{
     concept::Concept,
     Agent,
     Allegation,
-    AllegationId,
     Error,
     MindBase,
 };

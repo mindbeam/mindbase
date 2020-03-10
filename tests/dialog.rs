@@ -1,6 +1,27 @@
 use mindbase::*;
 
 #[test]
+fn saturday() -> Result<(), std::io::Error> {
+    let tmpdir = tempfile::tempdir()?;
+    let tmpdirpath = tmpdir.path();
+    let mb = MindBase::open(&tmpdirpath)?;
+
+    // Lets find a grounding symbol for "Saturday"
+    // This needs to be a symbol which we regognize from our authorities.
+    //   * Our own agent, plus some known set of other agents.
+
+    // Could be this Saturday
+    // Could be last Saturday
+    // Could be the the abstract *idea* of Saturday
+    // Could refer to one specific square on a paper calendar on your wall
+    // Could refer to the column on a paper calendar
+    // Could be a person's name...
+    let saturday = mb.ground_symbol(FlatText::new("Saturday"));
+
+    Ok(())
+}
+
+#[test]
 fn dialog_1() -> Result<(), std::io::Error> {
     let tmpdir = tempfile::tempdir()?;
     let tmpdirpath = tmpdir.path();
@@ -9,20 +30,36 @@ fn dialog_1() -> Result<(), std::io::Error> {
     let alice = mb.default_agent()?;
     let bob = mb.create_agent()?;
 
-    let a_said = mb.ground_symbol(&alice,
-                                  vec![FlatText::new("Things that I said"),
-                                       FlatText::new("Walking down the sidewalk")])?;
-    let b_said = mb.ground_symbol(&alice,
-                                  vec![FlatText::new("My thoughts"), FlatText::new("When I was on my way to lunch")])?;
+    // Alice is going to describe an event, and so we need a unique symbol for that. (each Allegation is a universally unique
+    // Symbol) We are alledging/creating a symbol for this event against text artifact, but it could easily be an
+    // anonymous "Unit" artifact. Either way, the symbol itself, and its association to this artifact is meaningless of its own
+    // accord, except that it's a thing that's discrete from the rest of the universe, at least to start.
+    let a_event = mb.alledge2(&alice, FlatText::new("Walking down the street last saturday"))?;
 
-    mb.alledge2(&alice, FlatText::new("I like turtles"))?;
+    // Bob describes a different event. Again, it, and the artifact associated with it is meaningless of its own accord.
+    let b_event = mb.alledge2(&bob, FlatText::new("On my way to get a haircut"))?;
 
-    let statement = mb.alledge(FlatText::new("I like turtles"))?;
-    let category = mb.alledge(FlatText::new("Things that I said"))?;
-    let analogy = mb.alledge(Analogy::declare(statement.narrow(), category.narrow()))?;
+    // Both of these being events, do not require the location of any grounding symbols for their definitions
+    // However, we do want to correlate these events to our broader semantic network, and so, we have to categorize/analogize them
+    // to something. But what? _That_ is where we need to conjure some grounding symbols. They need not be meaningful to everyone,
+    // but they do need to be something which have meaning to Alice and Bob individually.
 
-    let general = mb.put_artifact(FlatText::new("In general"))?;
-    let things = mb.put_artifact(FlatText::new("Things that I said"))?;
+    // In order to do this, Alice and Bob need to be able to *reproducibly* retrieve the same symbols using external value(s)
+
+    // let a_said = mb.ground_symbol(&alice,
+    //                               vec![FlatText::new("Things that I said"),
+    //                                    FlatText::new("Walking down the sidewalk")])?;
+    // let b_said = mb.ground_symbol(&alice,
+    //                               vec![FlatText::new("My thoughts"), FlatText::new("When I was on my way to lunch")])?;
+
+    // mb.alledge2(&alice, FlatText::new("I like turtles"))?;
+
+    // let statement = mb.alledge(FlatText::new("I like turtles"))?;
+    // let category = mb.alledge(FlatText::new("Things that I said"))?;
+    // let analogy = mb.alledge(Analogy::declare(statement.narrow(), category.narrow()))?;
+
+    // let general = mb.put_artifact(FlatText::new("In general"))?;
+    // let things = mb.put_artifact(FlatText::new("Things that I said"))?;
 
     // I want to conjure/scrounge/locate/triangulate/intersect a Concept based on:
     // My AgentId + ArtifactId
