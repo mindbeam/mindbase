@@ -19,12 +19,21 @@ use serde::{
 use std::fmt;
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct AllegationId(#[serde(serialize_with = "crate::util::serde_helper::as_base64",
-                                deserialize_with = "crate::util::serde_helper::from_base64")]
+                                deserialize_with = "crate::util::serde_helper::from_base64_16")]
                         pub(crate) [u8; 16]);
+
+pub(crate) const ALLEGATION_ID_SERIALIZED_SIZE: usize = 16;
 
 impl AllegationId {
     pub fn new() -> Self {
         AllegationId(generate_ulid_bytes())
+    }
+
+    pub fn from_base64(input: &str) -> Result<Self, Error> {
+        use std::convert::TryInto;
+        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
+        let array: [u8; 16] = decoded[..].try_into().map_err(|_| Error::TryFromSlice)?;
+        Ok(AllegationId(array.into()))
     }
 
     pub fn base64(&self) -> String {
@@ -37,7 +46,7 @@ impl AllegationId {
     /// This is because we want to be convergent with our neighbors. I am not an island.
     /// Narrow concepts should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
-    pub fn narrow(&self) -> Concept {
+    pub fn subjective(&self) -> Concept {
         Concept { members:       vec![self.clone()],
                   spread_factor: 0.0, }
     }
@@ -86,6 +95,7 @@ impl fmt::Debug for AllegationId {
 /// See [`mindbase::concept::Concept`][Concept] for more details
 #[derive(Serialize, Deserialize)]
 pub struct Allegation {
+    /// TODO 1 - Rename "Allegation*" to "Symbol*"
     pub id:        AllegationId,
     pub agent_id:  AgentId,
     // TODO 2 - Context (Date, time, place, etc)
@@ -114,13 +124,40 @@ impl Allegation {
     /// This is because we want to be convergent with our neighbors. I am not an island.
     /// Narrow concepts should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
-    pub fn narrow(&self) -> Concept {
+    pub fn subjective(&self) -> Concept {
         Concept { members:       vec![self.id().clone()],
                   spread_factor: 0.0, }
     }
 
     pub fn id(&self) -> &AllegationId {
         &self.id
+    }
+
+    pub fn reverse_lookup(&self) -> Option<Vec<u8>> {
+        // TODO need to add prefixing for ArtifactId vs other stuff
+
+        // Returns
+        match self.body {
+            // AgentId(32 bytes) AgentID(32 bytes)
+            Body::Agent(ref _agent_id) => None,
+
+            // AgentID(32 bytes) ArtifactId(16 bytes)
+            Body::Artifact(ref artifact_id) => {
+                let mut parts: Vec<u8> = Vec::with_capacity(2);
+                use crate::util::AsBytes;
+                parts.extend((&self.agent_id).as_bytes());
+                parts.extend(artifact_id.as_ref());
+                Some(parts)
+            },
+
+            // AgentId(32 bytes) AllegationId(16 bytes)? (need something to indicate this is a unit)
+            Body::Unit => None,
+
+            // Iterator of: AgentId(32 bytes) AllegationId(16 bytes)
+            // Most likely this will have to be converted into an iterator so we can index this allegation under
+            // all of its concept AllegationIDs AND its MemberOf Allegation IDs
+            Body::Analogy(ref _a) => None,
+        }
     }
 }
 
