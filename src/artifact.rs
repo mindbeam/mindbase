@@ -72,6 +72,13 @@ impl ArtifactId {
         let allegation = Allegation::new(agent, self)?;
         mb.put_allegation(&allegation)
     }
+
+    pub fn from_base64(input: &str) -> Result<Self, Error> {
+        use std::convert::TryInto;
+        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
+        let array: [u8; 32] = decoded[..].try_into().map_err(|_| Error::TryFromSlice)?;
+        Ok(ArtifactId(array.into()))
+    }
 }
 
 impl std::convert::TryFrom<sled::IVec> for ArtifactId {
