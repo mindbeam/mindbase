@@ -60,7 +60,7 @@ mod test {
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;
 
-        let my_agent = mb.default_agent;
+        let my_agent = &mb.default_agent;
 
         let group = mb.alledge(FlatText::new("Authorized Members of Project Falcor"))?
                       .subjective();
