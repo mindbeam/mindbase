@@ -10,7 +10,7 @@ use serde::{
 use std::fmt;
 
 /// Pointer to a region within Semantic/Knowledge-Space
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Concept {
     // # how would the agent know which entities they are referring to?
     // # I suppose the UI could remember a list of entities which are being
