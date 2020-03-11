@@ -198,6 +198,21 @@ impl Into<Artifact> for DataNode {
     }
 }
 
+impl Alledgable for &ArtifactId {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(self.clone()))?;
+        mb.put_allegation(&allegation)?;
+        Ok(allegation)
+    }
+}
+impl Alledgable for ArtifactId {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(self))?;
+        mb.put_allegation(&allegation)?;
+        Ok(allegation)
+    }
+}
+
 impl<T> Alledgable for T where T: Into<Artifact>
 {
     fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
