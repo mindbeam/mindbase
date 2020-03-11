@@ -14,9 +14,10 @@ fn main() -> Result<(), std::io::Error> {
 
     // TODO 1 - Look this artifact up based on my agent ID
 
-    let general = mb.put_artifact(FlatText::new("In general"))?;
+    let _general = mb.put_artifact(FlatText::new("In general"))?;
     let things = mb.put_artifact(FlatText::new("Things that I said"))?;
 
+    let isaid = mb.alledge(things)?.subjective();
     // let isaid = mb.ground_symbol(&agent, vec![general, things])?;
 
     // I want to conjure/scrounge/locate/triangulate/intersect a Concept based on:
@@ -47,7 +48,7 @@ fn main() -> Result<(), std::io::Error> {
         match readline {
             Ok(line) => {
                 let statement = mb.alledge(FlatText::new(&line))?;
-                let analogy = mb.alledge(Analogy::declare(statement.subjective(), isaid))?;
+                let analogy = mb.alledge(Analogy::declare(statement.subjective(), isaid.clone()))?;
 
                 // TODO 3 - create a linkage between this allegation and the previous one:
                 // * [A1] Screw you

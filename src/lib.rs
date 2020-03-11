@@ -31,7 +31,13 @@ use core::marker::PhantomData;
 use policy::Policy;
 use serde::de::DeserializeOwned;
 use sled::IVec;
-use std::convert::TryInto;
+use std::{
+    convert::TryInto,
+    sync::{
+        Arc,
+        Mutex,
+    },
+};
 
 // pub mod allegation_capnp {
 //     include!(concat!(env!("OUT_DIR"), "/capnp/allegation_capnp.rs"));
@@ -53,7 +59,7 @@ pub struct MindBase {
     /// I forget why I would actually need known agents
     known_agents: sled::Tree,
 
-    ground_symbol_agents: sled::Tree,
+    ground_symbol_agents: Arc<Mutex<Vec<AgentId>>>,
 
     // TODO 1 - inverted index by artifact id / allegation id
     // QUESTION: Should these be two different trees? or one?
@@ -76,7 +82,8 @@ impl MindBase {
 
         let default_agent = _default_agent(&my_agents)?;
         let known_agents = db.open_tree("known_agents")?;
-        let ground_symbol_agents = db.open_tree("ground_symbol_agents")?;
+
+        let ground_symbol_agents = Arc::new(Mutex::new(vec![default_agent.id()]));
 
         let me = MindBase { allegations,
                             my_agents,
@@ -191,32 +198,36 @@ impl MindBase {
                phantomvalue: PhantomData, }
     }
 
-    pub fn get_allegations_for_agent_and_artifact(&self, agent: &Agent, artifact_id: &ArtifactId)
-                                                  -> Result<Option<Vec<AllegationId>>, Error> {
+    pub fn get_ground_symbols_for_artifact(&self, artifact_id: &ArtifactId) -> Result<Option<Vec<AllegationId>>, Error> {
         use crate::{
             allegation::ALLEGATION_ID_SERIALIZED_SIZE,
             util::AsBytes,
         };
 
-        let tmp: Vec<u8> = [&(&agent.id()).as_bytes()[..], artifact_id.as_ref()].concat();
+        let mut out = Vec::new();
 
-        // not actually necessary to run this through a fixed sized array. Remove this >_>
-        let key: &[u8; 64] = crate::util::array64::try_64_from_slice(&tmp[..])?;
+        for agent_id in self.ground_symbol_agents.lock().unwrap().iter() {
+            let mut key: Vec<u8> = Vec::with_capacity(64);
 
-        match self.allegation_rev.get(&key[..])? {
-            None => Ok(None),
-            Some(vector) => {
-                Ok(Some(vector.chunks_exact(ALLEGATION_ID_SERIALIZED_SIZE)
-                              .map(|c| AllegationId((&c[..]).try_into().unwrap()))
-                              .collect()))
-            },
+            key.extend_from_slice(&agent_id.as_bytes()[..]);
+            key.extend_from_slice(artifact_id.as_ref());
+
+            if let Some(vector) = self.allegation_rev.get(&key[..])? {
+                out.extend(vector.chunks_exact(ALLEGATION_ID_SERIALIZED_SIZE)
+                                 .map(|c| AllegationId((&c[..]).try_into().unwrap())))
+            }
+        }
+
+        if out.len() == 0 {
+            return Ok(None);
+        } else {
+            return Ok(Some(out));
         }
     }
 
-    pub fn add_ground_symbol_agent(&self, agent_id: &AgentId) -> Result<(), Error> {
-        use crate::util::AsBytes;
+    pub fn add_ground_symbol_agent(&self, agent_id: AgentId) -> Result<(), Error> {
         // TODO 2 - Build the policy system and convert this to a policy
-        self.ground_symbol_agents.insert(agent_id.as_bytes(), b"")?;
+        self.ground_symbol_agents.lock().unwrap().push(agent_id);
 
         Ok(())
     }
@@ -409,7 +420,10 @@ mod tests {
 
         let s = ArtifactId::from_base64("Wtw2TYgjfvmTVazfM0IDhkfwlJFUZ9w0xhNc1H0ilRc")?;
 
-        let saturdays = mb.get_allegations_for_agent_and_artifact(&mb.default_agent, &s)?;
+        let genesis_agent_id = AgentId::from_base64("rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY")?;
+        mb.add_ground_symbol_agent(genesis_agent_id)?;
+
+        let saturdays = mb.get_ground_symbols_for_artifact(&s)?;
         assert_eq!(saturdays, Some(vec![s1, s2, s3]));
 
         // LOLOLOL - the issue is that the agent id is diferent :facepalm:
