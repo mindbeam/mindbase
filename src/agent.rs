@@ -33,6 +33,13 @@ impl AgentId {
         use base64::STANDARD_NO_PAD;
         base64::encode_config(&self.pubkey[0..12], STANDARD_NO_PAD)
     }
+
+    pub fn from_base64(input: &str) -> Result<Self, Error> {
+        use std::convert::TryInto;
+        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
+        let array: [u8; 32] = decoded[..].try_into().map_err(|_| Error::TryFromSlice)?;
+        Ok(AgentId { pubkey: array.into() })
+    }
 }
 impl crate::util::AsBytes for &AgentId {
     fn as_bytes(&self) -> Vec<u8> {
@@ -87,19 +94,25 @@ impl Agent {
     }
 }
 
-impl Alledgable for Agent {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
-        let allegation = Allegation::new(agent, crate::allegation::Body::Agent(self.id()))?;
-        mb.put_allegation(&allegation)?;
-        Ok(allegation)
-    }
-}
-
 impl std::fmt::Display for Agent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use base64::STANDARD_NO_PAD;
         write!(f,
                "{}",
                base64::encode_config(&self.keypair.public.as_bytes()[0..10], STANDARD_NO_PAD))
+    }
+}
+
+impl Into<crate::allegation::Body> for Agent {
+    fn into(self) -> crate::allegation::Body {
+        crate::allegation::Body::Agent(self.id())
+    }
+}
+
+impl Alledgable for &Agent {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+        let allegation = Allegation::new(agent, crate::allegation::Body::Agent(self.id()))?;
+        mb.put_allegation(&allegation)?;
+        Ok(allegation)
     }
 }
