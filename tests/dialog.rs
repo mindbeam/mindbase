@@ -16,7 +16,7 @@ fn saturday() -> Result<(), std::io::Error> {
     // Could refer to one specific square on a paper calendar on your wall
     // Could refer to the column on a paper calendar
     // Could be a person's name...
-    let saturday = mb.ground_symbol(FlatText::new("Saturday"));
+    // let saturday = mb.ground_symbol(FlatText::new("Saturday"));
 
     Ok(())
 }
