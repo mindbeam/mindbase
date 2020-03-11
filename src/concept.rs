@@ -41,4 +41,6 @@ impl Concept {
     pub fn is_intersubjective(&self, mb: &MindBase) -> Result<bool, Error> {
         unimplemented!()
     }
+
+    pub fn narrow_by(&self, mb: &MindBase, memberof: Concept) {}
 }

@@ -133,22 +133,18 @@ impl Allegation {
         &self.id
     }
 
-    pub fn reverse_lookup(&self) -> Option<Vec<u8>> {
+    pub fn reverse_lookup(&self) -> Option<Vec<Vec<u8>>> {
         // TODO need to add prefixing for ArtifactId vs other stuff
 
+        use crate::util::AsBytes;
+        let agent_bytes = (&self.agent_id).as_bytes();
         // Returns
         match self.body {
             // AgentId(32 bytes) AgentID(32 bytes)
             Body::Agent(ref _agent_id) => None,
 
             // AgentID(32 bytes) ArtifactId(16 bytes)
-            Body::Artifact(ref artifact_id) => {
-                use crate::util::AsBytes;
-                let mut parts: Vec<u8> = Vec::with_capacity(2);
-                parts.extend((&self.agent_id).as_bytes());
-                parts.extend(artifact_id.as_ref());
-                Some(parts)
-            },
+            Body::Artifact(ref artifact_id) => Some(vec![[agent_bytes, artifact_id.as_ref().to_vec()].concat()]),
 
             // AgentId(32 bytes) AllegationId(16 bytes)? (need something to indicate this is a unit)
             Body::Unit => None,
@@ -156,7 +152,29 @@ impl Allegation {
             // Iterator of: AgentId(32 bytes) AllegationId(16 bytes)
             // Most likely this will have to be converted into an iterator so we can index this allegation under
             // all of its concept AllegationIDs AND its MemberOf Allegation IDs
-            Body::Analogy(ref _a) => None,
+            Body::Analogy(ref analogy) => {
+                // TODO 1 - should we be indexing analogies by artifact id, or by allegation_id?
+                // It comes down to the implementation of get_ground_symbols_for_artifact
+                // I'm pretty sure we want to index that by allegation id.
+                // This is because:
+                // First we will look up the ground agent allegations for the artifacts in question
+                //       we'll get more allegations than we want, because that ground agent will be alledging "non-ground"
+                //       allegations all the time. (Does this mean we should have two types of allegation, ground and non-ground?)
+                //       actually is there such a thing as a non-ground symbol?
+                //
+                // then we'll look up the analogies for those allegation ids.
+
+                // pairwise Common memberships (AllegationId OR artifact ID) -> AllegationId
+                // pairwise Member / Category (AllegationId OR artifact ID) -> AllegationId
+
+                // for Concept.intersect
+                // <[Saturday]> memberof <[Days of the week]>
+                //
+
+                // let v = Vec::new();
+                // v.push([agent_bytes, analogy.concept.as_ref().to_vec()].concat());
+                unimplemented!()
+            },
         }
     }
 }
