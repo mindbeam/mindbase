@@ -141,6 +141,10 @@ pub struct Url {
     pub url: String,
 }
 
+pub fn text(text: &str) -> FlatText {
+    FlatText::new(text)
+}
+
 /// Text of nonspecific structure, origin, and language
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct FlatText {

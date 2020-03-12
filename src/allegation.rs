@@ -133,7 +133,7 @@ impl Allegation {
         &self.id
     }
 
-    pub fn reverse_lookup(&self) -> Option<Vec<Vec<u8>>> {
+    pub fn reverse_lookup(&self) -> Option<Vec<u8>> {
         // TODO need to add prefixing for ArtifactId vs other stuff
 
         use crate::util::AsBytes;
@@ -144,7 +144,7 @@ impl Allegation {
             Body::Agent(ref _agent_id) => None,
 
             // AgentID(32 bytes) ArtifactId(16 bytes)
-            Body::Artifact(ref artifact_id) => Some(vec![[agent_bytes, artifact_id.as_ref().to_vec()].concat()]),
+            Body::Artifact(ref artifact_id) => Some([agent_bytes, artifact_id.as_ref().to_vec()].concat()),
 
             // AgentId(32 bytes) AllegationId(16 bytes)? (need something to indicate this is a unit)
             Body::Unit => None,
@@ -173,7 +173,7 @@ impl Allegation {
 
                 // let v = Vec::new();
                 // v.push([agent_bytes, analogy.concept.as_ref().to_vec()].concat());
-                unimplemented!()
+                None
             },
         }
     }

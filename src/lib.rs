@@ -198,36 +198,86 @@ impl MindBase {
                phantomvalue: PhantomData, }
     }
 
-    pub fn get_ground_symbols_for_artifact<A>(&self, artifact: A) -> Result<Option<Concept>, Error>
-        where A: Into<crate::artifact::Artifact>
+    pub fn concept_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Concept, Error>
+        where F: Fn(&Allegation) -> bool
     {
-        use crate::{
-            allegation::ALLEGATION_ID_SERIALIZED_SIZE,
-            util::AsBytes,
-        };
-
-        let artifact_id = self.put_artifact(artifact.into())?;
-
         let mut members = Vec::new();
 
-        for agent_id in self.ground_symbol_agents.lock().unwrap().iter() {
-            let mut key: Vec<u8> = Vec::with_capacity(64);
-
-            key.extend_from_slice(&agent_id.as_bytes()[..]);
-            key.extend_from_slice(artifact_id.as_ref());
-
-            if let Some(vector) = self.allegation_rev.get(&key[..])? {
-                members.extend(vector.chunks_exact(ALLEGATION_ID_SERIALIZED_SIZE)
-                                     .map(|c| AllegationId((&c[..]).try_into().unwrap())))
+        for allegation in self.allegation_iter() {
+            let allegation = allegation?;
+            if f(&allegation.1) {
+                members.push(allegation.0);
             }
         }
 
-        if members.len() == 0 {
-            return Ok(None);
-        } else {
-            return Ok(Some(Concept { members,
-                                     spread_factor: 0.0 }));
+        Ok(Concept { members,
+                     spread_factor: 0.0 })
+    }
+
+    pub fn get_ground_symbol<A>(&self, artifacts: Vec<A>) -> Result<Concept, Error>
+        where A: Into<crate::artifact::Artifact>
+    {
+        let mut search_chain = Vec::with_capacity(artifacts.len());
+        for a in artifacts.into_iter() {
+            let artifact_id = self.put_artifact(a.into())?;
+            search_chain.push(artifact_id);
         }
+
+        use crate::{
+            allegation::{
+                Body,
+                ALLEGATION_ID_SERIALIZED_SIZE,
+            },
+            util::AsBytes,
+        };
+
+        let gs_agents = self.ground_symbol_agents.lock().unwrap();
+        let mut last_concept: Option<Concept> = None;
+        for search_artifact_id in search_chain {
+            // TODO 2 change this to be indexed
+            let mut concept = self.concept_filter_allegations_by(|a| {
+                                      gs_agents.contains(&a.agent_id)
+                                      && match &a.body {
+                                          Body::Artifact(artifact_id) => *artifact_id == search_artifact_id,
+                                          _ => false,
+                                      }
+                                  })?;
+
+            if let Some(ref last_concept) = last_concept {
+                concept.narrow_by(self, last_concept);
+            }
+
+            if concept.is_null() {
+                // Extend this with a new allegation so we can continue
+                // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
+                // subsequent allegations
+                concept.extend(self.alledge(search_artifact_id)?.id().clone());
+            }
+
+            last_concept = Some(concept);
+        }
+
+        Ok(last_concept.unwrap())
+
+        // let mut members = Vec::new();
+        // for agent_id in self.ground_symbol_agents.lock().unwrap().iter() {
+        //     let mut key: Vec<u8> = Vec::with_capacity(64);
+
+        //     key.extend_from_slice(&agent_id.as_bytes()[..]);
+        //     key.extend_from_slice(artifact_id.as_ref());
+
+        //     if let Some(vector) = self.allegation_rev.get(&key[..])? {
+        //         members.extend(vector.chunks_exact(ALLEGATION_ID_SERIALIZED_SIZE)
+        //                              .map(|c| AllegationId((&c[..]).try_into().unwrap())))
+        //     }
+        // }
+
+        // if members.len() == 0 {
+        //     return Ok(None);
+        // } else {
+        //     return Ok(Some(Concept { members,
+        //                              spread_factor: 0.0 }));
+        // }
     }
 
     pub fn add_ground_symbol_agent(&self, agent_id: AgentId) -> Result<(), Error> {
@@ -350,8 +400,48 @@ fn merge_allegation_rev(_key: &[u8],               // the key being merged
 mod tests {
     use crate::*;
     use analogy::Analogy;
-    use artifact::FlatText;
+    use artifact::{
+        text,
+        FlatText,
+    };
 
+    #[test]
+    fn apple() -> Result<(), Error> {
+        let tmpdir = tempfile::tempdir()?;
+        let tmpdirpath = tmpdir.path();
+        let mb = MindBase::open(&tmpdirpath)?;
+
+        let malus_domestica = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
+                                                        text("Clade: Tracheophytes"),
+                                                        text("Clade: Angiosperms"),
+                                                        text("Clade: Eudicots"),
+                                                        text("Clade: Rosids"),
+                                                        text("Order: Rosales"),
+                                                        text("Family: Rosaceae"),
+                                                        text("Genus: Malus"),
+                                                        text("Species: M. domestica"),])?;
+
+        // text("Apple");
+        // text("Fruit of the");
+
+        println!("{:?}", malus_domestica);
+
+        let malus_domestica = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
+                                                        text("Clade: Tracheophytes"),
+                                                        text("Clade: Angiosperms"),
+                                                        text("Clade: Eudicots"),
+                                                        text("Clade: Rosids"),
+                                                        text("Order: Rosales"),
+                                                        text("Family: Rosaceae"),
+                                                        text("Genus: Malus"),
+                                                        text("Species: M. domestica"),])?;
+
+        // text("Apple");
+        // text("Fruit of the");
+
+        println!("AND AGAIN {:?}", malus_domestica);
+        Ok(())
+    }
     #[test]
     fn fridays() -> Result<(), Error> {
         let tmpdir = tempfile::tempdir()?;
@@ -359,28 +449,28 @@ mod tests {
         let mb = MindBase::open(&tmpdirpath)?;
 
         // Next Friday
-        let f1 = mb.alledge(FlatText::new("Friday"))?.subjective();
+        let f1 = mb.alledge(text("Friday"))?.subjective();
 
         // The abstract concept of Friday
-        let f2 = mb.alledge(FlatText::new("Friday"))?.subjective();
+        let f2 = mb.alledge(text("Friday"))?.subjective();
 
         // The person named Friday
-        let f3 = mb.alledge(FlatText::new("Friday"))?.subjective();
+        let f3 = mb.alledge(text("Friday"))?.subjective();
 
-        let fut = mb.alledge(FlatText::new("Days which are in the near future"))?.subjective();
-        let dow = mb.alledge(FlatText::new("Abstract day of the week"))?.subjective();
-        let per = mb.alledge(FlatText::new("Names for a person"))?.subjective();
+        let fut = mb.alledge(text("Days which are in the near future"))?.subjective();
+        let dow = mb.alledge(text("Abstract day of the week"))?.subjective();
+        let per = mb.alledge(text("Names for a person"))?.subjective();
 
         mb.alledge(Analogy::declare(f1, fut))?;
         mb.alledge(Analogy::declare(f2, dow))?;
         mb.alledge(Analogy::declare(f3, per))?;
 
-        let fridays = mb.get_ground_symbols_for_artifact(FlatText::new("Friday"))?.expect("Option");
-        let names = mb.get_ground_symbols_for_artifact(FlatText::new("Names for a person"))?
-                      .expect("Option");
+        let friday_person = mb.get_ground_symbol(vec![text("Friday"), text("Names for a person")])?;
+        // let names = mb.get_ground_symbols_for_artifact(FlatText::new("Names for a person"))?
+        //               .expect("Option");
 
-        let fridays = fridays.narrow_by(mb, names);
-        println!("{:?}", fridays);
+        // let fridays = fridays.narrow_by(mb, names);
+        // println!("{:?}", fridays);
         Ok(())
     }
     #[test]
