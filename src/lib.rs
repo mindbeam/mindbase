@@ -376,21 +376,18 @@ fn merge_allegation_rev(_key: &[u8],               // the key being merged
                         -> Option<Vec<u8>> {
     // set the new value, return None to delete
 
-    use crate::allegation::ALLEGATION_ID_SERIALIZED_SIZE;
-    let op_bytes: [u8; ALLEGATION_ID_SERIALIZED_SIZE] = op_bytes.try_into().unwrap();
+    use inverted_index_util::entity_list::{
+        insert_entity_immut,
+        ImmutResult,
+    };
+    use typenum::consts::U16;
 
     Some(match last_bytes {
-             Some(v) => {
-                 let mut chunks: Vec<[u8; ALLEGATION_ID_SERIALIZED_SIZE]> = v.chunks_exact(ALLEGATION_ID_SERIALIZED_SIZE)
-                                                                             .map(|v| v.try_into().unwrap())
-                                                                             .collect();
-                 match chunks.binary_search(&op_bytes) {
-                     Ok(_) => {},
-                     Err(i) => {
-                         chunks.insert(i, op_bytes);
-                     },
+             Some(prior) => {
+                 match insert_entity_immut::<U16>(prior, op_bytes) {
+                     ImmutResult::Changed(newvec) => newvec,
+                     ImmutResult::Unchanged => prior.to_vec(),
                  }
-                 chunks.concat()
              },
              None => op_bytes.to_vec(),
          })
@@ -422,7 +419,7 @@ mod tests {
                                                         text("Species: M. domestica"),])?;
 
         // text("Apple");
-        // text("Fruit of the");
+        // text("Fruit of the");©
 
         println!("{:?}", malus_domestica);
 
