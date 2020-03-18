@@ -78,11 +78,34 @@ impl fmt::Display for AllegationId {
 }
 impl fmt::Debug for AllegationId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EntityID:{}", base64::encode(&self.0))
+        write!(f, "AllegationId:{}", base64::encode(&self.0))
     }
 }
 
 /// # Allegation
+/// An allogation is kind of like an "Atom" of meaning. In the same way that you typically interact with molecules rather than
+/// atoms in the physical world, so to do you interact with "Concepts" in the ontological world. These
+/// molecules/concepts don't simply spring into existence however. Molecules must be built of atoms, and Concepts must be built of
+/// Allegations.
+///
+/// ```
+/// NOMENCLATURE QUESTION: Concept/Symbol/Allegation/Atom etc?
+/// There must be a bifurcation between the Subjective and the Intersubjective.
+/// The Subjective is actually more than just according to a person or agent.
+/// It's also according to a context – A time, A place, A frame of mind, An intention.
+/// As such, these subjective elements are really more like events. In this sense, the term Allegation is nice, because it implies
+/// that provenance is involved. The question is: Is "Symbol" a nicer term for Allegation? In some sense its nicer, because it
+/// symbolizes some occurrent. Unfortunately it also muddies the idea of a Concept. A concept is also kind of a symbol, because it
+/// symbolizes an "idea" (Some ontologists quibble about Concepts being bad, as "Concept" implies that it's a thought about a
+/// thing rather than a symbol of that thing)
+///
+/// For this reason, I've been thinking about nomenclature like:
+///    Proto-Symbol (Allegation) and Symbol (Concept)
+///       * Unfortunately this is muddy, because both allegations and concepts are symbols
+/// or Subjective-Symbol and Intersubjective Symbol
+///       * unfortunately this is muddy, because Subjectivity might be wrongly taken to mean "Person"-al, rather than situational.
+/// ```
+///
 /// To the degree that you possess a "Self", so too do you possess agency over your thoughts, feelings, and perceptions.
 /// Unfortunately, that's about the extent if your agency, epistemologically speaking. Much To the chagrin of narcisists
 /// everywhere, they (and you) possess no agency hatsoever over objectivity or objective truth.

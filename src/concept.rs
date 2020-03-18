@@ -89,6 +89,7 @@ impl Concept {
 
         let mut members: Vec<AllegationId> = Vec::new();
 
+        // TODO 1 - index allegations by their concept allegationids (and/or artifact ids, to save a step)
         for allegation in mb.allegation_iter() {
             let allegation = allegation?;
 

@@ -214,6 +214,27 @@ impl MindBase {
                      spread_factor: 0.0 })
     }
 
+    /// For an ordered list of artifacts, we want to try to resolve upon the most precise conceptual definition possible, and
+    /// arrive at a "ground symbol" which is meaningful to a given agent. This agent ascribes to a list of "grounding agents",
+    /// which the agent trusts implicitly as a source of ground symbols. This list of grounding agents should generally include
+    /// the agent itself, plus any "genesis" or "neighbor" agents to which the user chooses to ascribe.
+    ///
+    /// The genesis/neighbor agents are important, because they represent the starting point of common, culturally originated
+    /// defintions in the form of "default" Analogies, which the agent would otherwise have to define for themselves. The
+    /// agent in question could theoretically define all of this themselves, but it would be very time consuming, and
+    /// crucially, it would impede rather than seed convergence with their neighbors - unless those neighbors first accepted said
+    /// agent to be a grounding/neighbor agent. This is of course the goal: that you should ascribe, at least in part, to the set
+    /// of definitions which is provided by your neighbor. This is because it reflects ontological alignments which exist in
+    /// the real world, at least to some degree.
+    ///
+    /// This list of artifacts is taken to be a single thread of a taxonomy. Each artifact is initially translated into
+    /// the the broadest possible Concept which is inclusive of _all_ potential interpretations of that artifact.
+    /// The initial Concept of that taxonomy is not able to be narrowed, but the subsequent concepts in the taxonomy are narrowed
+    /// to include only those which are alledged to be in the category of the parent by one of the grounding/neighbor agents.
+    ///
+    /// This in theory should allow us to resolve upon a single concept which is believed to be meaningful to that agent based on
+    /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
+    /// continuum we hope to create with mindbase.
     pub fn get_ground_symbol<A>(&self, artifacts: Vec<A>) -> Result<Concept, Error>
         where A: Into<crate::artifact::Artifact>
     {
@@ -247,11 +268,18 @@ impl MindBase {
                 concept.narrow_by(self, last_concept);
             }
 
+            // None of our ground/neighbor agents have declared this taxonomic/analogic relationship before
+            // But we are implicitly doing so now. Lets extend our concept with a new allegation corresponding to a new atom of
+            // meaning, and ALSO define that meaning by alledging
             if concept.is_null() {
                 // Extend this with a new allegation so we can continue
                 // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
                 // subsequent allegations
                 concept.extend(self.alledge(search_artifact_id)?.id().clone());
+
+                if let Some(parent) = last_concept {
+                    self.alledge(Analogy::declare(concept.clone(), parent))?;
+                }
             }
 
             last_concept = Some(concept);
@@ -408,35 +436,33 @@ mod tests {
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;
 
-        let malus_domestica = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
-                                                        text("Clade: Tracheophytes"),
-                                                        text("Clade: Angiosperms"),
-                                                        text("Clade: Eudicots"),
-                                                        text("Clade: Rosids"),
-                                                        text("Order: Rosales"),
-                                                        text("Family: Rosaceae"),
-                                                        text("Genus: Malus"),
-                                                        text("Species: M. domestica"),])?;
+        let malus_domestica1 = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
+                                                         text("Clade: Tracheophytes"),
+                                                         text("Clade: Angiosperms"),
+                                                         text("Clade: Eudicots"),
+                                                         text("Clade: Rosids"),
+                                                         text("Order: Rosales"),
+                                                         text("Family: Rosaceae"),
+                                                         text("Genus: Malus"),
+                                                         text("Species: M. domestica"),])?;
 
         // text("Apple");
         // text("Fruit of the");©
 
-        println!("{:?}", malus_domestica);
-
-        let malus_domestica = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
-                                                        text("Clade: Tracheophytes"),
-                                                        text("Clade: Angiosperms"),
-                                                        text("Clade: Eudicots"),
-                                                        text("Clade: Rosids"),
-                                                        text("Order: Rosales"),
-                                                        text("Family: Rosaceae"),
-                                                        text("Genus: Malus"),
-                                                        text("Species: M. domestica"),])?;
+        let malus_domestica2 = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
+                                                         text("Clade: Tracheophytes"),
+                                                         text("Clade: Angiosperms"),
+                                                         text("Clade: Eudicots"),
+                                                         text("Clade: Rosids"),
+                                                         text("Order: Rosales"),
+                                                         text("Family: Rosaceae"),
+                                                         text("Genus: Malus"),
+                                                         text("Species: M. domestica"),])?;
 
         // text("Apple");
         // text("Fruit of the");
 
-        println!("AND AGAIN {:?}", malus_domestica);
+        assert_eq!(malus_domestica1, malus_domestica2);
         Ok(())
     }
     #[test]
