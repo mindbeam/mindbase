@@ -48,7 +48,7 @@ fn main() -> Result<(), std::io::Error> {
         match readline {
             Ok(line) => {
                 let statement = mb.alledge(FlatText::new(&line))?;
-                let analogy = mb.alledge(Analogy::declare(statement.subjective(), isaid.clone()))?;
+                let analogy = mb.alledge(Analogy::declarative(statement.subjective(), isaid.clone()))?;
 
                 // TODO 3 - create a linkage between this allegation and the previous one:
                 // * [A1] Screw you

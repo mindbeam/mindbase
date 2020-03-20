@@ -49,6 +49,10 @@ impl Concept {
         self.members.len() == 0
     }
 
+    pub fn count(&self) -> usize {
+        self.members.len()
+    }
+
     pub fn extend(&mut self, allegation_id: AllegationId) {
         self.members.push(allegation_id)
     }

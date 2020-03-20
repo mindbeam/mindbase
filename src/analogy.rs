@@ -20,7 +20,7 @@ pub struct Analogy {
 }
 
 impl Analogy {
-    pub fn declare<T>(concept: T, memberof: T) -> Self
+    pub fn declarative<T>(concept: T, memberof: T) -> Self
         where T: Into<Concept>
     {
         Analogy { concept:    concept.into(),
@@ -28,7 +28,7 @@ impl Analogy {
                   memberof:   memberof.into(), }
     }
 
-    pub fn declare_neg(concept: Concept, memberof: Concept) -> Self {
+    pub fn negative(concept: Concept, memberof: Concept) -> Self {
         Analogy { concept,
                   confidence: -1.0,
                   memberof }

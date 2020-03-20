@@ -278,7 +278,7 @@ impl MindBase {
                 concept.extend(self.alledge(search_artifact_id)?.id().clone());
 
                 if let Some(parent) = last_concept {
-                    self.alledge(Analogy::declare(concept.clone(), parent))?;
+                    self.alledge(Analogy::declarative(concept.clone(), parent))?;
                 }
             }
 
@@ -431,40 +431,179 @@ mod tests {
     };
 
     #[test]
-    fn apple() -> Result<(), Error> {
-        let tmpdir = tempfile::tempdir()?;
-        let tmpdirpath = tmpdir.path();
-        let mb = MindBase::open(&tmpdirpath)?;
+    fn alice() -> Result<(), Error> {
+        // A world of analogies...
+        //
+        // Here's a random example of an analogy: A(your flu) was just like B(my surgical recovery) – in that we were C(stuck in
+        // bed for a week). Analogically, both A and B are in the category of C.
+        //
+        // We get to define the events and the categories. Those categories may themselves be analagous to other categories which
+        // were defined by the same agent, or another agent. These analogies allow us to compare and contrast things.
+        // What's a category? Everything is a category. Everything in the system starts out as a singleton category, and is then
+        // "pluralized" as new allegations pile up, accusing other things of being a member of it.
+        //
+        // The question is: how do we represent predicates? Things like "was just like", and "in that we were", etc
+        //
+        // Depending on how you want to look at it, you could say that:
+        // * Mindbase has exactly one predicate "is a member of", which is simply implicit in every Analogy
+        // or
+        // * Mindbase has an infinite number of predicates which you can define – Buttt, they're fused to the object
+        //
+        // So, we get "is in the category of" for free with each analogy.
+        // For a statement like "The pan is hot" we would think of this as:
+        // [the pan] (is in the category of) [things that are hot]
+        // Connecting words like "things that are" can generally be discarded, provided they are referring to the subject.
+        // If the connecting words _do_ in fact change the meaning, then either the subject or the object should be recursively
+        // expanded to reflect that meaning.
+        //
+        // # Why not subject-predicate-object triples?
+        // * Because they converge poorly - (speculation)
+        // * Because it externalizes the semantics of the predicate to the user
+        // * Because the event of jumping into the lake is itself a discrete constituent of the
+        // [Alice [jumped into] [the lake]]
+        //
+        // * What is [jumped-into]ing, and how does it correlate to jumping?
+        // * How do we determine which type of jumping it's related to?
+        //
+        // [Alice [[jumped [into the lake]]]
+        //
+        //
+        // ****** TODO 1 ******
+        // Follow up on the notion that a knowledge triple~~dependency tree, whereas a category ~~ a constituency tree
+        // It feels like there may be something to this
+        //
+        // TODO 1 - clarify in the code that:
+        //  * An allegation/Concept is a category
+        //  * That category be automatically expanded based on Analogies defined against it
+        //  Q: how do we make it clear to the user that such Analogies are being traversed?
+        //  A: we probably don't - if it's done lazily
+        //  Q: how many hops do we do for vicarious analogies? [A] <- B <- C = [A,B,C]
+        //  A: I think we have to do this lazily, rather than actually materializing this
+        //  Q: When and how is that lazy-evaluation performed?
 
-        let malus_domestica1 = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
-                                                         text("Clade: Tracheophytes"),
-                                                         text("Clade: Angiosperms"),
-                                                         text("Clade: Eudicots"),
-                                                         text("Clade: Rosids"),
-                                                         text("Order: Rosales"),
-                                                         text("Family: Rosaceae"),
-                                                         text("Genus: Malus"),
-                                                         text("Species: M. domestica"),])?;
-
-        // text("Apple");
-        // text("Fruit of the");©
-
-        let malus_domestica2 = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
-                                                         text("Clade: Tracheophytes"),
-                                                         text("Clade: Angiosperms"),
-                                                         text("Clade: Eudicots"),
-                                                         text("Clade: Rosids"),
-                                                         text("Order: Rosales"),
-                                                         text("Family: Rosaceae"),
-                                                         text("Genus: Malus"),
-                                                         text("Species: M. domestica"),])?;
-
-        // text("Apple");
-        // text("Fruit of the");
-
-        assert_eq!(malus_domestica1, malus_domestica2);
+        // Alice said I like turtles
+        //
+        // If we represent this in a subject,predicate,object notation we get:
+        // (Alice, said, (I, like, turtles))
+        //
+        // If we use an analogical representation:
+        // There exists a specific instance of "like"ing - like1
+        // There exists a specific instance of "turtles" - turt1
+        // turt1 is in the category of like1
+        // There exists a specific instance of "I" - self1
+        // that
+        // turtles are in a specific instance of "like"-itude
+        // I is that instance of likitude is
+        // Alice is in the category of (
+        //            said is in the category of (
+        //                 I is in the category of (
+        //                                         )
+        //                )
+        // )
+        // (Alice (said (I (like (turtles)))))
         Ok(())
     }
+
+    #[test]
+    // fn apple() -> Result<(), Error> {
+    //     let tmpdir = tempfile::tempdir()?;
+    //     let tmpdirpath = tmpdir.path();
+    //     let mb = MindBase::open(&tmpdirpath)?;
+
+    //     // Lets suppose that Alice makes a statement about apples. Lets record that having happened.
+    //     let alice_statement = mb.alledge(text("I love apples"))?;
+
+    //     // Now, lets also use NLP to parse this statement:
+    //     //  NP[I]  VP[love apples]
+    //     // PRP[I] VBP[love] NP [apples]
+    //     //
+    //     // Note: these derrived Artifacts are related to the original artifact of alice's statement.
+    //     // TODO 2 - How should the system alledge that these are related, and that it wasn't actually alice who broke them down
+    //     // this way?
+    //     let _np_i = mb.alledge(text("I"))?;
+    //     let _vp_love_apples = mb.alledge(text("love apples"))?;
+    //     let prp_i = mb.alledge(text("I"))?;
+
+    //     // vbp = Verb non-3rd person singular present form
+    //     let vbp_love = mb.alledge(text("love"))?;
+    //     // np = Proper Noun
+    //     let np_apples = mb.alledge(text("apples"))?;
+
+    //     // the symbol we define for np_apples is in the category of vbp_love
+    //     let apple_love = mb.alledge(Analogy::declarative(np_apples.subjective(), vbp_love.subjective()))?;
+
+    //     // The symbol for Alice's self alledged to be in the category of apple_love
+    //     let alice_loves_apples = mb.alledge(Analogy::declarative(prp_i.subjective(), apple_love.subjective()));
+
+    //     // ok, great
+
+    //     // Lets make some apples. These all share the same artifact, but they're different allegations.
+    //     // Lets imagine that these are part of an initial set of allegations which is provided by some agent
+    //     // early in the growth of the system, in order to prime the pump. Other agents may make redundant and/or similar
+    //     // allegations, either because they didn't see these, or didn't understand them, or didn't have the time to correlate
+    //     // them.
+    //     // let apple_computers = mb.alledge(FlatText::new("Apple"))?;
+    //     // let apple_the_fruit = mb.alledge(FlatText::new("Apple"))?;
+    //     // let apple_of_my_eye = mb.alledge(FlatText::new("Apple"))?;
+
+    //     // // Lets be a liittle more specific. (Using get_ground_symbol here as a shortcut)
+    //     // mb.alledge(Analogy::declarative(apple_computers.subjective(), mb.alledge(text("Corporation"))?.subjective()))?;
+    //     // mb.alledge(Analogy::declarative(apple_the_fruit.subjective(), mb.alledge(text("Edible Fruit"))?.subjective()))?;
+    //     // mb.alledge(Analogy::declarative(apple_of_my_eye.subjective(), mb.alledge(text("Amorousness"))?.subjective()))?;
+
+    //     // // Look up the "ground symbol" for "Apple" without any additional specificity
+    //     // let apple: Concept = mb.get_ground_symbol(vec![text("Apple")])?;
+    //     // // It's... all of them? Why? Because meaning is contextual/intersectional.
+    //     // // We don't have enough information to narrow it down yet and we should not assume what they meant
+    //     // assert_eq!(apple.count(), 3);
+
+    //     // let apple_plural = mb.alledge(text("Plural form of Apple"))?;
+    //     // mb.alledge(Analogy::declarative(apples.subjective(), things_i_love.subjective()))?;
+
+    //     // // Lets start out simple. Apple. Which apple are you talking about?
+    //     // let fruit = mb.get_ground_symbol(vec![text("Apple")])?;
+
+    //     // // Just for fun, Lets get reeal specific with the biological taxonomy. Note that it's conceivable that this exact
+    //     // taxonomy // could also be present which might mean something completely different! While the length of our
+    //     // specified // taxonomy makes this a bit less likely, remember that there is nothing magical about these
+    //     // artifacts. let malus_domestica1 = mb.get_ground_symbol(vec![text("Domain: Eukarya"),
+    //     //                                                  text("Kingdom: Plantae"),
+    //     //                                                  text("Phylum: Magnoliophyta"),
+    //     //                                                  text("Class: Magnoliopsida"),
+    //     //                                                  text("Order: Rosales"),
+    //     //                                                  text("Family: Rosaceae"),
+    //     //                                                  text("Genus: Malus"),
+    //     //                                                  text("Species: Malus domestica"),])?;
+
+    //     // let tree = mb.get_ground_symbol(vec![text("Plant"), text("Tree")])?;
+    //     // let fruit = mb.get_ground_symbol(vec![text("Fruit")])?;
+
+    //     // //  text("with an elongated stem or trunk"),
+    //     // //  text("has branches and leaves"),
+    //     // // mb.alledge(Analogy::declare(malus_domestica1.clone(), tree.clone()))?;
+    //     // // text("seed-bearing structure"),
+    //     // //                                       text("of a flowering plant"),
+    //     // //                                       text("formed from the ovary after flowering")
+
+    //     // // text("Apple");
+    //     // // text("Fruit of the");;
+
+    //     // let malus_domestica2 = mb.get_ground_symbol(vec![text("Kingdom: Plantae"),
+    //     //                                                  text("Clade: Tracheophytes"),
+    //     //                                                  text("Clade: Angiosperms"),
+    //     //                                                  text("Clade: Eudicots"),
+    //     //                                                  text("Clade: Rosids"),
+    //     //                                                  text("Order: Rosales"),
+    //     //                                                  text("Family: Rosaceae"),
+    //     //                                                  text("Genus: Malus"),
+    //     //                                                  text("Species: M. domestica"),])?;
+
+    //     // // text("Apple");
+    //     // // text("Fruit of the");
+
+    //     // assert_eq!(malus_domestica1, malus_domestica2);
+    //     Ok(())
+    // }
     #[test]
     fn fridays() -> Result<(), Error> {
         let tmpdir = tempfile::tempdir()?;
@@ -484,9 +623,9 @@ mod tests {
         let dow = mb.alledge(text("Abstract day of the week"))?.subjective();
         let per = mb.alledge(text("Names for a person"))?.subjective();
 
-        mb.alledge(Analogy::declare(f1, fut))?;
-        mb.alledge(Analogy::declare(f2, dow))?;
-        mb.alledge(Analogy::declare(f3, per))?;
+        mb.alledge(Analogy::declarative(f1, fut))?;
+        mb.alledge(Analogy::declarative(f2, dow))?;
+        mb.alledge(Analogy::declarative(f3, per))?;
 
         let friday_person = mb.get_ground_symbol(vec![text("Friday"), text("Names for a person")])?;
         // let names = mb.get_ground_symbols_for_artifact(FlatText::new("Names for a person"))?
@@ -521,13 +660,13 @@ mod tests {
         let dow = mb.alledge(FlatText::new("Abstract day of the week"))?;
         let alright = mb.alledge(FlatText::new("Days that are alright for figting in the evening"))?;
 
-        mb.alledge(Analogy::declare(s1.subjective(), dow.subjective()))?;
-        mb.alledge(Analogy::declare(s2.subjective(), dow.subjective()))?;
-        mb.alledge(Analogy::declare(s3.subjective(), dow.subjective()))?;
+        mb.alledge(Analogy::declarative(s1.subjective(), dow.subjective()))?;
+        mb.alledge(Analogy::declarative(s2.subjective(), dow.subjective()))?;
+        mb.alledge(Analogy::declarative(s3.subjective(), dow.subjective()))?;
 
-        mb.alledge(Analogy::declare(s1.subjective(), alright.subjective()))?;
-        mb.alledge(Analogy::declare(s2.subjective(), alright.subjective()))?;
-        mb.alledge(Analogy::declare(s3.subjective(), alright.subjective()))?;
+        mb.alledge(Analogy::declarative(s1.subjective(), alright.subjective()))?;
+        mb.alledge(Analogy::declarative(s2.subjective(), alright.subjective()))?;
+        mb.alledge(Analogy::declarative(s3.subjective(), alright.subjective()))?;
 
         let stdout = std::io::stdout();
         let handle = stdout.lock();
