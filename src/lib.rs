@@ -235,7 +235,7 @@ impl MindBase {
     /// This in theory should allow us to resolve upon a single concept which is believed to be meaningful to that agent based on
     /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
     /// continuum we hope to create with mindbase.
-    pub fn get_ground_symbol<A>(&self, artifacts: Vec<A>) -> Result<Concept, Error>
+    pub fn get_ground_concept<A>(&self, artifacts: Vec<A>) -> Result<Concept, Error>
         where A: Into<crate::artifact::Artifact>
     {
         let mut search_chain = Vec::with_capacity(artifacts.len());
@@ -590,7 +590,7 @@ mod tests {
         let apple_of_my_eye = mb.alledge(FlatText::new("Apple"))?;
 
         //     // // Look up the "ground symbol" for "Apple" without any additional specificity
-        let apple_ground_symbol: Concept = mb.get_ground_symbol(vec![text("Apple")])?;
+        let apple_ground_symbol: Concept = mb.get_ground_concept(vec![text("Apple")])?;
         //     // // It's... all of them? Why? Because meaning is contextual/intersectional.
         //     // // We don't have enough information to narrow it down yet and we should not assume what they meant
         assert_eq!(apple_ground_symbol.count(), 3);
@@ -601,25 +601,25 @@ mod tests {
         let apple_surrogate = mb.alledge(FlatText::new("Apple"))?;
         mb.alledge(Analogy::declarative(apple_surrogate.subjective(), apple_ground_symbol))?;
 
-        //     // // Lets be a liittle more specific. (Using get_ground_symbol here as a shortcut)
+        //     // // Lets be a liittle more specific. (Using get_ground_concept here as a shortcut)
         mb.alledge(Analogy::declarative(apple_computers.subjective(), mb.alledge(text("Corporation"))?.subjective()))?;
         mb.alledge(Analogy::declarative(apple_the_fruit.subjective(), mb.alledge(text("Edible Fruit"))?.subjective()))?;
         mb.alledge(Analogy::declarative(apple_of_my_eye.subjective(), mb.alledge(text("Amorousness"))?.subjective()))?;
 
-        let apple: Concept = mb.get_ground_symbol(vec![text("Corporation"), text("Apple")])?;
+        let apple: Concept = mb.get_ground_concept(vec![text("Corporation"), text("Apple")])?;
         assert_eq!(apple.count(), 1);
 
         //     // let apple_plural = mb.alledge(text("Plural form of Apple"))?;
         //     // mb.alledge(Analogy::declarative(apples.subjective(), things_i_love.subjective()))?;
 
         //     // // Lets start out simple. Apple. Which apple are you talking about?
-        //     // let fruit = mb.get_ground_symbol(vec![text("Apple")])?;
+        //     // let fruit = mb.get_ground_concept(vec![text("Apple")])?;
 
         //     // // Just for fun, Lets get reeal specific with the biological taxonomy. Note that it's conceivable that this
         // exact     // taxonomy // could also be present which might mean something completely different! While the
         // length of our     // specified // taxonomy makes this a bit less likely, remember that there is nothing magical
         // about these     // artifacts.
-        // let malus_domestica1 = mb.get_ground_symbol(vec![text("Domain: Eukarya"),
+        // let malus_domestica1 = mb.get_ground_concept(vec![text("Domain: Eukarya"),
         //                                                  text("Kingdom: Plantae"),
         //                                                  text("Phylum: Magnoliophyta"),
         //                                                  text("Class: Magnoliopsida"),
@@ -628,8 +628,8 @@ mod tests {
         //                                                  text("Genus: Malus"),
         //                                                  text("Species: Malus domestica"),])?;
 
-        //     // let tree = mb.get_ground_symbol(vec![text("Plant"), text("Tree")])?;
-        //     // let fruit = mb.get_ground_symbol(vec![text("Fruit")])?;
+        //     // let tree = mb.get_ground_concept(vec![text("Plant"), text("Tree")])?;
+        //     // let fruit = mb.get_ground_concept(vec![text("Fruit")])?;
 
         //     // //  text("with an elongated stem or trunk"),
         //     // //  text("has branches and leaves"),
@@ -641,7 +641,7 @@ mod tests {
         //     // // text("Apple");
         //     // // text("Fruit of the");;
 
-        // let malus_domestica2 = mb.get_ground_symbol(vec![text("Domain: Eukarya"),
+        // let malus_domestica2 = mb.get_ground_concept(vec![text("Domain: Eukarya"),
         //                                                  text("Kingdom: Plantae"),
         //                                                  text("Phylum: Magnoliophyta"),
         //                                                  text("Class: Magnoliopsida"),
@@ -679,7 +679,7 @@ mod tests {
         mb.alledge(Analogy::declarative(f2, dow))?;
         mb.alledge(Analogy::declarative(f3, per))?;
 
-        let friday_person = mb.get_ground_symbol(vec![text("Friday"), text("Names for a person")])?;
+        let friday_person = mb.get_ground_concept(vec![text("Friday"), text("Names for a person")])?;
         // let names = mb.get_ground_symbols_for_artifact(FlatText::new("Names for a person"))?
         //               .expect("Option");
 
