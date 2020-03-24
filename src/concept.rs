@@ -11,6 +11,9 @@ use serde::{
 };
 use std::fmt;
 
+// QUESTION: What is an "uncertainty budget" and how can it help us?
+// TODO 2 - create a Context object that contains a lossy lookup of Concepts on a rolling basis
+
 /// Pointer to a region within Semantic/Knowledge-Space
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Concept {
