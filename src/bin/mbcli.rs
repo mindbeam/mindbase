@@ -1,4 +1,12 @@
-use mindbase::*;
+use mindbase::{
+    analogy::Analogy,
+    artifact::{
+        text,
+        FlatText,
+    },
+    *,
+};
+
 use rustyline::{
     error::ReadlineError,
     Editor,
@@ -12,18 +20,7 @@ fn main() -> Result<(), std::io::Error> {
     let agent = mb.default_agent().unwrap();
     println!("Using Agent {}", agent);
 
-    // TODO 1 - Look this artifact up based on my agent ID
-
-    let _general = mb.put_artifact(FlatText::new("In general"))?;
-    let things = mb.put_artifact(FlatText::new("Things that I said"))?;
-
-    let isaid = mb.alledge(things)?.subjective();
-    // let isaid = mb.ground_symbol(&agent, vec![general, things])?;
-
-    // I want to conjure/scrounge/locate/triangulate/intersect a Concept based on:
-    // My AgentId + ArtifactId
-    // And what else?
-    // There needs to be something that this is rooted.
+    let isaid = mb.get_ground_symbol(vec![text("Things that I said"), text("In mbcli")])?;
 
     // What situations might have precipitated that would lead me to conjuring a non-narrow concept?
 
