@@ -80,3 +80,10 @@ Each Allegation has a Payload.
 **Internal/External Meaning** - Mindbase is all about representing meaning, and striving to do so _internally_, such that meaningful computation can be performed (emergently) inside the Mindbase system. Until such time as Mindbase expands to fill the entire observable universe (har har), there will necessarily be some logical boundary between its internal xpression of meaning, and that of the outside world. We cannot blindly subordinate the one to the other. That would put us right back where we started. We must build a bridge between these systems of internal and external meaning. This requires that such a system be cognizant that a lot of meaning is defined by human culture at large, or other external systems like the semantics of a docx file. Because of this necessity to represent `External Meaning` we have `Artifacts` and `Allegations`
 
 **Symbol** - General term which may refer to an `Alligation` / `Subjective Concept` or `Intersubjective Concept` – each of which is an epistemic device intent on recording some occurrence, or meaning. The notion that a meaning _is_ an occurrence, or a cluster of occurrences (which is essentially memoized into a new occurrence) is a key idea in Minbase.  
+
+
+## The "Concept Problem"
+
+TODO: Explain Prof Barry Smith's qualms with Concepts, and discuss why we are/aren't subject to them due to the Artifact / Allegation dichotomy.
+
+As in the case of Tree / Apple, an "Apple" is not a "Tree", but rather a "Fruit" which is related to the "Tree". The key to making this work is that "Tree" is not one thing. Sure, there exists exactly one Artifact for the text string "Tree", but there are many many many possible Allegations which refer to that artifact in different capacities.
