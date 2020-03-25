@@ -20,13 +20,14 @@ pub use self::{
     },
     analogy::Analogy,
     artifact::{
+        Artifact,
         ArtifactId,
         FlatText,
     },
+    concept::Concept,
     error::Error,
 };
-use artifact::Artifact;
-use concept::Concept;
+
 use core::marker::PhantomData;
 use policy::Policy;
 use serde::de::DeserializeOwned;
