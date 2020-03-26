@@ -60,6 +60,16 @@ impl Concept {
         self.members.push(allegation_id)
     }
 
+    /// Create a new concept which is analagous to this concept, but consists of only a single allegation
+    pub fn surrogate() -> Concept {
+        // TODO 2
+
+        // let surrogate = mb.alledge(Unit)?;
+        // mb.alledge(Analogy::declarative(surrogate.subjective(), apple_ground_symbol))?;
+
+        unimplemented!()
+    }
+
     // TODO 4 - make this return a match score rather than just bool
     pub fn matches(&self, other: &Concept) -> bool {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)

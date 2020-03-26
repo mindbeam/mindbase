@@ -245,6 +245,9 @@ impl MindBase {
             search_chain.push(artifact_id);
         }
 
+        // TODO 1 - Upgrade this to use the inverted index
+        // TODO 2 - Upgrade concepts to be lazy
+
         use crate::{
             allegation::{
                 Body,
@@ -554,6 +557,35 @@ mod tests {
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;
 
+        let apple_computers = mb.alledge(FlatText::new("Apple"))?;
+        let apple_the_fruit = mb.alledge(FlatText::new("Apple"))?;
+        let apple_of_my_eye = mb.alledge(FlatText::new("Apple"))?;
+
+        // Look up the "ground symbol" for "Apple" without any additional specificity
+        let apple_ground_symbol: Concept = mb.get_ground_concept(vec![text("Apple")])?;
+
+        // It's... all of them. Why? Because meaning is contextual/intersectional.
+        // We don't have enough information to narrow it down yet and we should not assume what they meant
+        assert_eq!(apple_ground_symbol.count(), 3);
+
+        let _statement = mb.alledge(FlatText::new("I love Apple"))?;
+
+        // TODO 2 - surrogate Concepts
+        // let apple_for_the_purposes_of_this_conversation = apple.surrogate();
+
+        //     // // Lets be a liittle more specific. (Using get_ground_concept here as a shortcut)
+        mb.alledge(Analogy::declarative(apple_computers.subjective(), mb.alledge(text("Corporation"))?.subjective()))?;
+        mb.alledge(Analogy::declarative(apple_the_fruit.subjective(), mb.alledge(text("Edible Fruit"))?.subjective()))?;
+        mb.alledge(Analogy::declarative(apple_of_my_eye.subjective(), mb.alledge(text("Amorousness"))?.subjective()))?;
+
+        let apple: Concept = mb.get_ground_concept(vec![text("Corporation"), text("Apple")])?;
+        assert_eq!(apple.count(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn apple_ii() -> Result<(), Error> {
         //     // Lets suppose that Alice makes a statement about apples. Lets record that having happened.
         //     let alice_statement = mb.alledge(text("I love apples"))?;
 
@@ -586,30 +618,7 @@ mod tests {
         //     // early in the growth of the system, in order to prime the pump. Other agents may make redundant and/or similar
         //     // allegations, either because they didn't see these, or didn't understand them, or didn't have the time to
         // correlate     // them.
-        let apple_computers = mb.alledge(FlatText::new("Apple"))?;
-        let apple_the_fruit = mb.alledge(FlatText::new("Apple"))?;
-        let apple_of_my_eye = mb.alledge(FlatText::new("Apple"))?;
-
-        //     // // Look up the "ground symbol" for "Apple" without any additional specificity
-        let apple_ground_symbol: Concept = mb.get_ground_concept(vec![text("Apple")])?;
-        //     // // It's... all of them? Why? Because meaning is contextual/intersectional.
-        //     // // We don't have enough information to narrow it down yet and we should not assume what they meant
-        assert_eq!(apple_ground_symbol.count(), 3);
-
-        let statement = mb.alledge(FlatText::new("I love Apple"))?;
-
-        // let apple_for_the_purposes_of_this_conversation = apple.surrogate();
-        let apple_surrogate = mb.alledge(FlatText::new("Apple"))?;
-        mb.alledge(Analogy::declarative(apple_surrogate.subjective(), apple_ground_symbol))?;
-
-        //     // // Lets be a liittle more specific. (Using get_ground_concept here as a shortcut)
-        mb.alledge(Analogy::declarative(apple_computers.subjective(), mb.alledge(text("Corporation"))?.subjective()))?;
-        mb.alledge(Analogy::declarative(apple_the_fruit.subjective(), mb.alledge(text("Edible Fruit"))?.subjective()))?;
-        mb.alledge(Analogy::declarative(apple_of_my_eye.subjective(), mb.alledge(text("Amorousness"))?.subjective()))?;
-
-        let apple: Concept = mb.get_ground_concept(vec![text("Corporation"), text("Apple")])?;
-        assert_eq!(apple.count(), 1);
-
+        //
         //     // let apple_plural = mb.alledge(text("Plural form of Apple"))?;
         //     // mb.alledge(Analogy::declarative(apples.subjective(), things_i_love.subjective()))?;
 
