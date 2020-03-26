@@ -319,18 +319,6 @@ impl MindBase {
         Ok(())
     }
 
-    pub fn ground_symbol<A>(&self, artifact: A) -> Result<Concept, Error>
-        where A: Into<crate::artifact::Artifact>
-    {
-        let ground_agents = self.default_agent.ground_agents();
-
-        unimplemented!()
-        // self.allegation_rev.get()
-        // TODO 1 - fetch allegations which are:
-        // * Made by the specified agent
-        // * "contain" all of the specified artifacts. (How?)
-    }
-
     pub fn add_policy(&self, policy: Policy) -> Result<(), Error> {
         unimplemented!()
     }
@@ -515,11 +503,11 @@ mod tests {
         // [in the lake] catOf [things relating to lakes]
         // [things alice did] catOf []
         //
-        // ****** TODO 1 ******
+        // ****** TODO 2 ******
         // Follow up on the notion that a knowledge triple~~dependency tree, whereas a category ~~ a constituency tree
         // It feels like there may be something to this
         //
-        // TODO 1 - clarify in the code that:
+        // TODO 2 - clarify in the code that:
         //  * An allegation/Concept is a category
         //  * That category be automatically expanded based on Analogies defined against it
         //  Q: how do we make it clear to the user that such Analogies are being traversed?

@@ -118,10 +118,10 @@ impl fmt::Debug for AllegationId {
 /// See [`mindbase::concept::Concept`][Concept] for more details
 #[derive(Serialize, Deserialize)]
 pub struct Allegation {
-    /// TODO 1 - Rename "Allegation*" to "Symbol*"
+    /// TODO 3 - Consider renaming "Allegation*" to "Symbol*"
     pub id:        AllegationId,
     pub agent_id:  AgentId,
-    // TODO 2 - Context (Date, time, place, etc)
+    // TODO 3 - Context (Date, time, place, etc)
     pub body:      Body,
     pub signature: Signature,
 }
