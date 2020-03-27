@@ -22,8 +22,6 @@ pub struct AllegationId(#[serde(serialize_with = "crate::util::serde_helper::as_
                                 deserialize_with = "crate::util::serde_helper::from_base64_16")]
                         pub(crate) [u8; 16]);
 
-pub(crate) const ALLEGATION_ID_SERIALIZED_SIZE: usize = 16;
-
 impl AllegationId {
     pub fn new() -> Self {
         AllegationId(generate_ulid_bytes())
@@ -55,6 +53,7 @@ impl AllegationId {
         &self.0
     }
 }
+
 impl std::convert::TryFrom<sled::IVec> for AllegationId {
     type Error = Error;
 
@@ -126,6 +125,12 @@ pub struct Allegation {
     pub signature: Signature,
 }
 
+pub enum ArtifactList<'a> {
+    None,
+    One(&'a ArtifactId),
+    Many(Vec<ArtifactId>),
+}
+
 impl Allegation {
     pub fn new<T>(agent: &Agent, body: T) -> Result<Self, Error>
         where T: Into<Body>
@@ -156,49 +161,56 @@ impl Allegation {
         &self.id
     }
 
-    pub fn reverse_lookup(&self) -> Option<Vec<u8>> {
+    // Get all artifacts referenced by this allegation
+    pub fn referenced_artifacts(&self, mb: &MindBase) -> Result<ArtifactList, Error> {
         // TODO need to add prefixing for ArtifactId vs other stuff
 
-        use crate::util::AsBytes;
-        let agent_bytes = (&self.agent_id).as_bytes();
         // Returns
         match self.body {
-            // AgentId(32 bytes) AgentID(32 bytes)
-            Body::Agent(ref _agent_id) => None,
-
-            // AgentID(32 bytes) ArtifactId(16 bytes)
-            Body::Artifact(ref artifact_id) => Some([agent_bytes, artifact_id.as_ref().to_vec()].concat()),
-
-            // AgentId(32 bytes) AllegationId(16 bytes)? (need something to indicate this is a unit)
-            Body::Unit => None,
-
-            // Iterator of: AgentId(32 bytes) AllegationId(16 bytes)
-            // Most likely this will have to be converted into an iterator so we can index this allegation under
-            // all of its concept AllegationIDs AND its MemberOf Allegation IDs
+            Body::Artifact(ref artifact_id) => Ok(ArtifactList::One(artifact_id)),
+            Body::Unit => Ok(ArtifactList::None),
             Body::Analogy(ref analogy) => {
-                // TODO 1 - should we be indexing analogies by artifact id, or by allegation_id?
-                // It comes down to the implementation of get_ground_symbols_for_artifact
-                // I'm pretty sure we want to index that by allegation id.
-                // This is because:
-                // First we will look up the ground agent allegations for the artifacts in question
-                //       we'll get more allegations than we want, because that ground agent will be alledging "non-ground"
-                //       allegations all the time. (Does this mean we should have two types of allegation, ground and non-ground?)
-                //       actually is there such a thing as a non-ground symbol?
-                //
-                // then we'll look up the analogies for those allegation ids.
+                // TODO 1 - This is a little strange.
+                // Think about whether we actually want to do this
 
-                // pairwise Common memberships (AllegationId OR artifact ID) -> AllegationId
-                // pairwise Member / Category (AllegationId OR artifact ID) -> AllegationId
+                let mut v: Vec<ArtifactId> = Vec::with_capacity(10);
 
-                // for Concept.intersect
-                // <[Saturday]> memberof <[Days of the week]>
-                //
+                // Forward
+                for allegation_id in analogy.concept.members.iter() {
+                    match mb.get_allegation(allegation_id)? {
+                        Some(allegation) => {
+                            match allegation.referenced_artifacts(mb)? {
+                                ArtifactList::None => {},
+                                ArtifactList::One(id) => v.push(id.clone()),
+                                ArtifactList::Many(many) => v.extend(many),
+                            }
+                        },
+                        None => return Err(Error::AllegationNotFound),
+                    }
+                }
 
-                // let v = Vec::new();
-                // v.push([agent_bytes, analogy.concept.as_ref().to_vec()].concat());
-                None
+                // Backward
+                for allegation_id in analogy.memberof.members.iter() {
+                    match mb.get_allegation(allegation_id)? {
+                        Some(allegation) => {
+                            match allegation.referenced_artifacts(mb)? {
+                                ArtifactList::None => {},
+                                ArtifactList::One(id) => v.push(id.clone()),
+                                ArtifactList::Many(many) => v.extend(many),
+                            }
+                        },
+                        None => return Err(Error::AllegationNotFound),
+                    }
+                }
+                Ok(ArtifactList::Many(v))
             },
         }
+    }
+}
+
+impl std::convert::AsRef<[u8]> for AllegationId {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -216,7 +228,6 @@ pub enum Body {
     /// An Agent Allegation is a globally unique reference to an actual Agent
     /// It is conceivabe that someone could want to construct different Allegations referencing the same AgentId
     /// Which are otherwise identical except for their AllegationId.
-    Agent(AgentId),
     Analogy(Analogy),
     Artifact(ArtifactId),
 }
@@ -231,7 +242,6 @@ impl fmt::Display for Body {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Body::Unit => write!(f, "Unit()"),
-            Body::Agent(a) => write!(f, "Agent({})", a),
             Body::Analogy(a) => write!(f, "Analogy({})", a),
             Body::Artifact(a) => write!(f, "Artifact({})", a),
         }

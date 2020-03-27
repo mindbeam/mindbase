@@ -28,6 +28,7 @@ pub use self::{
     error::Error,
 };
 
+use allegation::ArtifactList;
 use core::marker::PhantomData;
 use policy::Policy;
 use serde::de::DeserializeOwned;
@@ -58,7 +59,7 @@ pub struct MindBase {
     my_agents: sled::Tree,
 
     /// I forget why I would actually need known agents
-    known_agents: sled::Tree,
+    _known_agents: sled::Tree,
 
     ground_symbol_agents: Arc<Mutex<Vec<AgentId>>>,
 
@@ -82,14 +83,14 @@ impl MindBase {
         allegation_rev.set_merge_operator(merge_allegation_rev);
 
         let default_agent = _default_agent(&my_agents)?;
-        let known_agents = db.open_tree("known_agents")?;
+        let _known_agents = db.open_tree("known_agents")?;
 
         let ground_symbol_agents = Arc::new(Mutex::new(vec![default_agent.id()]));
 
         let me = MindBase { allegations,
                             my_agents,
                             artifacts,
-                            known_agents,
+                            _known_agents,
                             allegation_rev,
                             ground_symbol_agents,
                             default_agent };
@@ -116,19 +117,38 @@ impl MindBase {
         _default_agent(&self.my_agents)
     }
 
-    #[allow(unused)]
+    pub fn get_allegation(&self, allegation_id: &AllegationId) -> Result<Option<Allegation>, Error> {
+        match self.allegations.get(allegation_id.as_ref())? {
+            Some(ivec) => {
+                let allegation: Allegation = bincode::deserialize(&ivec)?;
+                Ok(Some(allegation))
+            },
+            None => Ok(None),
+        }
+    }
+
     pub fn put_allegation(&self, allegation: &Allegation) -> Result<AllegationId, Error> {
         let encoded: Vec<u8> = bincode::serialize(&allegation).unwrap();
 
+        let mut key: [u8; 64] = [0u8; 64];
+
+        key[32..64].copy_from_slice(allegation.agent_id.as_ref());
+
         let id = allegation.id().clone();
-        self.allegations.insert(id.as_bytes(), encoded)?;
+        self.allegations.insert(id.as_ref(), encoded)?;
 
-        // TODO 2 - convert this into an iterator
-        if let Some(rev) = allegation.reverse_lookup() {
-            use crate::util::AsBytes;
-
-            // TODO 2 - don't just overwrite this. Implement merge logic
-            self.allegation_rev.merge(&rev[..], id.as_bytes());
+        match allegation.referenced_artifacts(self)? {
+            ArtifactList::None => {},
+            ArtifactList::One(artifact_id) => {
+                key[0..32].copy_from_slice(artifact_id.as_ref());
+                self.allegation_rev.merge(&key[..], id.as_ref())?;
+            },
+            ArtifactList::Many(artifact_ids) => {
+                for artifact_id in artifact_ids {
+                    key[0..32].copy_from_slice(artifact_id.as_ref());
+                    self.allegation_rev.merge(&key[..], id.as_ref())?;
+                }
+            },
         }
 
         Ok(id)
@@ -247,13 +267,7 @@ impl MindBase {
         // TODO 1 - Upgrade this to use the inverted index
         // TODO 2 - Upgrade concepts to be lazy
 
-        use crate::{
-            allegation::{
-                Body,
-                ALLEGATION_ID_SERIALIZED_SIZE,
-            },
-            util::AsBytes,
-        };
+        use crate::allegation::Body;
 
         let gs_agents = self.ground_symbol_agents.lock().unwrap();
         let mut last_concept: Option<Concept> = None;
@@ -321,7 +335,7 @@ impl MindBase {
         Ok(())
     }
 
-    pub fn add_policy(&self, policy: Policy) -> Result<(), Error> {
+    pub fn add_policy(&self, _policy: Policy) -> Result<(), Error> {
         unimplemented!()
     }
 }
@@ -679,7 +693,7 @@ mod tests {
         mb.alledge(Analogy::declarative(f2, dow))?;
         mb.alledge(Analogy::declarative(f3, per))?;
 
-        let friday_person = mb.get_ground_concept(vec![text("Friday"), text("Names for a person")])?;
+        let _friday_person = mb.get_ground_concept(vec![text("Friday"), text("Names for a person")])?;
         // let names = mb.get_ground_symbols_for_artifact(FlatText::new("Names for a person"))?
         //               .expect("Option");
 
@@ -706,7 +720,7 @@ mod tests {
 
         println!("3 {}", s3);
         std::thread::sleep(dur);
-        let f1 = mb.alledge(FlatText::new("Night's alright for fighting"))?;
+        let _f1 = mb.alledge(FlatText::new("Night's alright for fighting"))?;
 
         // TODO 1 - change these to use grounding_symbol:
         let dow = mb.alledge(FlatText::new("Abstract day of the week"))?;
@@ -754,11 +768,11 @@ mod tests {
 
         crate::xport::load_json(&mb, cursor).unwrap();
 
-        let s1 = AllegationId::from_base64("AXDCW2dnN7VS4wpoUWGJMw")?; // this one second
-        let s2 = AllegationId::from_base64("AXDCW2fEtID9DIZzkMgQvg")?; // manipulated the dumpfile above for this one to be recorded first
-        let s3 = AllegationId::from_base64("AXDCW2gsaVltJU2vcQFKuQ")?; // this one third
+        let _s1 = AllegationId::from_base64("AXDCW2dnN7VS4wpoUWGJMw")?; // this one second
+        let _s2 = AllegationId::from_base64("AXDCW2fEtID9DIZzkMgQvg")?; // manipulated the dumpfile above for this one to be recorded first
+        let _s3 = AllegationId::from_base64("AXDCW2gsaVltJU2vcQFKuQ")?; // this one third
 
-        let s = ArtifactId::from_base64("Wtw2TYgjfvmTVazfM0IDhkfwlJFUZ9w0xhNc1H0ilRc")?;
+        let _s = ArtifactId::from_base64("Wtw2TYgjfvmTVazfM0IDhkfwlJFUZ9w0xhNc1H0ilRc")?;
 
         let genesis_agent_id = AgentId::from_base64("rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY")?;
         mb.add_ground_symbol_agent(genesis_agent_id)?;

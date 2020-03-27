@@ -2,7 +2,6 @@ use crate::{
     allegation::AllegationId,
     error::Error,
     Analogy,
-    ArtifactId,
     MindBase,
 };
 use serde::{
@@ -40,11 +39,11 @@ impl fmt::Display for Concept {
 }
 
 impl Concept {
-    pub fn is_subjective(&self, mb: &MindBase) -> Result<bool, Error> {
+    pub fn is_subjective(&self, _mb: &MindBase) -> Result<bool, Error> {
         unimplemented!()
     }
 
-    pub fn is_intersubjective(&self, mb: &MindBase) -> Result<bool, Error> {
+    pub fn is_intersubjective(&self, _mb: &MindBase) -> Result<bool, Error> {
         unimplemented!()
     }
 
