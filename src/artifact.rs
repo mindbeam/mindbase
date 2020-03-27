@@ -14,6 +14,7 @@ use crate::{
     },
     concept::Concept,
     error::Error,
+    AgentId,
     MindBase,
 };
 use sha2::{
@@ -92,6 +93,7 @@ impl std::convert::TryFrom<sled::IVec> for ArtifactId {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Artifact {
+    Agent(AgentId),
     Url(Url),
     FlatText(FlatText),
     DataGraph(DataGraph),
@@ -128,6 +130,7 @@ impl Artifact {
 impl fmt::Display for Artifact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Agent(_a) => unimplemented!(),
             Self::Url(_u) => unimplemented!(),
             Self::FlatText(t) => write!(f, "Artifact({})", t),
             Self::DataGraph(_d) => unimplemented!(),

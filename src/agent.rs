@@ -11,6 +11,7 @@ use crate::{
         Allegation,
     },
     error::Error,
+    Artifact,
     MindBase,
 };
 use rand::rngs::OsRng;
@@ -41,9 +42,15 @@ impl AgentId {
         Ok(AgentId { pubkey: array.into() })
     }
 }
+
 impl crate::util::AsBytes for &AgentId {
     fn as_bytes(&self) -> Vec<u8> {
         self.pubkey[..].to_vec()
+    }
+}
+impl std::convert::AsRef<[u8]> for AgentId {
+    fn as_ref(&self) -> &[u8] {
+        &self.pubkey[..]
     }
 }
 
@@ -103,16 +110,23 @@ impl std::fmt::Display for Agent {
     }
 }
 
-impl Into<crate::allegation::Body> for Agent {
-    fn into(self) -> crate::allegation::Body {
-        crate::allegation::Body::Agent(self.id())
-    }
-}
+// impl Into<crate::allegation::Body> for Agent {
+//     fn into(self) -> crate::allegation::Body {
+//         crate::allegation::Body::Artifact(Artifact::Agent(self.id()))
+//     }
+// }
 
 impl Alledgable for &Agent {
     fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
-        let allegation = Allegation::new(agent, crate::allegation::Body::Agent(self.id()))?;
+        let artifact_id = mb.put_artifact(self.id())?;
+        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)
+    }
+}
+
+impl Into<Artifact> for AgentId {
+    fn into(self) -> Artifact {
+        Artifact::Agent(self)
     }
 }
