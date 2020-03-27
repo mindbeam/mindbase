@@ -8,6 +8,7 @@ pub enum Error {
     SignatureError,
     TryFromSlice,
     Base64Error,
+    AllegationNotFound,
 }
 
 impl From<sled::Error> for Error {

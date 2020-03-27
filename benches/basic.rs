@@ -7,16 +7,15 @@ use mindbase::{
 };
 
 use criterion::{
-    black_box,
     criterion_group,
     criterion_main,
     Criterion,
 };
 
 fn insert_test_dataset(mb: &MindBase) -> Result<(), Error> {
-    for i in 0..50 {
+    for _i in 0..50 {
         let mut last_concept: Option<Concept> = None;
-        // println!("Loop {}", i);
+        // println!("Loop {}", _i);
         for letter in (b'A'..=b'Z').map(|v| String::from_utf8(vec![v]).unwrap()) {
             let concept = mb.alledge(text(&letter))?.subjective();
 

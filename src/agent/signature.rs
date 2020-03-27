@@ -45,7 +45,7 @@ impl fmt::Debug for Signature {
 
 // TODO 3 - switch back to AsRef<[u8]> after CapnProto implementation
 pub(crate) trait HashHelper {
-    fn hash(&self, hasher: &mut Sha512) {}
+    fn hash(&self, _hasher: &mut Sha512) {}
 }
 
 impl<A> HashHelper for (A,) where A: AsBytes

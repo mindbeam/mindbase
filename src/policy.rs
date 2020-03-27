@@ -6,12 +6,12 @@ use crate::{
 struct PolicyId {}
 
 pub struct Policy {
-    id:   PolicyId,
-    body: PolicyBody,
+    _id:   PolicyId,
+    _body: PolicyBody,
 }
 
 impl Policy {
-    pub fn new(body: PolicyBody) -> Result<Policy, Error> {
+    pub fn new(_body: PolicyBody) -> Result<Policy, Error> {
         unimplemented!()
     }
 }
@@ -55,7 +55,7 @@ mod test {
         MindBase,
     };
 
-    fn disclosure_relationship() -> Result<(), std::io::Error> {
+    fn _disclosure_relationship() -> Result<(), std::io::Error> {
         let tmpdir = tempfile::tempdir()?;
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;

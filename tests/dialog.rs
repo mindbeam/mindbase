@@ -4,7 +4,7 @@ use mindbase::*;
 fn saturday() -> Result<(), std::io::Error> {
     let tmpdir = tempfile::tempdir()?;
     let tmpdirpath = tmpdir.path();
-    let mb = MindBase::open(&tmpdirpath)?;
+    let _mb = MindBase::open(&tmpdirpath)?;
 
     // Lets find a grounding symbol for "Saturday"
     // This needs to be a symbol which we regognize from our authorities.
@@ -34,10 +34,10 @@ fn dialog_1() -> Result<(), std::io::Error> {
     // Symbol) We are alledging/creating a symbol for this event against text artifact, but it could easily be an
     // anonymous "Unit" artifact. Either way, the symbol itself, and its association to this artifact is meaningless of its own
     // accord, except that it's a thing that's discrete from the rest of the universe, at least to start.
-    let a_event = mb.alledge2(&alice, FlatText::new("Walking down the street last saturday"))?;
+    let _a_event = mb.alledge2(&alice, FlatText::new("Walking down the street last saturday"))?;
 
     // Bob describes a different event. Again, it, and the artifact associated with it is meaningless of its own accord.
-    let b_event = mb.alledge2(&bob, FlatText::new("On my way to get a haircut"))?;
+    let _b_event = mb.alledge2(&bob, FlatText::new("On my way to get a haircut"))?;
 
     // Both of these being events, do not require the location of any grounding symbols for their definitions
     // However, we do want to correlate these events to our broader semantic network, and so, we have to categorize/analogize them
