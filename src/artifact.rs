@@ -173,6 +173,12 @@ impl Into<Artifact> for FlatText {
     }
 }
 
+impl Into<Artifact> for &str {
+    fn into(self) -> Artifact {
+        Artifact::FlatText(FlatText::new(self))
+    }
+}
+
 // Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
 // This can be used to store XML or JSON documents, or other application specific formats
 #[derive(Serialize, Deserialize, PartialEq, Debug)]

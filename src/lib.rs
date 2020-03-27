@@ -7,7 +7,7 @@ pub mod error;
 mod genesis;
 mod policy;
 mod util;
-mod xport;
+pub mod xport;
 
 pub use self::{
     agent::{
@@ -122,7 +122,6 @@ impl MindBase {
 
         let id = allegation.id().clone();
         self.allegations.insert(id.as_bytes(), encoded)?;
-        self.allegations.flush()?;
 
         // TODO 2 - convert this into an iterator
         if let Some(rev) = allegation.reverse_lookup() {
@@ -159,7 +158,6 @@ impl MindBase {
                 // already existed
             },
         }
-        self.artifacts.flush()?;
 
         Ok(id)
     }
@@ -187,13 +185,13 @@ impl MindBase {
         self.put_allegation(&allegation)
     }
 
-    fn artifact_iter(&self) -> Iter<ArtifactId, Artifact> {
+    pub fn artifact_iter(&self) -> Iter<ArtifactId, Artifact> {
         Iter { iter:         self.artifacts.iter(),
                phantomkey:   PhantomData,
                phantomvalue: PhantomData, }
     }
 
-    fn allegation_iter(&self) -> Iter<AllegationId, Allegation> {
+    pub fn allegation_iter(&self) -> Iter<AllegationId, Allegation> {
         Iter { iter:         self.allegations.iter(),
                phantomkey:   PhantomData,
                phantomvalue: PhantomData, }
@@ -240,6 +238,7 @@ impl MindBase {
         where A: Into<crate::artifact::Artifact>
     {
         let mut search_chain = Vec::with_capacity(artifacts.len());
+
         for a in artifacts.into_iter() {
             let artifact_id = self.put_artifact(a.into())?;
             search_chain.push(artifact_id);
@@ -258,6 +257,9 @@ impl MindBase {
 
         let gs_agents = self.ground_symbol_agents.lock().unwrap();
         let mut last_concept: Option<Concept> = None;
+
+        // find allegations for a given agent + artifactid
+
         for search_artifact_id in search_chain {
             // TODO 2 change this to be indexed
             let mut concept = self.concept_filter_allegations_by(|a| {
@@ -269,7 +271,7 @@ impl MindBase {
                                   })?;
 
             if let Some(ref last_concept) = last_concept {
-                concept.narrow_by(self, last_concept);
+                concept.narrow_by(self, last_concept)?;
             }
 
             // None of our ground/neighbor agents have declared this taxonomic/analogic relationship before
@@ -350,7 +352,7 @@ fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, Error> {
     Ok(agent)
 }
 
-struct Iter<K, V> {
+pub struct Iter<K, V> {
     iter:         sled::Iter,
     phantomkey:   std::marker::PhantomData<K>,
     phantomvalue: std::marker::PhantomData<V>,

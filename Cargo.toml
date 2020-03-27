@@ -29,3 +29,10 @@ lazy_static="1.4.0"
 
 [build-dependencies]
 capnpc = "0.12.1"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "basic"
+harness = false
