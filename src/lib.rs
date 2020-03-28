@@ -63,7 +63,6 @@ pub struct MindBase {
 
     ground_symbol_agents: Arc<Mutex<Vec<AgentId>>>,
 
-    // TODO 1 - inverted index by artifact id / allegation id
     // QUESTION: Should these be two different trees? or one?
     default_agent: Agent,
 }
@@ -491,7 +490,7 @@ mod tests {
         //  R:Allege (123 catof 456)  -> (Intersubjective) Concept{456,123}   You talk about this Alice, which is very closely
         //       aligned with mine
         //
-        // TODO 1 - concept surrogates
+        // TODO 2 - concept surrogates
         //
         //    **Critically* My previous statements about Alice{123,789} can be compared with your statements about Alice {456}
         //    and vice versa
@@ -722,7 +721,7 @@ mod tests {
         std::thread::sleep(dur);
         let _f1 = mb.alledge(FlatText::new("Night's alright for fighting"))?;
 
-        // TODO 1 - change these to use grounding_symbol:
+        // TODO 2 - change these to use grounding_symbol:
         let dow = mb.alledge(FlatText::new("Abstract day of the week"))?;
         let alright = mb.alledge(FlatText::new("Days that are alright for figting in the evening"))?;
 
