@@ -93,6 +93,7 @@ impl Concept {
         out
     }
 
+    /// Narrow the Symbols in this concept to include only those
     pub fn narrow_by(&mut self, mb: &MindBase, test_memberof: &Concept) -> Result<(), Error> {
         if self.is_null() {
             // Can't pull over any further
@@ -105,25 +106,46 @@ impl Concept {
 
         let mut members: Vec<AllegationId> = Vec::new();
 
+        // New - uses the inverted index of Analogy.subject.members Analogy.allegation_id
+        // maintained by put_allegation() builds an inverted
+        for member in self.members.iter() {
+            if let Some(list_of_referring_analogy_ids) = mb.analogy_rev.get(member)? {
+                // This is the ID of the actual Analogy. NOT the Analogy memberOf allegation_ids
+                for analogy_id in list_of_referring_analogy_ids.chunks(16) {
+                    // mb.get()
+                    // LEFT OFF HERE
+                    // Seems kinda dumb to have to look up each analogy
+                    // Can we put the memberof symbols directly into the inverted index?
+                    // need to analyze the part labeled ANALYZE THIS
+                }
+            }
+        }
+
+        // Old
+        // Very inefficient. Looping over ALL allegations in the system
+        // Searching for Analogies which point (intersectionally) to this concept
         for allegation in mb.allegation_iter() {
             let allegation = allegation?;
 
             match allegation.1.body {
-                Body::Analogy(Analogy { ref concept,
-                                        ref confidence,
-                                        ref memberof, }) => {
+                Body::Analogy(Analogy { ref subject,
+                                        // ref confidence,
+                                        ref memberof,
+                                        .. }) => {
                     // Are you talking about me? (what subset of me are you talking about?)
 
                     // TODO 2 - Stop allocing a Vec for every intersection test. This is crazy inefficient
-                    let overlap = self.intersection(concept);
+                    let overlap = self.intersection(subject);
                     if overlap.len() > 0 {
-                        // I think any overlap should suffice, but the narrowed concept should be the
-                        // intersection of these concepts
+                        // SO YES: self is at least minimally the subject of this Analogy
+                        // (I think any overlap should suffice, but the narrowed concept should be the
+                        // intersection of these concepts)
 
                         if memberof.matches(test_memberof) {
                             for passing_member in overlap {
                                 if !members.contains(&passing_member) {
                                     members.push(passing_member)
+                                    // ANALYZE THIS to see if we can achieve it directly with the inverted index
                                 }
                             }
                         }

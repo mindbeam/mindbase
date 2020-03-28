@@ -22,7 +22,7 @@ use serde::{
 use sha2::Sha512;
 use std::fmt;
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub struct AgentId {
     #[serde(serialize_with = "crate::util::serde_helper::as_base64",
             deserialize_with = "crate::util::serde_helper::from_base64_32")]

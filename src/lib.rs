@@ -53,6 +53,9 @@ pub struct MindBase {
     artifacts: sled::Tree,
 
     /// Reverse lookup for all allegations
+    analogy_rev: sled::Tree,
+
+    /// Reverse lookup for all allegations
     allegation_rev: sled::Tree,
 
     /// Credential storage for all agents we manage
@@ -78,8 +81,11 @@ impl MindBase {
         let artifacts = db.open_tree("artifacts")?;
         let allegations = db.open_tree("allegations")?;
         let allegation_rev = db.open_tree("allegation_rev")?;
+        let analogy_rev = db.open_tree("allegation_rev")?;
 
-        allegation_rev.set_merge_operator(merge_allegation_rev);
+        // Both of these are &k[..] / Vec<sorted u8;16 chunks>
+        allegation_rev.set_merge_operator(merge_16byte_list);
+        analogy_rev.set_merge_operator(merge_16byte_list);
 
         let default_agent = _default_agent(&my_agents)?;
         let _known_agents = db.open_tree("known_agents")?;
@@ -91,6 +97,7 @@ impl MindBase {
                             artifacts,
                             _known_agents,
                             allegation_rev,
+                            analogy_rev,
                             ground_symbol_agents,
                             default_agent };
 
@@ -148,6 +155,16 @@ impl MindBase {
                     self.allegation_rev.merge(&key[..], id.as_ref())?;
                 }
             },
+        }
+
+        use crate::allegation::Body;
+        match allegation.body {
+            Body::Analogy(Analogy { ref subject, .. }) => {
+                for subject_member in subject.members.iter() {
+                    self.analogy_rev.merge(subject_member.as_ref(), id.as_ref())?;
+                }
+            },
+            _ => {},
         }
 
         Ok(id)
@@ -266,15 +283,58 @@ impl MindBase {
         // TODO 1 - Upgrade this to use the inverted index
         // TODO 2 - Upgrade concepts to be lazy
 
-        use crate::allegation::Body;
-
+        // ground_symbol_agents is pre-sorted
         let gs_agents = self.ground_symbol_agents.lock().unwrap();
+
+        let mut scan_min: [u8; 64] = [0; 64];
+        scan_min[32..64].copy_from_slice(gs_agents.first().unwrap().as_ref());
+        let mut scan_max: [u8; 64] = [0; 64];
+        scan_max[32..64].copy_from_slice(gs_agents.last().unwrap().as_ref());
+
         let mut last_concept: Option<Concept> = None;
 
         // find allegations for a given agent + artifactid
 
+        // Execution plan:
+        // * get allegation ids for the first ArtifactId
+        //   * prepare the min/max agent ids for the range query
+        //   * filter results by agentid
+        //   * union these together
+        // * fetch each allegation (why?)
+        //   * look at those allegations that are Analogies (Categorizations)
+        //   *
+        //   * this list will contain all allegations that reference the artifact directly or indirectly Including analogies
+        //
+
         for search_artifact_id in search_chain {
-            // TODO 2 change this to be indexed
+            // scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
+            // scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
+            // let iter = self.allegation_rev.range(&scan_min[..]..&scan_max[..]);
+            // for item in iter {
+            //     let (key, allegation_list) = item?;
+            //     // allegation_list is a Vec[u8] containing a sorted sequence of 16 bit allegation ids
+
+            //     let item_agent_id = &key[32..64];
+            //     // Remember we're searching for a range of agent ids. Have to confirm it's in the list
+            //     if let Err(_) = gs_agents.binary_search_by(|a| a.as_ref()[..].cmp(item_agent_id)) {
+            //         // No, it's not present in the list. Punt
+            //         continue;
+            //     }
+
+            //     // We could filter the list to include only artifact bodies and get a concept here
+            //     // Or...
+
+            //     //
+            //     if let Some(ref last_concept) = last_concept {
+            //         concept.narrow_by(self, last_concept)?;
+            //     }
+
+            //     //
+
+            //     //
+            // }
+
+            use crate::allegation::Body;
             let mut concept = self.concept_filter_allegations_by(|a| {
                                       gs_agents.contains(&a.agent_id)
                                       && match &a.body {
@@ -327,9 +387,14 @@ impl MindBase {
         // }
     }
 
-    pub fn add_ground_symbol_agent(&self, agent_id: AgentId) -> Result<(), Error> {
+    pub fn add_ground_symbol_agent(&self, agent_id: &AgentId) -> Result<(), Error> {
         // TODO 2 - Build the policy system and convert this to a policy
-        self.ground_symbol_agents.lock().unwrap().push(agent_id);
+        let mut gsa = self.ground_symbol_agents.lock().unwrap();
+
+        match gsa.binary_search(agent_id) {
+            Ok(_) => {},
+            Err(i) => gsa.insert(i, agent_id.clone()),
+        }
 
         Ok(())
     }
@@ -405,10 +470,10 @@ impl<K, V> Iterator for Iter<K, V>
     }
 }
 
-fn merge_allegation_rev(_key: &[u8],               // the key being merged
-                        last_bytes: Option<&[u8]>, // the previous value, if one existed
-                        op_bytes: &[u8]            /* the new bytes being merged in */)
-                        -> Option<Vec<u8>> {
+fn merge_16byte_list(_key: &[u8],               // the key being merged
+                     last_bytes: Option<&[u8]>, // the previous value, if one existed
+                     op_bytes: &[u8]            /* the new bytes being merged in */)
+                     -> Option<Vec<u8>> {
     // set the new value, return None to delete
 
     use inverted_index_util::entity_list::{
@@ -489,12 +554,12 @@ mod tests {
         {"Allegation":["AXDCW2iDLmb47/OVfXxIQg",{"id":"AXDCW2iDLmb47/OVfXxIQg","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Artifact":"QAh0LMMPHQMGJhLNdKH1OasSuCTmS9g2xdViW1gmpJ4"},"signature":"ltKdtKpe8ZVKFrTOJ4u3C5i6e3Gute2whoSqLTBbz5yedUojIylrxQbXVQDt+rAYSvLOYfZdjKzd2at11qjgDQ"}]}
         {"Allegation":["AXDCW2irj9IxJ/jvXLGmmw",{"id":"AXDCW2irj9IxJ/jvXLGmmw","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Artifact":"4Hc9t2ownv7e+hAfzn2f+36xwqKxZWCGJIxKAGQb2KQ"},"signature":"Rf18ZLD9s4U+kYvqiFOCSwTSvvXOo78/6XxcYM61WYcfYPKSLqYF5nA3gxxqcWNfemqx7S3VRfFSpWv4y5cQAw"}]}
         {"Allegation":["AXDCW2jLdjUVrz/igyanqQ",{"id":"AXDCW2jLdjUVrz/igyanqQ","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Artifact":"MTEmz+3sCpCnSrrvKJglWvWIEOAJ4Ger7cecqz+/p1I"},"signature":"U0Gh4JJReWjQtlttmdeGAwrD2GvkiBxOFfuVZ/rW85Mo7FXXUYplr7mLsGg43/M9xoBmYFt/FjcSf3QCiNRsCA"}]}
-        {"Allegation":["AXDCW2jYkL6w/ha0MYDtow",{"id":"AXDCW2jYkL6w/ha0MYDtow","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"concept":{"members":["AXDCW2dnN7VS4wpoUWGJMw"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2irj9IxJ/jvXLGmmw"],"spread_factor":0.0}}},"signature":"YHW0oa3AixiAVXUBkUEuFBw52qy/2gfuQoJljyCMrQDc8C3C69uTbarIyfcxJS026qMl/vQCT5JOsjaOZhj/Bg"}]}
-        {"Allegation":["AXDCW2j39GJJrNZ9fqXZfQ",{"id":"AXDCW2j39GJJrNZ9fqXZfQ","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"concept":{"members":["AXDCW2fEtID9DIZzkMgQvg"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2irj9IxJ/jvXLGmmw"],"spread_factor":0.0}}},"signature":"lnwaN4hP+pEN+Jgnd7EbiPhGIxZE18+iyvAtwNHRyj/7KYxrsMO4EjKl0URn/6AC+7GK0LsS5n6+gaISIpIWBg"}]}
-        {"Allegation":["AXDCW2kNM6RcpeAWTOrPWQ",{"id":"AXDCW2kNM6RcpeAWTOrPWQ","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"concept":{"members":["AXDCW2gsaVltJU2vcQFKuQ"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2irj9IxJ/jvXLGmmw"],"spread_factor":0.0}}},"signature":"42iAcnBidsgBjqCxNiu4gOtjQkNv/s2ih1Ebeg/27xJQwSeUnLeIyS9ztV4zBx3N97pUzvTVmjXboaZv0+Y3CA"}]}
-        {"Allegation":["AXDCW2kaMP6SgxqaYmFegA",{"id":"AXDCW2kaMP6SgxqaYmFegA","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"concept":{"members":["AXDCW2dnN7VS4wpoUWGJMw"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2jLdjUVrz/igyanqQ"],"spread_factor":0.0}}},"signature":"7PModUhhvuM8uV5NS8qTcGC+AKvn6KcSdq4hTo52N2ulmwydzml7wzHg33qKttAq2QyErN8iNCl3V5w7wcZ4Aw"}]}
-        {"Allegation":["AXDCW2kmqHwYexaNBfcRrw",{"id":"AXDCW2kmqHwYexaNBfcRrw","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"concept":{"members":["AXDCW2fEtID9DIZzkMgQvg"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2jLdjUVrz/igyanqQ"],"spread_factor":0.0}}},"signature":"cfUYwSBtIb/qyw7kMdXRadz7/RfxrTKh3lvjXoxbMvlcTUAdsXQPMLapSrpBJ1rw7RD+F/C2+5mmv8PEAINvDA"}]}
-        {"Allegation":["AXDCW2k4A7LuPwBx3l2hBw",{"id":"AXDCW2k4A7LuPwBx3l2hBw","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"concept":{"members":["AXDCW2gsaVltJU2vcQFKuQ"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2jLdjUVrz/igyanqQ"],"spread_factor":0.0}}},"signature":"dd4fqB3J957G/dP/GUl9lP9ZaTYWqQ5zi5U+3oSniUTOd1rtUX9x6nZENxOa8OnW6571nBRpmyXBOPNnGtDdDg"}]}"#;
+        {"Allegation":["AXDCW2jYkL6w/ha0MYDtow",{"id":"AXDCW2jYkL6w/ha0MYDtow","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"subject":{"members":["AXDCW2dnN7VS4wpoUWGJMw"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2irj9IxJ/jvXLGmmw"],"spread_factor":0.0}}},"signature":"YHW0oa3AixiAVXUBkUEuFBw52qy/2gfuQoJljyCMrQDc8C3C69uTbarIyfcxJS026qMl/vQCT5JOsjaOZhj/Bg"}]}
+        {"Allegation":["AXDCW2j39GJJrNZ9fqXZfQ",{"id":"AXDCW2j39GJJrNZ9fqXZfQ","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"subject":{"members":["AXDCW2fEtID9DIZzkMgQvg"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2irj9IxJ/jvXLGmmw"],"spread_factor":0.0}}},"signature":"lnwaN4hP+pEN+Jgnd7EbiPhGIxZE18+iyvAtwNHRyj/7KYxrsMO4EjKl0URn/6AC+7GK0LsS5n6+gaISIpIWBg"}]}
+        {"Allegation":["AXDCW2kNM6RcpeAWTOrPWQ",{"id":"AXDCW2kNM6RcpeAWTOrPWQ","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"subject":{"members":["AXDCW2gsaVltJU2vcQFKuQ"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2irj9IxJ/jvXLGmmw"],"spread_factor":0.0}}},"signature":"42iAcnBidsgBjqCxNiu4gOtjQkNv/s2ih1Ebeg/27xJQwSeUnLeIyS9ztV4zBx3N97pUzvTVmjXboaZv0+Y3CA"}]}
+        {"Allegation":["AXDCW2kaMP6SgxqaYmFegA",{"id":"AXDCW2kaMP6SgxqaYmFegA","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"subject":{"members":["AXDCW2dnN7VS4wpoUWGJMw"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2jLdjUVrz/igyanqQ"],"spread_factor":0.0}}},"signature":"7PModUhhvuM8uV5NS8qTcGC+AKvn6KcSdq4hTo52N2ulmwydzml7wzHg33qKttAq2QyErN8iNCl3V5w7wcZ4Aw"}]}
+        {"Allegation":["AXDCW2kmqHwYexaNBfcRrw",{"id":"AXDCW2kmqHwYexaNBfcRrw","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"subject":{"members":["AXDCW2fEtID9DIZzkMgQvg"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2jLdjUVrz/igyanqQ"],"spread_factor":0.0}}},"signature":"cfUYwSBtIb/qyw7kMdXRadz7/RfxrTKh3lvjXoxbMvlcTUAdsXQPMLapSrpBJ1rw7RD+F/C2+5mmv8PEAINvDA"}]}
+        {"Allegation":["AXDCW2k4A7LuPwBx3l2hBw",{"id":"AXDCW2k4A7LuPwBx3l2hBw","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"subject":{"members":["AXDCW2gsaVltJU2vcQFKuQ"],"spread_factor":0.0},"confidence":1.0,"memberof":{"members":["AXDCW2jLdjUVrz/igyanqQ"],"spread_factor":0.0}}},"signature":"dd4fqB3J957G/dP/GUl9lP9ZaTYWqQ5zi5U+3oSniUTOd1rtUX9x6nZENxOa8OnW6571nBRpmyXBOPNnGtDdDg"}]}"#;
         let cursor = std::io::Cursor::new(dump);
 
         let tmpdir = tempfile::tempdir().unwrap();
@@ -510,7 +575,7 @@ mod tests {
         let _s = ArtifactId::from_base64("Wtw2TYgjfvmTVazfM0IDhkfwlJFUZ9w0xhNc1H0ilRc")?;
 
         let genesis_agent_id = AgentId::from_base64("rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY")?;
-        mb.add_ground_symbol_agent(genesis_agent_id)?;
+        mb.add_ground_symbol_agent(&genesis_agent_id)?;
 
         // let saturdays = mb.get_ground_symbols_for_artifact(&s)?;
         // assert_eq!(saturdays, Some(vec![s1, s2, s3]));

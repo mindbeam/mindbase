@@ -176,7 +176,7 @@ impl Allegation {
                 let mut v: Vec<ArtifactId> = Vec::with_capacity(10);
 
                 // Forward
-                for allegation_id in analogy.concept.members.iter() {
+                for allegation_id in analogy.subject.members.iter() {
                     match mb.get_allegation(allegation_id)? {
                         Some(allegation) => {
                             match allegation.referenced_artifacts(mb)? {

@@ -14,7 +14,7 @@ use serde::{
 };
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Analogy {
-    pub concept:    Concept,
+    pub subject:    Concept,
     pub confidence: f32,
     pub memberof:   Concept,
 }
@@ -23,20 +23,20 @@ impl Analogy {
     pub fn declarative<T>(concept: T, memberof: T) -> Self
         where T: Into<Concept>
     {
-        Analogy { concept:    concept.into(),
+        Analogy { subject:    concept.into(),
                   confidence: 1.0,
                   memberof:   memberof.into(), }
     }
 
     pub fn negative(concept: Concept, memberof: Concept) -> Self {
-        Analogy { concept,
+        Analogy { subject: concept,
                   confidence: -1.0,
                   memberof }
     }
 
     pub fn to_string(&self) -> String {
         format!("{} is in the category of {} ({})",
-                self.concept.to_string(),
+                self.subject.to_string(),
                 self.memberof.to_string(),
                 self.confidence).to_string()
     }
@@ -52,7 +52,7 @@ impl fmt::Display for Analogy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
                "{} is in the category of {} ({})",
-               self.concept, self.memberof, self.confidence)
+               self.subject, self.memberof, self.confidence)
     }
 }
 
