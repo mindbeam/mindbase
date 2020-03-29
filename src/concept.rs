@@ -83,7 +83,7 @@ impl Concept {
 
     pub fn intersection(&self, other: &Concept) -> Vec<AllegationId> {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
-        let mut out = Vec::new();
+        let mut out: Vec<AllegationId> = Vec::new();
         for member in self.members.iter() {
             if other.members.contains(member) {
                 out.push(member.clone());
@@ -129,9 +129,8 @@ impl Concept {
 
             match allegation.1.body {
                 Body::Analogy(Analogy { ref subject,
-                                        // ref confidence,
-                                        ref memberof,
-                                        .. }) => {
+                                        ref confidence,
+                                        ref memberof, }) => {
                     // Are you talking about me? (what subset of me are you talking about?)
 
                     // TODO 2 - Stop allocing a Vec for every intersection test. This is crazy inefficient

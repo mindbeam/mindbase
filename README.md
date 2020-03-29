@@ -65,6 +65,7 @@ This is the goal of Mindbase – To serve as a powerful substrate for convergent
 
 **Agent** -  A user, or other automated process which is capable of making allegations. Each agent has a cryptographic identity which is used to sign Allegations.  
 **Artifact** - Some blob of data which may be meaningful to the outside world, likely containing `External Meaning`, but is otherwise devoid of `Internal meaning`, at least by its existence.
+    * Content addressable
 **Allegation** - An event or declaration which is being documented by an agent But it's also more than that – It's an instance of some payload. At present, such payload might be any of the following types:
 
 * ArtifactId - Content-addressable ID of a given `Artifact`.  
@@ -80,7 +81,6 @@ Each Allegation has a Payload.
 **Internal/External Meaning** - Mindbase is all about representing meaning, and striving to do so _internally_, such that meaningful computation can be performed (emergently) inside the Mindbase system. Until such time as Mindbase expands to fill the entire observable universe (har har), there will necessarily be some logical boundary between its internal xpression of meaning, and that of the outside world. We cannot blindly subordinate the one to the other. That would put us right back where we started. We must build a bridge between these systems of internal and external meaning. This requires that such a system be cognizant that a lot of meaning is defined by human culture at large, or other external systems like the semantics of a docx file. Because of this necessity to represent `External Meaning` we have `Artifacts` and `Allegations`
 
 **Symbol** - General term which may refer to an `Alligation` / `Subjective Concept` or `Intersubjective Concept` – each of which is an epistemic device intent on recording some occurrence, or meaning. The notion that a meaning _is_ an occurrence, or a cluster of occurrences (which is essentially memoized into a new occurrence) is a key idea in Minbase.  
-
 
 ## The "Concept Problem"
 

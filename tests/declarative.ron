@@ -1,0 +1,26 @@
+[
+    Assert{
+        "doing": BaseSymbol(["Things I'm doing", "Alice"]),
+        "walking": Alledge("Walking down the street","doing"),
+        "exercise": BaseSymbol(["Things a human might do","Physical Exercise"]),
+        "cat": Categorize("walking","exercise"),
+    },
+    Assert{
+        ":ps_s": BaseSymbol(["Part of Speech", "Sentence"]),
+        ":ps_np": BaseSymbol(["Part of Speech", "Noun Phrase"])),
+        ":ps_dt": BaseSymbol(["Part of Speech", "Determiner"]),
+        ":ps_nn": BaseSymbol(["Part of Speech", "Singular Noun"])),
+        ":ps_vp": BaseSymbol(["Part of Speech", "Verb Phrase"]),
+        ":ps_vbd": BaseSymbol(["Part of Speech", "Verb, Past Tense"]),
+    
+        ":said": BaseSymbol(["Things I said"]),
+        ":saidcat": Categorize("s",":said"),
+    
+        ":1s":   Alledge("The dog jumped",[":ps_s"]),
+        ":1np":  Alledge("the dog",[":ps_np"]),
+        ":1dt":  Alledge("the",[":ps_dt"]),
+        ":1nn":  Alledge("dog",[":ps_nn"]),
+        ":1vp":  Alledge("jumped",[":ps_vp"]),
+        ":1vbd": Alledge("jumped",[":ps_vbd"]),    
+    }
+]

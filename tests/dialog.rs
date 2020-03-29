@@ -30,15 +30,30 @@ fn dialog_1() -> Result<(), std::io::Error> {
     let alice = mb.default_agent()?;
     let bob = mb.create_agent()?;
 
+    // Alice and bob were going about their day, when they bumped into each other on the sidewalk.
+    // They each have a perspective about what was happening which differ slightly, but they generally agree.
+    // They exchange some pleasantries and then go about their day.
+    // The goal is to explain, categorize, and correlate each of these things from their own perspectives
+
+    // They haven't yet bumped into each other. What are they doing?
+    let a_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Alice"])?;
+    let b_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Bob"])?;
+
     // Alice is going to describe an event, and so we need a unique symbol for that. (each Allegation is a universally unique
     // Symbol) We are alledging/creating a symbol for this event against text artifact, but it could easily be an
     // anonymous "Unit" artifact. Either way, the symbol itself, and its association to this artifact is meaningless of its own
     // accord, except that it's a thing that's discrete from the rest of the universe, at least to start.
-    let _a_event = mb.alledge2(&alice, FlatText::new("Walking down the street last saturday"))?;
+    let a_walking = mb.alledge2(&alice, "Walking down the street")?;
+    mb.alledge2(&alice, Analogy::declarative(a_walking, a_things_imdoing.clone()))?;
 
     // Bob describes a different event. Again, it, and the artifact associated with it is meaningless of its own accord.
-    let _b_event = mb.alledge2(&bob, FlatText::new("On my way to get a haircut"))?;
+    let b_on_my_way = mb.alledge2(&bob, "On my way to get a haircut")?;
+    mb.alledge2(&alice, Analogy::declarative(a_walking, b_things_imdoing))?;
 
+    //         Alice is defining this (     )  <- (       ) <- (       )
+    //   NLP agent is defining this    / | \       /  |  \      /  |  \
+    //         Bob is defining this    \/          \___________/
+    //
     // Both of these being events, do not require the location of any grounding symbols for their definitions
     // However, we do want to correlate these events to our broader semantic network, and so, we have to categorize/analogize them
     // to something. But what? _That_ is where we need to conjure some grounding symbols. They need not be meaningful to everyone,
@@ -46,11 +61,8 @@ fn dialog_1() -> Result<(), std::io::Error> {
 
     // In order to do this, Alice and Bob need to be able to *reproducibly* retrieve the same symbols using external value(s)
 
-    // let a_said = mb.ground_symbol(&alice,
-    //                               vec![FlatText::new("Things that I said"),
-    //                                    FlatText::new("Walking down the sidewalk")])?;
-    // let b_said = mb.ground_symbol(&alice,
-    //                               vec![FlatText::new("My thoughts"), FlatText::new("When I was on my way to lunch")])?;
+    let a_said = mb.get_ground_concept(&alice, vec!["Things that I said", "Walking down the sidewalk"])?;
+    let b_said = mb.get_ground_concept(&alice, vec!["My thoughts", "When I was on my way to lunch"])?;
 
     // mb.alledge2(&alice, FlatText::new("I like turtles"))?;
 

@@ -198,7 +198,9 @@ impl MindBase {
         Ok(id)
     }
 
-    // Alledge an Alledgable thing using the default agent
+    // TODO 2 - Update this to take a vec of Categories this new allegation should be alledged to be in
+    // TODO 2 - Update this to take a Concept as the thing – is the Concept Alledgable(Surrogate), or does it circumvent the first
+    // allegation? Alledge an Alledgable thing using the default agent
     pub fn alledge<T>(&self, thing: T) -> Result<Allegation, Error>
         where T: crate::allegation::Alledgable
     {
@@ -275,6 +277,7 @@ impl MindBase {
     {
         let mut search_chain = Vec::with_capacity(artifacts.len());
 
+        // TODO 1 - Update this to accept Vec<ConceptOrArtifact>
         for a in artifacts.into_iter() {
             let artifact_id = self.put_artifact(a.into())?;
             search_chain.push(artifact_id);
@@ -343,8 +346,8 @@ impl MindBase {
                                       }
                                   })?;
 
-            if let Some(ref last_concept) = last_concept {
-                concept.narrow_by(self, last_concept)?;
+            if let Some(ref parent) = last_concept {
+                concept.narrow_by(self, parent)?;
             }
 
             // None of our ground/neighbor agents have declared this taxonomic/analogic relationship before
