@@ -44,11 +44,11 @@ fn dialog_1() -> Result<(), std::io::Error> {
     // anonymous "Unit" artifact. Either way, the symbol itself, and its association to this artifact is meaningless of its own
     // accord, except that it's a thing that's discrete from the rest of the universe, at least to start.
     let a_walking = mb.alledge2(&alice, "Walking down the street")?;
-    mb.alledge2(&alice, Analogy::declarative(a_walking, a_things_imdoing.clone()))?;
+    // mb.alledge2(&alice, Analogy::declarative(a_walking, a_things_imdoing.clone()))?;
 
     // Bob describes a different event. Again, it, and the artifact associated with it is meaningless of its own accord.
     let b_on_my_way = mb.alledge2(&bob, "On my way to get a haircut")?;
-    mb.alledge2(&alice, Analogy::declarative(a_walking, b_things_imdoing))?;
+    // mb.alledge2(&alice, Analogy::declarative(a_walking, b_things_imdoing))?;
 
     //         Alice is defining this (     )  <- (       ) <- (       )
     //   NLP agent is defining this    / | \       /  |  \      /  |  \
@@ -61,8 +61,8 @@ fn dialog_1() -> Result<(), std::io::Error> {
 
     // In order to do this, Alice and Bob need to be able to *reproducibly* retrieve the same symbols using external value(s)
 
-    let a_said = mb.get_ground_concept(&alice, vec!["Things that I said", "Walking down the sidewalk"])?;
-    let b_said = mb.get_ground_concept(&alice, vec!["My thoughts", "When I was on my way to lunch"])?;
+    // let a_said = mb.get_ground_concept(&alice, vec!["Things that I said", "Walking down the sidewalk"])?;
+    // let b_said = mb.get_ground_concept(&alice, vec!["My thoughts", "When I was on my way to lunch"])?;
 
     // mb.alledge2(&alice, FlatText::new("I like turtles"))?;
 

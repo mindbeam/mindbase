@@ -9,6 +9,33 @@ pub enum Error {
     TryFromSlice,
     Base64Error,
     AllegationNotFound,
+    MBQL(MBQLError),
+}
+
+#[derive(Debug)]
+pub enum MBQLError {
+    InvalidLine {
+        line_number: usize,
+        line:        String,
+    },
+    InvalidCommand {
+        line_number: usize,
+        command:     String,
+    },
+    UnknownCommand {
+        line_number: usize,
+        command:     String,
+    },
+    CommandParse {
+        line_number: usize,
+        ron:         ron::de::Error,
+    },
+}
+
+impl From<MBQLError> for Error {
+    fn from(e: MBQLError) -> Self {
+        Self::MBQL(e)
+    }
 }
 
 impl From<sled::Error> for Error {
@@ -16,6 +43,7 @@ impl From<sled::Error> for Error {
         Self::Sled(e)
     }
 }
+
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::SerdeJson(e)

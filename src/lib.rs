@@ -5,6 +5,7 @@ pub mod artifact;
 pub mod concept;
 pub mod error;
 mod genesis;
+pub mod mbql;
 mod policy;
 mod util;
 pub mod xport;
@@ -500,10 +501,6 @@ fn merge_16byte_list(_key: &[u8],               // the key being merged
 mod tests {
     use crate::*;
     use analogy::Analogy;
-    use artifact::{
-        text,
-        FlatText,
-    };
 
     #[test]
     fn dump() -> Result<(), Error> {
