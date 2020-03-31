@@ -2,76 +2,82 @@ use crate::error::{
     Error,
     MBQLError,
 };
-use regex::Regex;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, Debug)]
-enum Item {
-    DefaultAgent(DefaultAgent),
-}
+use pest::Parser;
+use pest_derive;
 
-#[derive(Serialize, Deserialize, Debug)]
-struct DefaultAgent;
+#[derive(Parser)]
+#[grammar = "mbql.pest"]
+pub struct MBQLParser;
 
-// #[typetag::serde]
-// impl Item for DefaultAgent {}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Alledge {}
-#[derive(Serialize, Deserialize, Debug)]
-struct BaseSymbol();
-
+#[derive(Debug)]
 pub struct Query {
-    items: HashMap<String, Item>,
+    // items: HashMap<String,>,
 }
 
 impl Query {
     pub fn new() -> Self {
-        Query { items: HashMap::new() }
+        Query { 
+            //items: HashMap::new()
+              }
     }
 
     pub fn parse<T: std::io::BufRead>(&mut self, mut reader: T) -> Result<(), Error> {
         for (line_number, line) in reader.lines().enumerate() {
-            let re = Regex::new(r"[ \t]*:[ \t]*").unwrap();
+
             let line = line?;
+            let line_number = line_number + 1;
 
-            let parts: Vec<&str> = re.splitn(&line, 2).collect();
+            let successful_parse = MBQLParser::parse(Rule::line, &line);
+            println!("{:?}", successful_parse);
 
-            println!("LOOK {:?}, {}", parts, line);
-            if parts.len() != 2 {
-                return Err(MBQLError::InvalidLine { line_number,
-                                                    line: line.to_string() }.into());
-            }
+        //     let re = Regex::new(r"[ \t]*:[ \t]*").unwrap();
 
-            let temp_id: &str = parts.get(0).unwrap();
-            let line_body: &str = parts.get(1).unwrap();
+        //     let parts: Vec<&str> = re.splitn(&line, 2).collect();
 
-            // HACK
-            let tl_command_re = Regex::new("([A-Za-z]+)").unwrap();
-            let captures = tl_command_re.captures(line_body).unwrap();
+        //     if parts.len() != 2 {
+        //         return Err(MBQLError::InvalidLine { line_number,
+        //                                             line: line.to_string() }.into());
+        //     }
 
-            let tl_command = match captures.get(1) {
-                Some(i) => i.as_str(),
-                None => {
-                    return Err(MBQLError::InvalidCommand { line_number,
-                                                           command: line_body.to_string() }.into())
-                },
-            };
+        //     let temp_id: &str = parts.get(0).unwrap();
+        //     let line_body: &str = parts.get(1).unwrap();
 
-            let item = match tl_command {
-                "DefaultAgent" => {
-                    Item::DefaultAgent(ron::de::from_str(line_body).map_err(|e| MBQLError::CommandParse { line_number, ron: e })?)
-                },
-                _ => {
-                    return Err(MBQLError::UnknownCommand { line_number,
-                                                           command: line_body.to_string() }.into())
-                },
-            };
-            println!("Item: {:?}", item);
+        //     // HACK
+        //     let tl_command_re = Regex::new("([A-Za-z]+)").unwrap();
+        //     let captures = tl_command_re.captures(line_body).unwrap();
+
+        //     let tl_command = match captures.get(1) {
+        //         Some(i) => i.as_str(),
+        //         None => {
+        //             return Err(MBQLError::InvalidCommand { line_number,
+        //                                                    command: line_body.to_string() }.into())
+        //         },
+        //     };
+
+        //     let item = match tl_command {
+        //         "DefaultAgent" => Item::DefaultAgent,
+        //         "Alledge" => {
+        //             Item::Alledge(ron::de::from_str(line_body).map_err(|e| {
+        //                                                           MBQLError::CommandParse { line_number,
+        //                                                                                     ron: e,
+        //                                                                                     body: line_body.to_string() }
+        //                                                       })?)
+        //         },
+        //         "GroundSymbol" => {
+        //             Item::GroundSymbol(ron::de::from_str(line_body).map_err(|e| {
+        //                                                                MBQLError::CommandParse { line_number,
+        //                                                                                          ron: e,
+        //                                                                                          body: line_body.to_string() }
+        //                                                            })?)
+        //         },
+        //         _ => {
+        //             return Err(MBQLError::UnknownCommand { line_number,
+        //                                                    command: line_body.to_string() }.into())
+        //         },
+        //     };
+        //     println!("Item: {:?}", item);
         }
         Ok(())
     }

@@ -1,0 +1,17 @@
+id = { ASCII_ALPHANUMERIC+ }
+string = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+line = { SOI ~ id ~ ":" ~ expression ~ EOI }
+
+expression = { default_agent | alledge }
+default_agent =  {"DefaultAgent"}
+alledge =  {"Alledge(" ~ symbol ~ ")"}
+symbol = { string }
+
+WHITESPACE = _{ " " | "\t" }

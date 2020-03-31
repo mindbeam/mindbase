@@ -28,7 +28,8 @@ pub enum MBQLError {
     },
     CommandParse {
         line_number: usize,
-        ron:         ron::de::Error,
+        body:        String,
+        // ron:         ron::de::Error,
     },
 }
 
