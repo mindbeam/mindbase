@@ -1,2 +1,3 @@
 agent:    DefaultAgent
 alice:    Alledge("Alice")
+string:   GroundSymbol

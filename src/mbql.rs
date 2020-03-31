@@ -12,6 +12,19 @@ use pest_derive;
 pub struct MBQLParser;
 
 #[derive(Debug)]
+struct Item {
+    id: String,
+    expression: Expression,
+}
+
+#[derive(Debug)]
+enum Expression {
+    DefaultAgent,
+    Alledge,
+    GroundSymbol
+}
+
+#[derive(Debug)]
 pub struct Query {
     // items: HashMap<String,>,
 }
@@ -24,61 +37,42 @@ impl Query {
     }
 
     pub fn parse<T: std::io::BufRead>(&mut self, mut reader: T) -> Result<(), Error> {
-        for (line_number, line) in reader.lines().enumerate() {
 
-            let line = line?;
+        let mut items : Vec<Item> = Vec::new();
+
+        for (line_number, line_str) in reader.lines().enumerate() {
+
+            let line_str = line_str?;
             let line_number = line_number + 1;
 
-            let successful_parse = MBQLParser::parse(Rule::line, &line);
-            println!("{:?}", successful_parse);
+            // don't really need span on the line itself
+            let mut line = MBQLParser::parse(Rule::line, &line_str).unwrap().next().unwrap().into_inner();
+            println!("{:?}", line);
 
-        //     let re = Regex::new(r"[ \t]*:[ \t]*").unwrap();
+            let id = line.next().unwrap();
+            assert_eq!(id.as_rule(), Rule::id);
+            
+            let exp = line.next().unwrap();
+            assert_eq!(exp.as_rule(), Rule::expression);
 
-        //     let parts: Vec<&str> = re.splitn(&line, 2).collect();
+    
+            let exp = exp.into_inner().next().unwrap();
+            let expression = match exp.as_rule() {
+                Rule::default_agent => Expression::DefaultAgent,
+                Rule::alledge => Expression::Alledge,
+                Rule::ground_symbol => Expression::GroundSymbol,
+                _ => unreachable!(),
+            };
+            items.push(Item{ id: id.as_str().to_string(), expression});
 
-        //     if parts.len() != 2 {
-        //         return Err(MBQLError::InvalidLine { line_number,
-        //                                             line: line.to_string() }.into());
-        //     }
-
-        //     let temp_id: &str = parts.get(0).unwrap();
-        //     let line_body: &str = parts.get(1).unwrap();
-
-        //     // HACK
-        //     let tl_command_re = Regex::new("([A-Za-z]+)").unwrap();
-        //     let captures = tl_command_re.captures(line_body).unwrap();
-
-        //     let tl_command = match captures.get(1) {
-        //         Some(i) => i.as_str(),
-        //         None => {
-        //             return Err(MBQLError::InvalidCommand { line_number,
-        //                                                    command: line_body.to_string() }.into())
-        //         },
-        //     };
-
-        //     let item = match tl_command {
-        //         "DefaultAgent" => Item::DefaultAgent,
-        //         "Alledge" => {
-        //             Item::Alledge(ron::de::from_str(line_body).map_err(|e| {
-        //                                                           MBQLError::CommandParse { line_number,
-        //                                                                                     ron: e,
-        //                                                                                     body: line_body.to_string() }
-        //                                                       })?)
-        //         },
-        //         "GroundSymbol" => {
-        //             Item::GroundSymbol(ron::de::from_str(line_body).map_err(|e| {
-        //                                                                MBQLError::CommandParse { line_number,
-        //                                                                                          ron: e,
-        //                                                                                          body: line_body.to_string() }
-        //                                                            })?)
-        //         },
-        //         _ => {
-        //             return Err(MBQLError::UnknownCommand { line_number,
-        //                                                    command: line_body.to_string() }.into())
-        //         },
-        //     };
-        //     println!("Item: {:?}", item);
+            // inner.next().unwrap().as_rule() {
+            //     Rule::id
+            // }
         }
+
+        println!("{:?}", items);
         Ok(())
     }
 }
+
+// fn parse_line(pair: Pair<Rule>) ->{}

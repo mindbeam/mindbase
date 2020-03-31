@@ -9,9 +9,10 @@ char = {
 
 line = { SOI ~ id ~ ":" ~ expression ~ EOI }
 
-expression = { default_agent | alledge }
+expression = { default_agent | ground_symbol | alledge }
 default_agent =  {"DefaultAgent"}
 alledge =  {"Alledge(" ~ symbol ~ ")"}
+ground_symbol = { "GroundSymbol" }
 symbol = { string }
 
 WHITESPACE = _{ " " | "\t" }
