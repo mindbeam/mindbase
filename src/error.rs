@@ -1,3 +1,4 @@
+use crate::mbql::error::Error as MBQLError;
 #[derive(Debug)]
 pub enum Error {
     Sled(sled::Error),
@@ -12,26 +13,13 @@ pub enum Error {
     MBQL(MBQLError),
 }
 
-#[derive(Debug)]
-pub enum MBQLError {
-    InvalidLine {
-        line_number: usize,
-        line:        String,
-    },
-    InvalidCommand {
-        line_number: usize,
-        command:     String,
-    },
-    UnknownCommand {
-        line_number: usize,
-        command:     String,
-    },
-    CommandParse {
-        line_number: usize,
-        body:        String,
-        // ron:         ron::de::Error,
-    },
-}
+// impl std::fmt::Display for Error {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         match self.kind {
+//             MBQLErrorKind::IOError { error } => f.write_fmt(format_args!("MBQL IO Error: {}", error)),
+//         }
+//     }
+// }
 
 impl From<MBQLError> for Error {
     fn from(e: MBQLError) -> Self {

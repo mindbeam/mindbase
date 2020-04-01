@@ -226,7 +226,7 @@ impl Alledgable for ArtifactId {
     }
 }
 
-impl<T> Alledgable for T where T: Into<Artifact>
+impl<T> Alledgable for T where T: Into<Artifact> + std::fmt::Debug
 {
     fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
         let artifact_id = mb.put_artifact(self)?;

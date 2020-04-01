@@ -1,3 +1,5 @@
-agent:    DefaultAgent
-alice:    Alledge("Alice")
+agent:    Agent(default)
+turtl:    Alledge("I like \"turtles")
+alice:    Alledge(:agent)
+alice2:   Alledge(Agent(default))
 string:   GroundSymbol

@@ -23,10 +23,23 @@ struct Opt {
     /// Export Mindbase contents into MBQL file
     #[structopt(short, long, parse(from_os_str))]
     export: Option<PathBuf>,
+
+    /// Echo the parsed MBQL back to the display
+    #[structopt(long)]
+    echo: bool,
 }
 fn main() -> Result<(), std::io::Error> {
     let opt = Opt::from_args();
 
+    if let Err(e) = run(opt) {
+        println!("MBQL Error: {}", e);
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+fn run(opt: Opt) -> Result<(), std::io::Error> {
     let mb = MindBase::open(&opt.mindbase.as_path()).unwrap();
 
     if let Some(file) = opt.import {
@@ -38,18 +51,18 @@ fn main() -> Result<(), std::io::Error> {
             Ok(file) => file,
         };
 
-        println!("Importing {}", display);
-
-        let mut query = mindbase::mbql::Query::new();
-
         let reader = BufReader::new(file);
-        query.parse(reader)?;
+        let query = mindbase::mbql::Query::new(reader)?;
 
-        println!("Done {:?}", query);
+        if opt.echo {
+            println!("Echo Output:\n");
+            for (_k, i) in query.items.iter() {
+                println!("{}", i);
+            }
+        }
     } else if let Some(_file) = opt.export {
         unimplemented!()
         // TODO
     }
-
     Ok(())
 }

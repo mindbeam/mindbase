@@ -87,7 +87,6 @@ impl fmt::Debug for AllegationId {
 /// molecules/concepts don't simply spring into existence however. Molecules must be built of atoms, and Concepts must be built of
 /// Allegations.
 ///
-/// ```
 /// NOMENCLATURE QUESTION: Concept/Symbol/Allegation/Atom etc?
 /// There must be a bifurcation between the Subjective and the Intersubjective.
 /// The Subjective is actually more than just according to a person or agent.
@@ -103,7 +102,6 @@ impl fmt::Debug for AllegationId {
 ///       * Unfortunately this is muddy, because both allegations and concepts are symbols
 /// or Subjective-Symbol and Intersubjective Symbol
 ///       * unfortunately this is muddy, because Subjectivity might be wrongly taken to mean "Person"-al, rather than situational.
-/// ```
 ///
 /// To the degree that you possess a "Self", so too do you possess agency over your thoughts, feelings, and perceptions.
 /// Unfortunately, that's about the extent if your agency, epistemologically speaking. Much To the chagrin of narcisists
@@ -248,6 +246,6 @@ impl fmt::Display for Body {
     }
 }
 
-pub trait Alledgable {
+pub trait Alledgable: std::fmt::Debug {
     fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error>;
 }
