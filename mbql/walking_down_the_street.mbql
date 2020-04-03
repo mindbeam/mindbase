@@ -1,22 +1,43 @@
-agent:    Agent(default)
-alice:    Alledge("Alice")
-alice:    Alledge("Alice" : "Person")
-doing:    GroundSymbol("Things I'm doing")
-walking:  Alledge("Walking down the street","doing")
-exercise: GroundSymbol("Things a human might do","Physical Exercise")
-cat:      Categorize(:walking "exercise")
-ps:       GroundSymbol("Part of Speech")
-ps_s:     GroundSymbol(:ps "Sentence"])
-ps_np:    GroundSymbol(:ps "Noun Phrase"]))
-ps_dt:    GroundSymbol(:ps "Determiner"])
-ps_nn:    GroundSymbol(:ps "Singular Noun"]))
-ps_vp:    GroundSymbol(:ps "Verb Phrase"])
-ps_vbd:   GroundSymbol(:ps "Verb, Past Tense"])
-said:     GroundSymbol("Things I said")
-saidcat:  Categorize(:s :said)
-1s:       Alledge("The dog jumped" :ps_s)
-1np:      Alledge("the dog" :ps_np)
-1dt:      Alledge("the" :ps_dt)
-1nn:      Alledge("dog" :ps_nn)
-1vp:      Alledge("jumped" :ps_vp)
-1vbd:     Alledge("jumped" :ps_vbd)
+agent:       Agent(default)
+png:         GroundConcept("IANA Media Type" "image/png")
+pic:         Artifact(DataNode($png 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))
+alice_text:  Artifact("Alice")
+
+# Create a unique entity referencing the $alice_text artifact
+alice:       Symbolize($alice_text)
+aliceperson: Alledge($alice : GroundConcept("A Human Person"))
+
+# We can symbolize things inline if we want, though they may be unanchored
+# This will record the root of a tree of SEVEN Allegations (or four new Symbols, and three allegations)
+# S1[Smile]   S2[Mouth]      S3[Wink]    S4[Eye]
+#  \__________/               \__________/
+#      [A1]                       [A2]
+#        \_________________________/
+#                    [A3] (Emotive Movement)
+emote: Alledge("Smile" : "Mouth" :: "Wink" : "Eye")
+
+# This will work similarly to the above, except that we are grounding out all of the symbols we are using, rather than declaring wholly new symbols
+# This grounding is *necessarily flawed* – There is no perfect symbolic grounding which is possible. Only incremental refinement
+emote2: Alledge(GroundConcept("Gesture" "Smile") : GroundConcept("Body Part" "Mouth") :: GroundConcept("Gesture" "Wink") : GroundConcept("Body Part" "Eye"))
+
+pic_of_alice: Alledge($pic : $alice :: : GroundConcept("Photographic Representation") : GroundConcept("A Human Person"))
+
+doing:      GroundConcept("Things I'm doing")
+walking:    Alledge("Walking down the street","doing")
+exercise:   GroundConcept("Things a human might do","Physical Exercise")
+cat:        Categorize($walking "exercise")
+ps:         GroundConcept("Human Language" "Part of Speech")
+ps_s:       GroundConcept($ps "Sentence"])
+ps_np:      GroundConcept($ps "Noun Phrase"]))
+ps_dt:      GroundConcept($ps "Determiner"])
+ps_nn:      GroundConcept($ps "Singular Noun"]))
+ps_vp:      GroundConcept($ps "Verb Phrase"])
+ps_vbd:     GroundConcept($ps "Verb, Past Tense"])
+said:       GroundConcept("Things I said")
+saidcat:    Alledge($s : $said)
+1s:         Alledge("The dog jumped" : $ps_s)
+1np:        Alledge("the dog" $ ps_np)
+1dt:        Alledge("the" : $ps_dt)
+1nn:        Alledge("dog" : $ps_nn)
+1vp:        Alledge("jumped" : $ps_vp)
+1vbd:       Alledge("jumped" : $ps_vbd)
