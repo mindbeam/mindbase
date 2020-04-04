@@ -1,5 +1,36 @@
-agent:    Agent(default)
-turtl:    Alledge("I like \"turtles")
-alice:    Alledge(:agent)
-alice2:   Alledge(Agent(default))
-string:   GroundSymbol
+#agent =    Agent(default)
+
+# This is an artifact. It represents the raw text string only.
+# It may posess `External Meaning`, but not `Internal Meaning`
+@alice =   Text("Alice Jones")
+# This is valid shorthand for the above
+@alice =   "Alice Jones"
+
+# Let's use it to create a new symbol for the purpose of this conversation
+$alice =   Symbolize(@alice)
+
+# We can reference artifacts inline when symbolizing
+$turtles = Symbolize("I like turtles")
+
+# Lets Alledge a relationship between the new symbol for Alice, and the new symbol for "I Like turtles"
+$alice_turtles: Alledge($alice : $turtles)
+
+# Lets look up some ground symbols. The [square braces] indicate that a symbol should
+# be looked up. Unlike `Symbolize` and `Alledge`, which create new symbols each time,
+# It will automatically create a new symbol, but only if it wasn't found.
+# ground symbols are are always the same for a given set of inputs and system state
+$person    =  {"A Person"}
+$statement =  {"Statement Made" "In English"}
+
+# now lets look up another ground symbol for the relationship between these
+$person_statement = Alledge($person : $statement)
+# QUESTION -----------------  ^ Is this an ordered relationship?
+#                               IF SO: is it also reciprocal or heirarchical?
+#                               Should it be possible to define these as ground symbols?
+#                               EG { $person : $statement }
+
+$alice_said = Alledge( $alice_turtles : $person_statement )
+
+# Using @artifact and $symbol variables can help us avoid repeating ourselves when dealing with a
+# lot of data, but we can also do all of this inline. The following is equivalent to all of the above:
+Alledge( ("Alice Jones" : "I like turtles") : {"A person"} : {"Statement Made" "In English"} )
