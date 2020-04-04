@@ -13,7 +13,7 @@ use pest::{
 #[grammar = "mbql/mbql.pest"]
 pub struct MBQLParser;
 
-pub fn parse<T: std::io::BufRead>(reader: T) -> Result<Vec<ast::Item>, Error> {
+pub fn parse<T: std::io::BufRead>(reader: T, query: &super::Query) -> Result<(), Error> {
     let mut items: Vec<ast::Item> = Vec::new();
 
     for (line_number, line) in reader.lines().enumerate() {
@@ -21,41 +21,60 @@ pub fn parse<T: std::io::BufRead>(reader: T) -> Result<Vec<ast::Item>, Error> {
                                        Error { position: Position::none(),
                                                kind:     ErrorKind::IOError { error }, }
                                    })?;
-        let item = parse_line(line_number + 1, &line_str)?;
-        items.push(item);
+        parse_line(line_number + 1, &line_str, query)?;
     }
 
-    // println!("{:?}", items);
-    Ok(items)
+    Ok(())
 }
 
-fn parse_line(row: usize, input: &str) -> Result<ast::Item, Error> {
+fn parse_line(row: usize, input: &str, query: &super::Query) -> Result<(), Error> {
     // don't really need span on the line itself
 
-    let mut line = MBQLParser::parse(Rule::line, &input).map_err(|_e| {
-                                                            Error { position: Position { row },
-                                                                    kind:     ErrorKind::ParseRow { input: input.to_string(), }, }
-                                                        })?;
+    let mut line = MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| {
+                                                                 Error { position: Position { row },
+                                                                         kind:     ErrorKind::ParseRow { input:
+                                                                                                             input.to_string(),
+                                                                                                         pest_err }, }
+                                                             })?;
 
-    // Ok to use unwrap with these, as they shouldn't vary
-    let id = line.next().unwrap();
-    assert_eq!(id.as_rule(), Rule::id);
-
-    let exp = line.next().unwrap();
-    assert_eq!(exp.as_rule(), Rule::expression);
-
-    let pair = exp.into_inner().next().unwrap();
-    // println!("{}: {:?}", id.as_str(), exp);
-
-    let expression = match pair.as_rule() {
-        Rule::agent => ast::Expression::Agent(ast::Agent::parse(pair)?),
-        Rule::alledge => ast::Expression::Alledge(ast::Alledge::parse(pair)?),
-        Rule::ground_symbol => ast::Expression::GroundSymbol(ast::GroundSymbol::parse(pair)?),
-        _ => unreachable!(),
+    let inner = match line.next() {
+        None => return Ok(()), // Comment or blank line
+        Some(s) => s,
     };
 
-    Ok(ast::Item { key: id.as_str().to_string(),
-                   expression })
+    match inner.as_rule() {
+        Rule::EOI => return Ok(()), // Comment or blank line
+        Rule::artifactstatement => {
+            ast::ArtifactStatement::parse(inner.into_inner(), query);
+            println!("artifact {}", inner);
+        },
+        Rule::symbolstatement => {
+            println!("symbol {}", inner);
+        },
+        _ => {
+            println!("{}", inner);
+            unreachable!();
+        },
+    }
+
+    // // Ok to use unwrap with these, as they shouldn't vary
+    // let id = line.next().unwrap();
+    // assert_eq!(id.as_rule(), Rule::id);
+
+    // let exp = line.next().unwrap();
+    // assert_eq!(exp.as_rule(), Rule::expression);
+
+    // let pair = exp.into_inner().next().unwrap();
+    // // println!("{}: {:?}", id.as_str(), exp);
+
+    // let expression = match pair.as_rule() {
+    //     Rule::agent => ast::Expression::Agent(ast::Agent::parse(pair)?),
+    //     Rule::alledge => ast::Expression::Alledge(ast::Alledge::parse(pair)?),
+    //     Rule::ground => ast::Expression::GroundSymbol(ast::GroundSymbol::parse(pair)?),
+    //     _ => unreachable!(),
+    // };
+
+    Ok(())
 }
 
 // trait Parse {
@@ -80,16 +99,17 @@ impl ast::Alledge {
         println!("{:?}", pair);
         let thing_pair = pair.into_inner().next().unwrap();
 
-        let thing = match thing_pair.as_rule() {
-            Rule::variable => ast::AlledgeThing::Variable(ast::Variable::parse(thing_pair)?), // skip the leading colon
-            Rule::string => ast::AlledgeThing::FlatText(ast::FlatText::parse(thing_pair)?),
-            Rule::agent => ast::AlledgeThing::Agent(ast::Agent::parse(thing_pair)?),
-            _ => unreachable!(),
-        };
+        unimplemented!()
+        // let thing = match thing_pair.as_rule() {
+        //     Rule::variable => ast::AlledgeThing::Variable(ast::Variable::parse(thing_pair)?), // skip the leading colon
+        //     Rule::string => ast::AlledgeThing::FlatText(ast::FlatText::parse(thing_pair)?),
+        //     Rule::agent => ast::AlledgeThing::Agent(ast::Agent::parse(thing_pair)?),
+        //     _ => unreachable!(),
+        // };
 
-        let categorize = None;
+        // let categorize = None;
 
-        Ok(ast::Alledge { thing, categorize })
+        // Ok(ast::Alledge { thing, categorize })
     }
 }
 
@@ -103,5 +123,31 @@ impl ast::GroundSymbol {
     fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
         Ok(ast::GroundSymbol)
         // (exp.into_inner().next().unwrap().as_str().to_string())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{
+        MBQLParser,
+        Rule,
+    };
+    use pest::{
+        consumes_to,
+        parses_to,
+    };
+    #[test]
+    fn pest_basic() {
+        parses_to! {
+            parser: MBQLParser,
+            input:  "@url : Url(\"test\")",
+            rule:   Rule::artifactstatement,
+            tokens: [artifactstatement(0,18,[
+                artifactvar(0,4,[ literal(1,4)]),
+                artifact(7,18, [url(7,18,[quoted_string(11,17,[string(12,16)])])])
+            ])]
+        }
+
+        // TODO add more pest tests
     }
 }

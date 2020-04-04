@@ -6,16 +6,15 @@ use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct Query {
-    pub items: BTreeMap<String, ast::Item>,
+    pub artifacts: BTreeMap<String, ast::Artifact>,
 }
 
 impl Query {
     pub fn new<T: std::io::BufRead>(reader: T) -> Result<Self, self::error::Error> {
-        let items = self::parse::parse(reader)?;
+        let query = Query { artifacts: BTreeMap::new(), };
+        self::parse::parse(reader, query)?;
 
-        let items = items.into_iter().map(|i| (i.key.clone(), i)).collect();
-
-        Ok(Query { items })
+        Ok(query)
     }
 }
 

@@ -1,27 +1,26 @@
+pub mod artifact;
+pub mod symbol;
+
+use super::ast;
+
 #[derive(Debug)]
-pub struct Item {
-    pub key:        String,
-    pub expression: Expression,
+pub struct ArtifactVar {
+    var: String,
 }
 
 #[derive(Debug)]
-pub enum Expression {
-    Agent(Agent),
-    Alledge(Alledge),
-    GroundSymbol(GroundSymbol),
+pub struct ArtifactStatement {
+    pub var:      ArtifactVar,
+    pub artifact: ast::artifact::Artifact,
 }
 
 #[derive(Debug)]
-pub struct Alledge {
-    pub(crate) thing:      AlledgeThing,
-    pub(crate) categorize: Option<Category>,
+pub struct SymbolVar {
+    var: String,
 }
-
-#[derive(Debug)]
-pub enum AlledgeThing {
-    Variable(Variable),
-    FlatText(FlatText),
-    Agent(Agent),
+pub struct SymbolStatement {
+    pub var:    Option<SymbolVar>,
+    pub symbol: ast::symbol::Symbol,
 }
 
 #[derive(Debug)]

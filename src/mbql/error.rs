@@ -10,7 +10,8 @@ pub enum ErrorKind {
         error: std::io::Error,
     },
     ParseRow {
-        input: String,
+        input:    String,
+        pest_err: pest::error::Error<super::parse::Rule>,
     },
     InvalidLine {
         input: String,
@@ -49,7 +50,10 @@ impl std::fmt::Display for Error {
         match &self.kind {
             ErrorKind::IOError { error } => f.write_fmt(format_args!("IO Error: {}", error)),
             ErrorKind::InvalidLine { input } => f.write_fmt(format_args!("Invalid row at {}: {}", self.position.row, input)),
-            ErrorKind::ParseRow { input } => f.write_fmt(format_args!("Failed to parse row {}: {}", self.position.row, input)),
+            ErrorKind::ParseRow { input, pest_err } => {
+                // TODO - fix line numbers
+                f.write_fmt(format_args!("Failed to parse row {}: {}", self.position.row, pest_err))
+            },
             ErrorKind::InvalidCommand { command } => f.write_str("meow"),
             ErrorKind::UnknownCommand { command } => f.write_str("meow"),
             ErrorKind::CommandParse { body } => f.write_str("meow"),
