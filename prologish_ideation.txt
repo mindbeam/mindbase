@@ -1,0 +1,28 @@
+# TODO Lookup horn clauses
+
+fn ancestor (x,y){
+    ...... (system figures out via unification)
+}
+
+Prologish:
+
+ancestor("Mom", "Me").
+ancestor("Dad", "Me").
+ancestor("Granddad", "Dad").
+
+
+EQUIVALENT:
+ancestor(X, Y) ^ ancestor(Y, Z) -> ancestor(X, Z).
+ancestor(Y, Z) ^ ancestor(X, Y) -> ancestor(X, Z).
+
+(system deduces)....
+
+ancestor("Granddad", "Me").
+
+ancestor(?"Granddad", "Me").
+
+ancestor(?X, ?Y).
+=> (returns all ancestor clauses)
+
+
+rel(X, Y) -> rel(Y, X). (reflexive?)
