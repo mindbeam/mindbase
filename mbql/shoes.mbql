@@ -1,0 +1,6 @@
+
+
+# Adidas relates to Superstar in the same way that a brand relates to sneakers
+# If you wanted to document that Adidas was a brand, you could symply:
+$adidasisabrand = Alledge("Adidas" : {"Brand"})
+ Alledge(("Adidas" : "Superstar") : ({"Brand"} : {("Aparrel" : "Shoe") : "Sneaker"}))
