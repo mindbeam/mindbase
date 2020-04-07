@@ -14,7 +14,7 @@ artifactstatement = { artifactvar ~ "=" ~ artifact }
 
 // Symbols
 symbol    = { symbolvar | ground | symbolize | alledge }
-ground = { "{" ~ symbolizable+ ~ (WHITESPACE+ ~ symbolizable )* ~ "}" }
+ground = { ( "Ground(" ~ (symbol_pair | symbolizable) ~ ")") | ("{" ~ (symbol_pair|symbolizable) ~ "}") }
 symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
 alledge =  { "Alledge(" ~ symbol_pair ~ ")" }
 
@@ -37,7 +37,7 @@ char = {
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-symbolizable = _{ artifact | symbol | "(" ~ symbol_pair ~ ")" }
+symbolizable = { artifact | symbol | "(" ~ symbol_pair ~ ")" }
 symbol_pair = { symbolizable ~ ":" ~ symbolizable }
 
 WHITESPACE = _{ " " | "\t" }
