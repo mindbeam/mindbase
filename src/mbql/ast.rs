@@ -65,6 +65,13 @@ impl Display for ArtifactStatement {
 pub struct SymbolVar {
     var: String,
 }
+impl SymbolVar {
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), crate::error::Error> {
+        writer.write(format!("${}", self.var).as_bytes())?;
+        Ok(())
+    }
+}
+
 pub struct SymbolStatement {
     pub var:    Option<SymbolVar>,
     pub symbol: Symbolizable,
@@ -141,12 +148,14 @@ impl Symbolizable {
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), crate::error::Error> {
         match self {
-            Symbolizable::Artifact(a) => unimplemented!(),
-            Symbolizable::SymbolPair { left, right } => unimplemented!(),
-            Symbolizable::SymbolVar(sv) => unimplemented!(),
-            Symbolizable::Ground => unimplemented!(),
-            Symbolizable::Symbolize => unimplemented!(),
+            Symbolizable::Artifact(a) => unimplemented!("A"),
+            Symbolizable::SymbolPair { left, right } => unimplemented!("B"),
+            Symbolizable::SymbolVar(sv) => sv.write(writer)?,
+            Symbolizable::Ground => unimplemented!("D"),
+            Symbolizable::Symbolize => unimplemented!("E"),
         }
+
+        Ok(())
     }
 }
 
@@ -268,9 +277,9 @@ pub struct DataNode {
 
 impl DataNode {
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), crate::error::Error> {
-        writer.write(b"DataNode(");
+        writer.write(b"DataNode(")?;
         self.data_type.write(writer)?;
-        writer.write(b"; ")?;
+        writer.write(b";")?;
 
         {
             let mut enc = base64::write::EncoderWriter::new(writer, base64::STANDARD);
