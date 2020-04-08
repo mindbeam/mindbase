@@ -1,33 +1,34 @@
 statement = _{ SOI ~ (artifactstatement | symbolstatement)? ~ ( EOI | "#" ) }
 
 symbolvar = ${ "$" ~ literal }
-artifactvar = ${"@" ~ literal}
+artifactvar = ${ "@" ~ literal }
 
 // You can symbolize without storing the symbovar
 // $foo : Symbolize(..)
 // Symbolize(..)
-symbolstatement = { (symbolvar ~ "=")? ~ symbol }
+symbolstatement = { (symbolvar ~ "=")? ~ ( alledge | ground | symbolize ) }
 
 // But there's not much point to doing so for an artifact, so the artifactvar is not optional
 // @foo : Url("http://...")
 artifactstatement = { artifactvar ~ "=" ~ artifact }
 
 // Symbols
-symbol    = { symbolvar | ground | symbolize | alledge }
 ground = { ( "Ground(" ~ (symbol_pair | symbolizable) ~ ")") | ("{" ~ (symbol_pair|symbolizable) ~ "}") }
 symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
 alledge =  { "Alledge(" ~ symbol_pair ~ ")" }
 
 // Artifacts
 artifact  = { artifactvar | agent | url | text | datagraph | datanode | datarelation }
-agent     = { "Agent(" ~ ("default"|ASCII_ALPHANUMERIC{32}) ~ ")" }
+agent     = { "Agent(" ~ agent_ident ~ ")" }
+agent_ident = { "default" | ASCII_ALPHANUMERIC{32} }
 url       = { "Url(" ~ quoted_string ~ ")" }
 text      = { "Text(" ~ quoted_string ~ ")" | quoted_string }
 datagraph    = { "DataGraph(" ~ quoted_string ~ ")" }
-datanode     = { "DataNode(" ~ quoted_string ~ ")" }
+datanode     = { "DataNode(" ~ symbolizable ~ ";" ~ base64 ~ ")" }
 datarelation = { "DataRelation(" ~ quoted_string ~ ")" }
 
-
+base64 = @{ base64_char+ ~ "="{,2} }
+base64_char = { '0'..'9' | 'a'..'z' | 'A'..'Z' | "+" | "/"  }
 literal = { (ASCII_ALPHANUMERIC | "_")+ }
 quoted_string = ${ "\"" ~ string ~ "\"" }
 string = @{ char* }
@@ -37,7 +38,7 @@ char = {
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-symbolizable = { artifact | symbol | "(" ~ symbol_pair ~ ")" }
+symbolizable = { artifact | symbolvar | ground | symbolize | alledge | "(" ~ symbol_pair ~ ")" }
 symbol_pair = { symbolizable ~ ":" ~ symbolizable }
 
 WHITESPACE = _{ " " | "\t" }

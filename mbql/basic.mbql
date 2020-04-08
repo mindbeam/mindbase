@@ -14,9 +14,13 @@
 # constrain and refine through analogy!
 $alice =   Symbolize(@alice)
 
-# Lets imagine Alice said something, and we want to record that. As a convenience, we can reference
-# artifacts inline when Symbolizing. We can inline most of our operations in fact. Variables are used
-# when we want to improve readability, or reference certain artifacts/symbols multiple times. 
+# Lets imagine Alice said something, and we want to record that.
+# We could record the artifact first, and then symbolize it similarly to the above:
+@turtles = Text("I like turtles")
+
+# But as a convenience, we can also reference artifacts inline when Symbolizing. We can inline most of
+# our operations in fact. Variables are used when we want to improve readability, or reference certain
+# artifacts/symbols multiple times.
 $turtles = Symbolize("I like turtles")
 
 # Lets Alledge a relationship between the new symbol for Alice, and the new symbol for "I Like turtles"
@@ -58,7 +62,7 @@ $same_sounds = Alledge( $animal_sounds : $animal_sounds2 )
 # $same_dog = Alledge( $animal_sounds.left : $animal_sounds2.left )
 
 
-$alice_turtles: Alledge($alice : $turtles)
+$alice_turtles = Alledge($alice : $turtles)
 
 
 # Lets look up some ground symbols. The [square braces] indicate that a symbol should
@@ -76,7 +80,7 @@ $alice_said = Alledge( $alice_turtles : $person_statement )
 
 # Using @artifact and $symbol variables can help us avoid repeating ourselves when dealing with a
 # lot of data, but we can also do all of this inline. The following is equivalent to all of the above:
-Alledge( ("Alice Jones" : "I like turtles") : ({"A person"} : {"Statement Made" "In English"}) )
+Alledge( ("Alice Jones" : "I like turtles") : ({"A person"} : {"Statement Made" : "In English"}) )
 
 # Inquire (X : "I like turtles")
 # Inquire(X : Y)

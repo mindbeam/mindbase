@@ -56,9 +56,10 @@ fn run(opt: Opt) -> Result<(), std::io::Error> {
 
         if opt.echo {
             println!("Echo Output:\n");
-            for (_k, i) in query.items.iter() {
-                println!("{}", i);
-            }
+
+            let stdout = std::io::stdout();
+            let mut handle = stdout.lock();
+            query.dump(&mut handle)?;
         }
     } else if let Some(_file) = opt.export {
         unimplemented!()
