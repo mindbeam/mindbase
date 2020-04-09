@@ -1,45 +1,66 @@
 pub mod artifact;
 
 use super::parse;
+use crate::mbql::error::Error;
 use parse::Rule;
-use pest::iterators::{
-    Pair,
-    Pairs,
-};
-use std::fmt::Display;
+use pest::iterators::Pair;
+
+// trait ParseWrite {
+//     fn parse(pair: Pair<parse::Rule>) -> Self;
+//     fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error>;
+// }
 
 #[derive(Debug)]
 pub struct ArtifactVar {
     pub var: String,
 }
 
-impl Display for ArtifactVar {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "${}", self.var)
-    }
-}
-
 impl ArtifactVar {
-    pub fn parse(pair: Pair<parse::Rule>) -> Self {
+    fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::artifactvar);
-        Self { var: pair.into_inner().next().unwrap().as_str().to_string(), }
+        Ok(Self { var: pair.into_inner().next().unwrap().as_str().to_string(), })
+    }
+
+    fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        writer.write(format!("@{}", self.var).as_bytes())?;
+        Ok(())
     }
 }
 
 #[derive(Debug)]
+pub struct SymbolVar {
+    var: String,
+}
+
+impl SymbolVar {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+        assert_eq!(pair.as_rule(), Rule::symbolvar);
+        Ok(Self { var: pair.into_inner().next().unwrap().as_str().to_string(), })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, _verbose: bool) -> Result<(), std::io::Error> {
+        writer.write(format!("${}", self.var).as_bytes())?;
+        Ok(())
+    }
+
+    pub fn to_string(&self) -> String {
+        self.var.clone()
+    }
+}
+
 pub struct ArtifactStatement {
     pub var:      ArtifactVar,
     pub artifact: Artifact,
 }
 
 impl ArtifactStatement {
-    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query) -> Result<(), crate::mbql::error::Error> {
+    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query) -> Result<(), Error> {
         assert_eq!(pair.as_rule(), Rule::artifactstatement);
 
         let mut pairs = pair.into_inner();
-        let var = ArtifactVar::parse(pairs.next().unwrap());
+        let var = ArtifactVar::parse(pairs.next().unwrap())?;
 
-        let artifact = Artifact::parse(pairs.next().unwrap());
+        let artifact = Artifact::parse(pairs.next().unwrap())?;
 
         let me = ArtifactStatement { var, artifact };
 
@@ -48,26 +69,11 @@ impl ArtifactStatement {
         Ok(())
     }
 
-    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), crate::error::Error> {
-        writer.write(format!("@{} = ", self.var.var).as_bytes())?;
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        self.var.write(writer)?;
+        writer.write(b" = ")?;
         self.artifact.write(writer, true)?;
         writer.write(b"\n")?;
-        Ok(())
-    }
-}
-impl Display for ArtifactStatement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:\t{}", self.var, self.artifact)
-    }
-}
-
-#[derive(Debug)]
-pub struct SymbolVar {
-    var: String,
-}
-impl SymbolVar {
-    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), crate::error::Error> {
-        writer.write(format!("${}", self.var).as_bytes())?;
         Ok(())
     }
 }
@@ -77,92 +83,191 @@ pub struct SymbolStatement {
     pub symbol: Symbolizable,
 }
 
-impl SymbolVar {
-    pub fn parse(pair: Pair<parse::Rule>) -> Self {
-        assert_eq!(pair.as_rule(), Rule::symbolvar);
-        Self { var: pair.into_inner().next().unwrap().as_str().to_string(), }
-    }
-}
+impl SymbolStatement {
+    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query) -> Result<(), Error> {
+        assert_eq!(pair.as_rule(), Rule::symbolstatement);
 
-impl Display for SymbolVar {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "${}", self.var)
-    }
-}
+        let mut pairs = pair.into_inner();
 
-impl Display for SymbolStatement {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unimplemented!()
-        // match &self.var {
-        //     Some(var) => write!(f, "{}:\t{}", var, self.symbol),
-        //     None => write!(f, "\t{}", self.symbol),
-        // }
-    }
-}
+        let next = pairs.next().unwrap();
 
-#[derive(Debug)]
-pub struct Variable(pub(crate) String);
+        let (var, next) = if let Rule::symbolvar = next.as_rule() {
+            (Some(SymbolVar::parse(next)?), pairs.next().unwrap())
+        } else {
+            (None, next)
+        };
 
-#[derive(Debug)]
-pub struct FlatText(pub(crate) String);
-
-#[derive(Debug)]
-pub struct Category {}
-
-#[derive(Debug)]
-pub struct Agent(pub(crate) String);
-
-#[derive(Debug)]
-pub struct GroundSymbol;
-
-#[derive(Debug)]
-pub enum Symbolizable {
-    Artifact(Artifact),
-    SymbolPair {
-        left:  Box<Symbolizable>,
-        right: Box<Symbolizable>,
-    }, // (Alledge/ Analogy)
-
-    // TODO 1 - determine if we want to flatten/variablize/pointerize the tree as we parse it
-    // or if we flatten that structure at a later phase?
-    SymbolVar(SymbolVar),
-    Ground,
-    Symbolize,
-}
-
-impl Symbolizable {
-    pub fn parse(pair: Pair<parse::Rule>) -> Self {
-        assert_eq!(pair.as_rule(), Rule::symbolizable);
-        let element = pair.into_inner().next().unwrap();
-
-        match element.as_rule() {
-            Rule::artifact => unimplemented!(),
-            Rule::symbolvar => Symbolizable::SymbolVar(SymbolVar::parse(element)),
-            Rule::ground => unimplemented!(),
-            Rule::symbolize => unimplemented!(),
-            Rule::alledge => unimplemented!(),
-            Rule::symbol_pair => unimplemented!(),
+        // based on the grammar, we are guaranteed to have allege | ground | symbolize
+        let symbol = match next.as_rule() {
+            Rule::allege => Symbolizable::Allege(Allege::parse(next)?),
+            Rule::ground => Symbolizable::Ground(Ground::parse(next)?),
+            Rule::symbolize => Symbolizable::Symbolize(Symbolize::parse(next)?),
             _ => unreachable!(),
-        }
+        };
+
+        let me = SymbolStatement { var, symbol };
+
+        query.add_symbol_statement(me);
+
+        Ok(())
     }
 
-    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), crate::error::Error> {
-        match self {
-            Symbolizable::Artifact(a) => unimplemented!("A"),
-            Symbolizable::SymbolPair { left, right } => unimplemented!("B"),
-            Symbolizable::SymbolVar(sv) => sv.write(writer)?,
-            Symbolizable::Ground => unimplemented!("D"),
-            Symbolizable::Symbolize => unimplemented!("E"),
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        if let Some(var) = &self.var {
+            var.write(writer, false)?;
+            writer.write(b" = ")?;
         }
-
+        self.symbol.write(writer, true, false)?;
+        writer.write(b"\n")?;
         Ok(())
     }
 }
 
 #[derive(Debug)]
-pub struct SymbolPair {
-    pub(crate) thing:      Symbolizable,
-    pub(crate) categorize: Symbolizable,
+pub struct Ground(Box<Symbolizable>);
+
+impl Ground {
+    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+        assert_eq!(pair.as_rule(), Rule::ground);
+        Ok(Ground(Box::new(Symbolizable::parse(pair.into_inner().next().unwrap())?)))
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
+        if verbose {
+            writer.write(b"Ground(")?;
+            self.0.write(writer, false, false)?;
+            writer.write(b")")?;
+        } else {
+            writer.write(b"{")?;
+            self.0.write(writer, false, false)?;
+            writer.write(b"}")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct Allege {
+    left:  Box<Symbolizable>,
+    right: Box<Symbolizable>,
+}
+
+impl Allege {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+        assert_eq!(pair.as_rule(), Rule::allege);
+
+        let mut symbol_pair = pair.into_inner().next().unwrap().into_inner();
+
+        // According to the grammar, Allege may only contain symbol_pair
+        let left = Symbolizable::parse(symbol_pair.next().unwrap())?;
+        let right = Symbolizable::parse(symbol_pair.next().unwrap())?;
+
+        Ok(Allege { left:  Box::new(left),
+                    right: Box::new(right), })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool, nest: bool) -> Result<(), std::io::Error> {
+        if verbose {
+            writer.write(b"Allege(")?;
+        } else if nest {
+            writer.write(b"(")?;
+        }
+
+        self.left.write(writer, false, true)?;
+        writer.write(b" : ")?;
+        self.right.write(writer, false, true)?;
+
+        if verbose {
+            writer.write(b")")?;
+        } else if nest {
+            writer.write(b")")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct Symbolize(Box<Symbolizable>);
+impl Symbolize {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+        assert_eq!(pair.as_rule(), Rule::symbolize);
+        Ok(Symbolize(Box::new(Symbolizable::parse(pair.into_inner().next().unwrap())?)))
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
+        if verbose {
+            writer.write(b"Symbolize(")?;
+        }
+
+        self.0.write(writer, false, false)?;
+
+        if verbose {
+            writer.write(b")")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub enum Symbolizable {
+    Artifact(Artifact),
+    Allege(Allege),
+    // TODO 1 - determine if we want to flatten/variablize/pointerize the tree as we parse it
+    // or if we flatten that structure at a later phase?
+    SymbolVar(SymbolVar),
+    Ground(Ground),
+    Symbolize(Symbolize),
+}
+
+impl Symbolizable {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+        // because of left-recursion issues, we had to construct symbolizable in a slightly odd way
+        // which necessitates allege and ground to support symbol_pair AND symbolizable as potential child elements
+        // So we are handling symbol_pair if they were symbolizable
+        let s = match pair.as_rule() {
+            Rule::symbol_pair => {
+                let mut inner = pair.into_inner();
+                let left = Symbolizable::parse(inner.next().unwrap())?;
+                let right = Symbolizable::parse(inner.next().unwrap())?;
+                Symbolizable::Allege(Allege { left:  Box::new(left),
+                                              right: Box::new(right), })
+            },
+            Rule::symbolizable => {
+                let element = pair.into_inner().next().unwrap();
+
+                match element.as_rule() {
+                    Rule::artifact => Symbolizable::Artifact(Artifact::parse(element)?),
+                    Rule::symbolvar => Symbolizable::SymbolVar(SymbolVar::parse(element)?),
+                    Rule::ground => Symbolizable::Ground(Ground::parse(element)?),
+                    Rule::symbolize => Symbolizable::Symbolize(Symbolize::parse(element)?),
+                    Rule::allege => Symbolizable::Allege(Allege::parse(element)?),
+                    Rule::symbol_pair => {
+                        let mut inner = element.into_inner();
+                        let left = Symbolizable::parse(inner.next().unwrap())?;
+                        let right = Symbolizable::parse(inner.next().unwrap())?;
+                        Symbolizable::Allege(Allege { left:  Box::new(left),
+                                                      right: Box::new(right), })
+                    },
+                    _ => unreachable!(),
+                }
+            },
+            _ => unreachable!(),
+        };
+
+        Ok(s)
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool, nest: bool) -> Result<(), std::io::Error> {
+        match self {
+            Symbolizable::Artifact(a) => a.write(writer, verbose)?,
+            Symbolizable::Allege(a) => a.write(writer, verbose, nest)?,
+            Symbolizable::SymbolVar(sv) => sv.write(writer, verbose)?,
+            Symbolizable::Ground(g) => g.write(writer, verbose)?,
+            Symbolizable::Symbolize(s) => s.write(writer, verbose)?,
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -173,34 +278,33 @@ pub enum Artifact {
     DataNode(DataNode),
     DataGraph(DataGraph),
     DataNodeRelation(DataNodeRelation),
+    ArtifactVar(ArtifactVar),
 }
 
 impl Artifact {
-    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), crate::error::Error> {
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
         match self {
             Artifact::Agent(agent) => agent.write(writer)?,
-            Artifact::Url(url) => unimplemented!(),
+            Artifact::Url(url) => url.write(writer, false)?,
             Artifact::Text(text) => text.write(writer, verbose)?,
             Artifact::DataNode(datanode) => datanode.write(writer)?,
+            Artifact::ArtifactVar(var) => var.write(writer)?,
             _ => unimplemented!(),
         }
         Ok(())
     }
 
-    pub fn parse(pair: Pair<parse::Rule>) -> Self {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::artifact);
-        let inner = pair.into_inner().next().unwrap();
+        let child = pair.into_inner().next().unwrap();
 
-        match inner.as_rule() {
-            Rule::artifactvar => unimplemented!(),
-            Rule::agent => {
-                let agent_ident = inner.into_inner().next().unwrap();
-                Artifact::Text(Text { text: agent_ident.as_str().to_string(), })
-            },
+        let a = match child.as_rule() {
+            Rule::artifactvar => Artifact::ArtifactVar(ArtifactVar::parse(child)?),
+            Rule::agent => Artifact::Agent(Agent::parse(child)?),
             Rule::datagraph => unimplemented!(),
             Rule::datanode => {
-                let mut inner = inner.into_inner();
-                let data_type = Symbolizable::parse(inner.next().unwrap());
+                let mut inner = child.into_inner();
+                let data_type = Symbolizable::parse(inner.next().unwrap())?;
                 let b64 = inner.next().unwrap();
                 assert_eq!(b64.as_rule(), Rule::base64);
                 let data = base64::decode(b64.as_str()).unwrap();
@@ -212,28 +316,28 @@ impl Artifact {
             },
             Rule::datarelation => unimplemented!(),
             Rule::text => {
-                let qs = inner.into_inner().next().unwrap();
+                let qs = child.into_inner().next().unwrap();
                 let s = qs.into_inner().next().unwrap();
 
                 Artifact::Text(Text { text: s.as_str().to_string(), })
             },
-            Rule::url => unimplemented!(),
+            Rule::url => Artifact::Url(Url::parse(child)?),
             _ => unreachable!(),
-        }
+        };
+
+        Ok(a)
     }
 }
 
-impl Display for Artifact {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            // Agent(agent_id) => write!()
-            _ => unimplemented!(),
-        }
-    }
-}
-
+#[derive(Debug)]
+pub struct Agent(pub(crate) String);
 impl Agent {
-    pub fn write<T: std::io::Write>(&self, mut writer: T) -> Result<(), crate::error::Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+        assert_eq!(pair.as_rule(), Rule::agent);
+        Ok(Agent(pair.into_inner().next().unwrap().as_str().to_string()))
+    }
+
+    pub fn write<T: std::io::Write>(&self, mut writer: T) -> Result<(), std::io::Error> {
         writer.write(format!("Agent({})", self.0).as_bytes())?;
         Ok(())
     }
@@ -245,9 +349,14 @@ pub struct Url {
 }
 
 impl Url {
-    pub fn render(&self) -> String {
-        unimplemented!()
-        // self.url
+    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+        let pair = pair.into_inner().next().unwrap();
+        Ok(Self { url: pair.as_str().replace("\\\"", "\""), })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, _verbose: bool) -> Result<(), std::io::Error> {
+        writer.write(format!("Url(\"{}\")", self.url.replace("\"", "\\\"")).as_bytes())?;
+        Ok(())
     }
 }
 
@@ -257,7 +366,12 @@ pub struct Text {
 }
 
 impl Text {
-    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), crate::error::Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+        let pair = pair.into_inner().next().unwrap();
+        Ok(Self { text: pair.as_str().replace("\\\"", "\""), })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
         if verbose {
             writer.write(format!("Text(\"{}\")", self.text.replace("\"", "\\\"")).as_bytes())?;
         } else {
@@ -276,9 +390,9 @@ pub struct DataNode {
 }
 
 impl DataNode {
-    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), crate::error::Error> {
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
         writer.write(b"DataNode(")?;
-        self.data_type.write(writer)?;
+        self.data_type.write(writer, false, false)?;
         writer.write(b";")?;
 
         {

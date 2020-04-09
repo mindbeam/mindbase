@@ -1,24 +1,24 @@
-Alledge(("Dive" : "Dove") : ("Drive" : "Drove"))
-Alledge(("Rose": "Flower") : ("Hammer" : "Tool"))
-Alledge(("Up":"Down") : ("Left":"Right"))
+Allege(("Dive" : "Dove") : ("Drive" : "Drove"))
+Allege(("Rose": "Flower") : ("Hammer" : "Tool"))
+Allege(("Up":"Down") : ("Left":"Right"))
 
 # Function bridge
-Alledge(("Eye":"See") : ("Finger":"Touch"))
-Alledge(("Shovel":"Dig") : ("Fork":"Eat"))
+Allege(("Eye":"See") : ("Finger":"Touch"))
+Allege(("Shovel":"Dig") : ("Fork":"Eat"))
 
 # Lacking Bridge
 
-Alledge(("Ugly":"Beauty") : ("Serious":"Humor"))
+Allege(("Ugly":"Beauty") : ("Serious":"Humor"))
 
 # Characteristic Bridge
 
-Alledge(("Athelete":"Fit") : ("Priest":"Religious"))
-Alledge(("Microwave":"Heat") : ("Refrigerator":"Cool"))
-Alledge(("Comedy":"Funny") : ("Tragedy":"Sad"))
+Allege(("Athelete":"Fit") : ("Priest":"Religious"))
+Allege(("Microwave":"Heat") : ("Refrigerator":"Cool"))
+Allege(("Comedy":"Funny") : ("Tragedy":"Sad"))
 
 # Should we have a !! notation?
 
 #imd: Intricate Mechanical Design
 #io: Intelligent Outcome
-#Alledge("Watch" : ($imd $io))
+#Allege("Watch" : ($imd $io))
 #Requires Watchmaker

@@ -6,7 +6,7 @@ artifactvar = ${ "@" ~ literal }
 // You can symbolize without storing the symbovar
 // $foo : Symbolize(..)
 // Symbolize(..)
-symbolstatement = { (symbolvar ~ "=")? ~ ( alledge | ground | symbolize ) }
+symbolstatement = { (symbolvar ~ "=")? ~ ( allege | ground | symbolize ) }
 
 // But there's not much point to doing so for an artifact, so the artifactvar is not optional
 // @foo : Url("http://...")
@@ -15,7 +15,7 @@ artifactstatement = { artifactvar ~ "=" ~ artifact }
 // Symbols
 ground = { ( "Ground(" ~ (symbol_pair | symbolizable) ~ ")") | ("{" ~ (symbol_pair|symbolizable) ~ "}") }
 symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
-alledge =  { "Alledge(" ~ symbol_pair ~ ")" }
+allege =  { "Allege(" ~ symbol_pair ~ ")" }
 
 // Artifacts
 artifact  = { artifactvar | agent | url | text | datagraph | datanode | datarelation }
@@ -38,7 +38,7 @@ char = {
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-symbolizable = { artifact | symbolvar | ground | symbolize | alledge | "(" ~ symbol_pair ~ ")" }
+symbolizable = { artifact | symbolvar | ground | symbolize | allege | "(" ~ symbol_pair ~ ")" }
 symbol_pair = { symbolizable ~ ":" ~ symbolizable }
 
 WHITESPACE = _{ " " | "\t" }
