@@ -276,8 +276,7 @@ pub enum Artifact {
     Url(Url),
     Text(Text),
     DataNode(DataNode),
-    DataGraph(DataGraph),
-    DataNodeRelation(DataNodeRelation),
+    DataRelation(DataRelation),
     ArtifactVar(ArtifactVar),
 }
 
@@ -287,9 +286,9 @@ impl Artifact {
             Artifact::Agent(agent) => agent.write(writer)?,
             Artifact::Url(url) => url.write(writer, false)?,
             Artifact::Text(text) => text.write(writer, verbose)?,
-            Artifact::DataNode(datanode) => datanode.write(writer)?,
+            Artifact::DataNode(node) => node.write(writer)?,
+            Artifact::DataRelation(relation) => relation.write(writer)?,
             Artifact::ArtifactVar(var) => var.write(writer)?,
-            _ => unimplemented!(),
         }
         Ok(())
     }
@@ -301,26 +300,9 @@ impl Artifact {
         let a = match child.as_rule() {
             Rule::artifactvar => Artifact::ArtifactVar(ArtifactVar::parse(child)?),
             Rule::agent => Artifact::Agent(Agent::parse(child)?),
-            Rule::datagraph => unimplemented!(),
-            Rule::datanode => {
-                let mut inner = child.into_inner();
-                let data_type = Symbolizable::parse(inner.next().unwrap())?;
-                let b64 = inner.next().unwrap();
-                assert_eq!(b64.as_rule(), Rule::base64);
-                let data = base64::decode(b64.as_str()).unwrap();
-
-                Artifact::DataNode(DataNode { data_type: Box::new(data_type),
-                                              data,
-                                              relations: Vec::new() })
-                // TODO 1 - handle relations. Do we want to get rid of that field in favor of DataRelation?
-            },
-            Rule::datarelation => unimplemented!(),
-            Rule::text => {
-                let qs = child.into_inner().next().unwrap();
-                let s = qs.into_inner().next().unwrap();
-
-                Artifact::Text(Text { text: s.as_str().to_string(), })
-            },
+            Rule::datanode => Artifact::DataNode(DataNode::parse(child)?),
+            Rule::datarelation => Artifact::DataRelation(DataRelation::parse(child)?),
+            Rule::text => Artifact::Text(Text::parse(child)?),
             Rule::url => Artifact::Url(Url::parse(child)?),
             _ => unreachable!(),
         };
@@ -367,8 +349,10 @@ pub struct Text {
 
 impl Text {
     fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
-        let pair = pair.into_inner().next().unwrap();
-        Ok(Self { text: pair.as_str().replace("\\\"", "\""), })
+        let qs = pair.into_inner().next().unwrap();
+        let s = qs.into_inner().next().unwrap();
+
+        Ok(Text { text: s.as_str().to_string().replace("\\\"", "\""), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
@@ -385,20 +369,38 @@ impl Text {
 #[derive(Debug)]
 pub struct DataNode {
     pub data_type: Box<Symbolizable>,
-    pub data:      Vec<u8>,
-    pub relations: Vec<DataNodeRelation>,
+    pub data:      Option<Vec<u8>>,
 }
 
 impl DataNode {
+    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+        let mut inner = pair.into_inner();
+        let data_type = Symbolizable::parse(inner.next().unwrap())?;
+
+        let data = match inner.next() {
+            Some(next) => {
+                match next.as_rule() {
+                    Rule::base64 => Some(base64::decode(next.as_str()).unwrap()),
+                    Rule::quoted_string => Some(next.as_str().replace("\\\"", "\"").as_bytes().to_owned()),
+                    _ => unreachable!(),
+                }
+            },
+            None => None,
+        };
+
+        Ok(DataNode { data_type: Box::new(data_type),
+                      data })
+    }
+
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
         writer.write(b"DataNode(")?;
         self.data_type.write(writer, false, false)?;
-        writer.write(b";")?;
 
-        {
+        if let Some(data) = &self.data {
+            writer.write(b";")?;
             let mut enc = base64::write::EncoderWriter::new(writer, base64::STANDARD);
             use std::io::Write;
-            enc.write_all(&self.data)?;
+            enc.write_all(data)?;
         }
         writer.write(b")")?;
 
@@ -407,12 +409,36 @@ impl DataNode {
 }
 
 #[derive(Debug)]
-pub struct DataGraph {
-    pub graph_type: Box<Symbolizable>,
-    pub bytes:      u32, // Optional
-    /// Must contain all unreachable nodes. Optionally reachable nodes may be present
-    pub nodes:      Vec<Symbolizable>,
+pub struct DataRelation {
+    pub relation_type: Box<Symbolizable>,
+    pub from:          Box<Symbolizable>,
+    pub to:            Box<Symbolizable>,
 }
 
-#[derive(Debug)]
-pub struct DataNodeRelation {}
+impl DataRelation {
+    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+        let mut inner = pair.into_inner();
+
+        let relation_type = Symbolizable::parse(inner.next().unwrap())?;
+        let from = Symbolizable::parse(inner.next().unwrap())?;
+        let to = Symbolizable::parse(inner.next().unwrap())?;
+
+        Ok(DataRelation { relation_type: Box::new(relation_type),
+                          from:          Box::new(from),
+                          to:            Box::new(to), })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        writer.write(b"DataRelation(")?;
+        self.relation_type.write(writer, false, false)?;
+        writer.write(b";")?;
+
+        self.from.write(writer, false, false)?;
+        writer.write(b" > ")?;
+
+        self.to.write(writer, false, false)?;
+        writer.write(b")")?;
+
+        Ok(())
+    }
+}

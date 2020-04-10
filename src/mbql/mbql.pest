@@ -18,14 +18,13 @@ symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
 allege =  { "Allege(" ~ symbol_pair ~ ")" }
 
 // Artifacts
-artifact  = { artifactvar | agent | url | text | datagraph | datanode | datarelation }
+artifact  = { artifactvar | agent | url | text | datanode | datarelation }
 agent     = { "Agent(" ~ agent_ident ~ ")" }
 agent_ident = { "default" | ASCII_ALPHANUMERIC{32} }
 url       = { "Url(" ~ quoted_string ~ ")" }
 text      = { "Text(" ~ quoted_string ~ ")" | quoted_string }
-datagraph    = { "DataGraph(" ~ quoted_string ~ ")" }
-datanode     = { "DataNode(" ~ symbolizable ~ ";" ~ base64 ~ ")" }
-datarelation = { "DataRelation(" ~ quoted_string ~ ")" }
+datanode     = { "DataNode(" ~ symbolizable ~ (";" ~ (quoted_string | base64))? ~ ")" }
+datarelation = { "DataRelation(" ~ symbolizable  ~ ";" ~ symbolizable  ~ ">" ~ symbolizable ~ ")" }
 
 base64 = @{ base64_char+ ~ "="{,2} }
 base64_char = { '0'..'9' | 'a'..'z' | 'A'..'Z' | "+" | "/"  }
