@@ -1,8 +1,10 @@
 #[derive(Debug)]
-pub struct Error {
+pub struct MBQLError {
     pub position: Position,
     pub kind:     ErrorKind,
 }
+
+use crate::error::MBError;
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -26,6 +28,7 @@ pub enum ErrorKind {
         body: String,
         // ron:         ron::de::Error,
     },
+    MBError(Box<MBError>),
 }
 #[derive(Debug)]
 pub struct Position {
@@ -38,14 +41,20 @@ impl Position {
     }
 }
 
-impl std::convert::From<Error> for std::io::Error {
-    fn from(error: Error) -> Self {
+impl std::convert::From<MBError> for MBQLError {
+    fn from(error: MBError) -> Self {
+        MBQLError { position: Position::none(),
+                    kind:     ErrorKind::MBError(Box::new(error)), }
+    }
+}
+impl std::convert::From<MBQLError> for std::io::Error {
+    fn from(error: MBQLError) -> Self {
         use std::io::ErrorKind;
         std::io::Error::new(ErrorKind::Other, format!("{}", error))
     }
 }
 
-impl std::fmt::Display for Error {
+impl std::fmt::Display for MBQLError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.kind {
             ErrorKind::IOError { error } => f.write_fmt(format_args!("IO Error: {}", error)),
@@ -57,6 +66,7 @@ impl std::fmt::Display for Error {
             ErrorKind::InvalidCommand { command } => f.write_str("meow"),
             ErrorKind::UnknownCommand { command } => f.write_str("meow"),
             ErrorKind::CommandParse { body } => f.write_str("meow"),
+            ErrorKind::MBError(e) => write!(f, "{:?}", e),
         }
     }
 }

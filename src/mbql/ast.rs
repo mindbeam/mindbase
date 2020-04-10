@@ -1,7 +1,14 @@
 pub mod artifact;
 
-use super::parse;
-use crate::mbql::error::Error;
+use super::{
+    parse,
+    Query,
+};
+use crate::{
+    mbql::error::MBQLError,
+    Concept,
+    MindBase,
+};
 use parse::Rule;
 use pest::iterators::Pair;
 
@@ -16,7 +23,7 @@ pub struct ArtifactVar {
 }
 
 impl ArtifactVar {
-    fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+    fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifactvar);
         Ok(Self { var: pair.into_inner().next().unwrap().as_str().to_string(), })
     }
@@ -33,18 +40,22 @@ pub struct SymbolVar {
 }
 
 impl SymbolVar {
-    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolvar);
         Ok(Self { var: pair.into_inner().next().unwrap().as_str().to_string(), })
     }
 
-    pub fn write<T: std::io::Write>(&self, writer: &mut T, _verbose: bool) -> Result<(), std::io::Error> {
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
         writer.write(format!("${}", self.var).as_bytes())?;
         Ok(())
     }
 
     pub fn to_string(&self) -> String {
         self.var.clone()
+    }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        unimplemented!()
     }
 }
 
@@ -54,7 +65,7 @@ pub struct ArtifactStatement {
 }
 
 impl ArtifactStatement {
-    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query) -> Result<(), Error> {
+    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query) -> Result<(), MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifactstatement);
 
         let mut pairs = pair.into_inner();
@@ -84,7 +95,7 @@ pub struct SymbolStatement {
 }
 
 impl SymbolStatement {
-    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query) -> Result<(), Error> {
+    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query) -> Result<(), MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolstatement);
 
         let mut pairs = pair.into_inner();
@@ -114,22 +125,29 @@ impl SymbolStatement {
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
         if let Some(var) = &self.var {
-            var.write(writer, false)?;
+            var.write(writer)?;
             writer.write(b" = ")?;
         }
         self.symbol.write(writer, true, false)?;
         writer.write(b"\n")?;
         Ok(())
     }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        self.symbol.apply(query, mb)
+    }
 }
 
 #[derive(Debug)]
-pub struct Ground(Box<Symbolizable>);
+pub struct Ground(Box<GroundSymbolizable>);
 
 impl Ground {
-    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::ground);
-        Ok(Ground(Box::new(Symbolizable::parse(pair.into_inner().next().unwrap())?)))
+        // TODO - Constrain Ground so that it may not contain a free Symbolize
+        Ok(Ground(Box::new(GroundSymbolizable::parse(pair.into_inner()
+                                                         .next()
+                                                         .unwrap())?)))
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
@@ -144,6 +162,12 @@ impl Ground {
         }
         Ok(())
     }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        // let symbol = mb.get_ground_symbol(self.0)?;
+        // Ok(symbol)
+        unimplemented!()
+    }
 }
 
 #[derive(Debug)]
@@ -153,7 +177,7 @@ pub struct Allege {
 }
 
 impl Allege {
-    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::allege);
 
         let mut symbol_pair = pair.into_inner().next().unwrap().into_inner();
@@ -184,12 +208,16 @@ impl Allege {
         }
         Ok(())
     }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug)]
 pub struct Symbolize(Box<Symbolizable>);
 impl Symbolize {
-    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolize);
         Ok(Symbolize(Box::new(Symbolizable::parse(pair.into_inner().next().unwrap())?)))
     }
@@ -206,6 +234,10 @@ impl Symbolize {
         }
         Ok(())
     }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug)]
@@ -220,7 +252,7 @@ pub enum Symbolizable {
 }
 
 impl Symbolizable {
-    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
         // because of left-recursion issues, we had to construct symbolizable in a slightly odd way
         // which necessitates allege and ground to support symbol_pair AND symbolizable as potential child elements
         // So we are handling symbol_pair if they were symbolizable
@@ -261,12 +293,124 @@ impl Symbolizable {
         match self {
             Symbolizable::Artifact(a) => a.write(writer, verbose)?,
             Symbolizable::Allege(a) => a.write(writer, verbose, nest)?,
-            Symbolizable::SymbolVar(sv) => sv.write(writer, verbose)?,
+            Symbolizable::SymbolVar(sv) => sv.write(writer)?,
             Symbolizable::Ground(g) => g.write(writer, verbose)?,
             Symbolizable::Symbolize(s) => s.write(writer, verbose)?,
         }
 
         Ok(())
+    }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        match self {
+            Symbolizable::Artifact(a) => a.apply(query, mb),
+            Symbolizable::Allege(a) => a.apply(query, mb),
+            Symbolizable::SymbolVar(sv) => sv.apply(query, mb),
+            Symbolizable::Ground(g) => g.apply(query, mb),
+            Symbolizable::Symbolize(s) => s.apply(query, mb),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum GroundSymbolizable {
+    Artifact(Artifact),
+    SymbolVar(SymbolVar),
+    Ground(Ground),
+    GroundPair(GroundPair),
+}
+
+impl GroundSymbolizable {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
+        let s = match pair.as_rule() {
+            Rule::ground_symbol_pair => {
+                let mut inner = pair.into_inner();
+                let left = GroundSymbolizable::parse(inner.next().unwrap())?;
+                let right = GroundSymbolizable::parse(inner.next().unwrap())?;
+                GroundSymbolizable::GroundPair(GroundPair { left:  Box::new(left),
+                                                            right: Box::new(right), })
+            },
+            Rule::ground_symbolizable => {
+                let element = pair.into_inner().next().unwrap();
+
+                match element.as_rule() {
+                    Rule::artifact => GroundSymbolizable::Artifact(Artifact::parse(element)?),
+                    Rule::symbolvar => GroundSymbolizable::SymbolVar(SymbolVar::parse(element)?),
+                    Rule::ground => GroundSymbolizable::Ground(Ground::parse(element)?),
+                    Rule::ground_symbol_pair => {
+                        let mut inner = element.into_inner();
+                        let left = GroundSymbolizable::parse(inner.next().unwrap())?;
+                        let right = GroundSymbolizable::parse(inner.next().unwrap())?;
+                        GroundSymbolizable::GroundPair(GroundPair { left:  Box::new(left),
+                                                                    right: Box::new(right), })
+                    },
+                    _ => unreachable!(),
+                }
+            },
+            _ => unreachable!(),
+        };
+
+        Ok(s)
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool, nest: bool) -> Result<(), std::io::Error> {
+        match self {
+            GroundSymbolizable::Artifact(a) => a.write(writer, verbose)?,
+            GroundSymbolizable::GroundPair(p) => p.write(writer, nest)?,
+            GroundSymbolizable::SymbolVar(sv) => sv.write(writer)?,
+            GroundSymbolizable::Ground(g) => g.write(writer, verbose)?,
+        }
+
+        Ok(())
+    }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        match self {
+            GroundSymbolizable::Artifact(a) => a.apply(query, mb),
+            GroundSymbolizable::GroundPair(a) => a.apply(query, mb),
+            GroundSymbolizable::SymbolVar(sv) => sv.apply(query, mb),
+            GroundSymbolizable::Ground(g) => g.apply(query, mb),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct GroundPair {
+    left:  Box<GroundSymbolizable>,
+    right: Box<GroundSymbolizable>,
+}
+
+impl GroundPair {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
+        assert_eq!(pair.as_rule(), Rule::allege);
+
+        let mut ground_symbol_pair = pair.into_inner().next().unwrap().into_inner();
+
+        // According to the grammar, Allege may only contain symbol_pair
+        let left = GroundSymbolizable::parse(ground_symbol_pair.next().unwrap())?;
+        let right = GroundSymbolizable::parse(ground_symbol_pair.next().unwrap())?;
+
+        Ok(GroundPair { left:  Box::new(left),
+                        right: Box::new(right), })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T, nest: bool) -> Result<(), std::io::Error> {
+        if nest {
+            writer.write(b"(")?;
+        }
+
+        self.left.write(writer, false, true)?;
+        writer.write(b" : ")?;
+        self.right.write(writer, false, true)?;
+
+        if nest {
+            writer.write(b")")?;
+        }
+        Ok(())
+    }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        unimplemented!()
     }
 }
 
@@ -293,7 +437,7 @@ impl Artifact {
         Ok(())
     }
 
-    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, Error> {
+    pub fn parse(pair: Pair<parse::Rule>) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifact);
         let child = pair.into_inner().next().unwrap();
 
@@ -309,12 +453,16 @@ impl Artifact {
 
         Ok(a)
     }
+
+    pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug)]
 pub struct Agent(pub(crate) String);
 impl Agent {
-    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::agent);
         Ok(Agent(pair.into_inner().next().unwrap().as_str().to_string()))
     }
@@ -331,7 +479,7 @@ pub struct Url {
 }
 
 impl Url {
-    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, MBQLError> {
         let pair = pair.into_inner().next().unwrap();
         Ok(Self { url: pair.as_str().replace("\\\"", "\""), })
     }
@@ -348,7 +496,7 @@ pub struct Text {
 }
 
 impl Text {
-    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, MBQLError> {
         let qs = pair.into_inner().next().unwrap();
         let s = qs.into_inner().next().unwrap();
 
@@ -373,7 +521,7 @@ pub struct DataNode {
 }
 
 impl DataNode {
-    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, MBQLError> {
         let mut inner = pair.into_inner();
         let data_type = Symbolizable::parse(inner.next().unwrap())?;
 
@@ -416,7 +564,7 @@ pub struct DataRelation {
 }
 
 impl DataRelation {
-    fn parse(pair: Pair<Rule>) -> Result<Self, Error> {
+    fn parse(pair: Pair<Rule>) -> Result<Self, MBQLError> {
         let mut inner = pair.into_inner();
 
         let relation_type = Symbolizable::parse(inner.next().unwrap())?;

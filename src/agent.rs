@@ -10,7 +10,7 @@ use crate::{
         Alledgable,
         Allegation,
     },
-    error::Error,
+    error::MBError,
     Artifact,
     MindBase,
 };
@@ -35,10 +35,10 @@ impl AgentId {
         base64::encode_config(&self.pubkey[0..12], STANDARD_NO_PAD)
     }
 
-    pub fn from_base64(input: &str) -> Result<Self, Error> {
+    pub fn from_base64(input: &str) -> Result<Self, MBError> {
         use std::convert::TryInto;
-        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
-        let array: [u8; 32] = decoded[..].try_into().map_err(|_| Error::TryFromSlice)?;
+        let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
+        let array: [u8; 32] = decoded[..].try_into().map_err(|_| MBError::TryFromSlice)?;
         Ok(AgentId { pubkey: array.into() })
     }
 }
@@ -117,7 +117,7 @@ impl std::fmt::Display for Agent {
 // }
 
 impl Alledgable for &Agent {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
         let artifact_id = mb.put_artifact(self.id())?;
         let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
         mb.put_allegation(&allegation)?;

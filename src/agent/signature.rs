@@ -1,6 +1,6 @@
 use crate::{
     agent::Agent,
-    error::Error,
+    error::MBError,
     util::AsBytes,
 };
 use serde::{
@@ -19,7 +19,7 @@ pub struct Signature(#[serde(serialize_with = "crate::util::array64::ser_as_base
                      pub(crate) [u8; 64]);
 
 impl Signature {
-    pub(crate) fn new<T>(agent: &Agent, content: T) -> Result<Self, Error>
+    pub(crate) fn new<T>(agent: &Agent, content: T) -> Result<Self, MBError>
         where T: HashHelper
     {
         let mut hasher: Sha512 = Sha512::default();

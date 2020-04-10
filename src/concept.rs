@@ -1,6 +1,6 @@
 use crate::{
     allegation::AllegationId,
-    error::Error,
+    error::MBError,
     Analogy,
     MindBase,
 };
@@ -13,6 +13,7 @@ use std::fmt;
 // QUESTION: What is an "uncertainty budget" and how can it help us?
 // TODO 2 - create a Context object that contains a lossy lookup of Concepts on a rolling basis
 
+// TODO 2 - rename Concept -> Symbol and AllegationID to... Atom?
 /// Pointer to a region within Semantic/Knowledge-Space
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Concept {
@@ -39,11 +40,11 @@ impl fmt::Display for Concept {
 }
 
 impl Concept {
-    pub fn is_subjective(&self, _mb: &MindBase) -> Result<bool, Error> {
+    pub fn is_subjective(&self, _mb: &MindBase) -> Result<bool, MBError> {
         unimplemented!()
     }
 
-    pub fn is_intersubjective(&self, _mb: &MindBase) -> Result<bool, Error> {
+    pub fn is_intersubjective(&self, _mb: &MindBase) -> Result<bool, MBError> {
         unimplemented!()
     }
 
@@ -94,7 +95,7 @@ impl Concept {
     }
 
     /// Narrow the Symbols in this concept to include only those
-    pub fn narrow_by(&mut self, mb: &MindBase, test_memberof: &Concept) -> Result<(), Error> {
+    pub fn narrow_by(&mut self, mb: &MindBase, test_memberof: &Concept) -> Result<(), MBError> {
         if self.is_null() {
             // Can't pull over any further
             return Ok(());

@@ -32,7 +32,7 @@ pub use self::{
         FlatText,
     },
     concept::Concept,
-    error::Error,
+    error::MBError,
 };
 
 use allegation::ArtifactList;
@@ -63,7 +63,7 @@ pub struct MindBase {
     analogy_rev: sled::Tree,
 
     /// Reverse lookup for all allegations
-    allegation_rev: sled::Tree,
+    atoms_by_artifact_agent: sled::Tree,
 
     /// Credential storage for all agents we manage
     my_agents: sled::Tree,
@@ -79,7 +79,7 @@ pub struct MindBase {
 
 impl MindBase {
     #[allow(dead_code)]
-    pub fn open(basedir: &std::path::Path) -> Result<Self, Error> {
+    pub fn open(basedir: &std::path::Path) -> Result<Self, MBError> {
         let pathbuf = basedir.join(format!("./mindbase.sled"));
 
         let db = sled::open(pathbuf.as_path())?;
@@ -103,7 +103,7 @@ impl MindBase {
                             my_agents,
                             artifacts,
                             _known_agents,
-                            allegation_rev,
+                            atoms_by_artifact_agent: allegation_rev,
                             analogy_rev,
                             ground_symbol_agents,
                             default_agent };
@@ -116,7 +116,7 @@ impl MindBase {
     }
 
     /// Include whatever batteries we want to include
-    pub fn genesis(&self) -> Result<(), Error> {
+    pub fn genesis(&self) -> Result<(), MBError> {
         // TODO 2 - use the genesis Agent, not ours
         // TODO 2 - make this NoOp when an exact artifact exists
         //    Other entity types should NOT deduplicate, only artifacts. This means they have to be hashed, but other entity types
@@ -126,11 +126,11 @@ impl MindBase {
         Ok(())
     }
 
-    pub fn default_agent(&self) -> Result<Agent, Error> {
+    pub fn default_agent(&self) -> Result<Agent, MBError> {
         _default_agent(&self.my_agents)
     }
 
-    pub fn get_allegation(&self, allegation_id: &AllegationId) -> Result<Option<Allegation>, Error> {
+    pub fn get_allegation(&self, allegation_id: &AllegationId) -> Result<Option<Allegation>, MBError> {
         match self.allegations.get(allegation_id.as_ref())? {
             Some(ivec) => {
                 let allegation: Allegation = bincode::deserialize(&ivec)?;
@@ -140,7 +140,7 @@ impl MindBase {
         }
     }
 
-    pub fn put_allegation(&self, allegation: &Allegation) -> Result<AllegationId, Error> {
+    pub fn put_allegation(&self, allegation: &Allegation) -> Result<AllegationId, MBError> {
         let encoded: Vec<u8> = bincode::serialize(&allegation).unwrap();
 
         let mut key: [u8; 64] = [0u8; 64];
@@ -154,12 +154,12 @@ impl MindBase {
             ArtifactList::None => {},
             ArtifactList::One(artifact_id) => {
                 key[0..32].copy_from_slice(artifact_id.as_ref());
-                self.allegation_rev.merge(&key[..], id.as_ref())?;
+                self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
             },
             ArtifactList::Many(artifact_ids) => {
                 for artifact_id in artifact_ids {
                     key[0..32].copy_from_slice(artifact_id.as_ref());
-                    self.allegation_rev.merge(&key[..], id.as_ref())?;
+                    self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
                 }
             },
         }
@@ -178,11 +178,11 @@ impl MindBase {
     }
 
     #[allow(unused)]
-    pub fn create_agent(&self) -> Result<Agent, Error> {
+    pub fn create_agent(&self) -> Result<Agent, MBError> {
         _create_agent(&self.my_agents)
     }
 
-    pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
+    pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, MBError>
         where T: Into<Artifact>
     {
         let artifact: Artifact = artifact.into();
@@ -208,20 +208,20 @@ impl MindBase {
     // TODO 2 - Update this to take a vec of Categories this new allegation should be alledged to be in
     // TODO 2 - Update this to take a Concept as the thing – is the Concept Alledgable(Surrogate), or does it circumvent the first
     // allegation? Alledge an Alledgable thing using the default agent
-    pub fn alledge<T>(&self, thing: T) -> Result<Allegation, Error>
+    pub fn alledge<T>(&self, thing: T) -> Result<Allegation, MBError>
         where T: crate::allegation::Alledgable
     {
         thing.alledge(self, &self.default_agent)
     }
 
     // Alledge an Alledgable thing using specified agent
-    pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Allegation, Error>
+    pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Allegation, MBError>
         where T: crate::allegation::Alledgable
     {
         thing.alledge(self, agent)
     }
 
-    pub fn alledge_artifact<A>(&self, agent: &Agent, artifact: A) -> Result<AllegationId, Error>
+    pub fn alledge_artifact<A>(&self, agent: &Agent, artifact: A) -> Result<AllegationId, MBError>
         where A: Into<crate::artifact::Artifact>
     {
         let artifact_id = self.put_artifact(artifact.into())?;
@@ -242,7 +242,7 @@ impl MindBase {
                phantomvalue: PhantomData, }
     }
 
-    pub fn concept_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Concept, Error>
+    pub fn concept_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Concept, MBError>
         where F: Fn(&Allegation) -> bool
     {
         let mut members = Vec::new();
@@ -279,7 +279,54 @@ impl MindBase {
     /// This in theory should allow us to resolve upon a single concept which is believed to be meaningful to that agent based on
     /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
     /// continuum we hope to create with mindbase.
-    pub fn get_ground_concept<A>(&self, artifacts: Vec<A>) -> Result<Concept, Error>
+    pub fn get_ground_symbol<S>(&self, symbolize: S) -> Result<Concept, MBError>
+        where S: Symbolize
+    {
+        // If it's already a symbol, then we're done
+        if let Some(symbol) = symbolize.symbol() {
+            return Ok(symbol);
+        }
+
+        let helper = GSHelper::new(self);
+
+        // Artifact
+        // Symbol ( recurse )
+        // Allege (symbol pair)
+
+        // Artifact(Artifact),
+        // Allege(Allege),
+        // SymbolVar(SymbolVar),
+        // Ground(Ground),
+        // Symbolize(Symbolize),
+
+        // // do this bit multiple times
+        // scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
+        // scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
+        // let iter = self.atoms_by_artifact_agent.range(&scan_min[..]..&scan_max[..]);
+        // for item in iter {
+        //     let (key, allegation_list) = item?;
+        //     // allegation_list is a Vec[u8] containing a sorted sequence of 16 bit allegation ids
+
+        //     let item_agent_id = &key[32..64];
+        //     // Remember we're searching for a range of agent ids. Have to confirm it's in the list
+        //     if let Err(_) = gs_agents.binary_search_by(|a| a.as_ref()[..].cmp(item_agent_id)) {
+        //         // No, it's not present in the list. Punt
+        //         continue;
+        //     }
+
+        //     // We could filter the list to include only artifact bodies and get a concept here
+        //     // Or...
+
+        //     //
+        //     if let Some(ref last_concept) = last_concept {
+        //         concept.narrow_by(self, last_concept)?;
+        //     }
+
+        // }
+        unimplemented!()
+    }
+
+    pub fn get_ground_concept<A>(&self, artifacts: Vec<A>) -> Result<Concept, MBError>
         where A: Into<crate::artifact::Artifact>
     {
         let mut search_chain = Vec::with_capacity(artifacts.len());
@@ -295,11 +342,6 @@ impl MindBase {
 
         // ground_symbol_agents is pre-sorted
         let gs_agents = self.ground_symbol_agents.lock().unwrap();
-
-        let mut scan_min: [u8; 64] = [0; 64];
-        scan_min[32..64].copy_from_slice(gs_agents.first().unwrap().as_ref());
-        let mut scan_max: [u8; 64] = [0; 64];
-        scan_max[32..64].copy_from_slice(gs_agents.last().unwrap().as_ref());
 
         let mut last_concept: Option<Concept> = None;
 
@@ -317,33 +359,6 @@ impl MindBase {
         //
 
         for search_artifact_id in search_chain {
-            // scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
-            // scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
-            // let iter = self.allegation_rev.range(&scan_min[..]..&scan_max[..]);
-            // for item in iter {
-            //     let (key, allegation_list) = item?;
-            //     // allegation_list is a Vec[u8] containing a sorted sequence of 16 bit allegation ids
-
-            //     let item_agent_id = &key[32..64];
-            //     // Remember we're searching for a range of agent ids. Have to confirm it's in the list
-            //     if let Err(_) = gs_agents.binary_search_by(|a| a.as_ref()[..].cmp(item_agent_id)) {
-            //         // No, it's not present in the list. Punt
-            //         continue;
-            //     }
-
-            //     // We could filter the list to include only artifact bodies and get a concept here
-            //     // Or...
-
-            //     //
-            //     if let Some(ref last_concept) = last_concept {
-            //         concept.narrow_by(self, last_concept)?;
-            //     }
-
-            //     //
-
-            //     //
-            // }
-
             use crate::allegation::Body;
             let mut concept = self.concept_filter_allegations_by(|a| {
                                       gs_agents.contains(&a.agent_id)
@@ -397,7 +412,7 @@ impl MindBase {
         // }
     }
 
-    pub fn add_ground_symbol_agent(&self, agent_id: &AgentId) -> Result<(), Error> {
+    pub fn add_ground_symbol_agent(&self, agent_id: &AgentId) -> Result<(), MBError> {
         // TODO 2 - Build the policy system and convert this to a policy
         let mut gsa = self.ground_symbol_agents.lock().unwrap();
 
@@ -409,17 +424,42 @@ impl MindBase {
         Ok(())
     }
 
-    pub fn add_policy(&self, _policy: Policy) -> Result<(), Error> {
+    pub fn add_policy(&self, _policy: Policy) -> Result<(), MBError> {
         unimplemented!()
     }
 }
 
-fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, Error> {
+struct GSHelper {
+    scan_min:  [u8; 64],
+    scan_max:  [u8; 64],
+    gs_agents: Vec<AgentId>,
+}
+
+impl GSHelper {
+    pub fn new(mb: &MindBase) -> Self {
+        let gs_agents = mb.ground_symbol_agents.lock().unwrap().clone();
+
+        let mut scan_min: [u8; 64] = [0; 64];
+        scan_min[32..64].copy_from_slice(gs_agents.first().unwrap().as_ref());
+        let mut scan_max: [u8; 64] = [0; 64];
+        scan_max[32..64].copy_from_slice(gs_agents.last().unwrap().as_ref());
+
+        Self { scan_min,
+               scan_max,
+               gs_agents }
+    }
+}
+pub trait Symbolize {
+    fn symbol(&self) -> Option<Concept>;
+    fn symbolize(&self, mb: &MindBase) -> Result<Concept, MBError>;
+}
+
+fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
     match my_agents.get(b"latest")? {
         None => _create_agent(my_agents),
         Some(pubkey) => {
             match my_agents.get(pubkey)? {
-                None => Err(Error::AgentHandleNotFound),
+                None => Err(MBError::AgentHandleNotFound),
                 Some(v) => {
                     let agenthandle = bincode::deserialize(&v)?;
                     Ok(agenthandle)
@@ -429,7 +469,7 @@ fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, Error> {
     }
 }
 
-fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, Error> {
+fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
     let agent = Agent::new();
 
     let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
@@ -450,7 +490,7 @@ impl<K, V> Iterator for Iter<K, V>
     where K: std::convert::TryFrom<IVec>,
           V: DeserializeOwned
 {
-    type Item = Result<(K, V), crate::Error>;
+    type Item = Result<(K, V), crate::MBError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Did we find it?
@@ -465,11 +505,11 @@ impl<K, V> Iterator for Iter<K, V>
                     Ok((key, value)) => {
                         let k: K = match key.try_into() {
                             Ok(k) => k,
-                            Err(_) => return Some(Err(Error::TryFromSlice)),
+                            Err(_) => return Some(Err(MBError::TryFromSlice)),
                         };
                         let v: V = match bincode::deserialize::<V>(&value[..]) {
                             Ok(v) => v,
-                            Err(e) => return Some(Err(Error::Bincode(e))),
+                            Err(e) => return Some(Err(MBError::Bincode(e))),
                         };
 
                         Some(Ok((k, v)))
@@ -509,7 +549,7 @@ mod tests {
     use analogy::Analogy;
 
     #[test]
-    fn dump() -> Result<(), Error> {
+    fn dump() -> Result<(), MBError> {
         let tmpdir = tempfile::tempdir()?;
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;

@@ -13,7 +13,7 @@ symbolstatement = { (symbolvar ~ "=")? ~ ( allege | ground | symbolize ) }
 artifactstatement = { artifactvar ~ "=" ~ artifact }
 
 // Symbols
-ground = { ( "Ground(" ~ (symbol_pair | symbolizable) ~ ")") | ("{" ~ (symbol_pair|symbolizable) ~ "}") }
+ground = { ( "Ground(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | ("{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
 symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
 allege =  { "Allege(" ~ symbol_pair ~ ")" }
 
@@ -39,5 +39,9 @@ char = {
 
 symbolizable = { artifact | symbolvar | ground | symbolize | allege | "(" ~ symbol_pair ~ ")" }
 symbol_pair = { symbolizable ~ ":" ~ symbolizable }
+
+// You can use a symbolvar, but you can't Symbolize or Allege in a ground symbolizable
+ground_symbolizable = { artifact | symbolvar | ground | "(" ~ ground_symbol_pair ~ ")" }
+ground_symbol_pair = { ground_symbolizable ~ ":" ~ ground_symbolizable }
 
 WHITESPACE = _{ " " | "\t" }

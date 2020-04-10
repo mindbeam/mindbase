@@ -1,7 +1,7 @@
 use mindbase::*;
 
 #[test]
-fn alice() -> Result<(), Error> {
+fn alice() -> Result<(), MBError> {
     // The question is: how do we represent predicates? Things like "was just like", and "in that we were", etc
     //
     // Depending on how you want to look at it, you could say that:
@@ -118,7 +118,7 @@ fn alice() -> Result<(), Error> {
 }
 
 #[test]
-fn apple() -> Result<(), Error> {
+fn apple() -> Result<(), MBError> {
     let tmpdir = tempfile::tempdir()?;
     let tmpdirpath = tmpdir.path();
     let mb = MindBase::open(&tmpdirpath)?;
@@ -151,7 +151,7 @@ fn apple() -> Result<(), Error> {
 }
 
 #[test]
-fn apple_ii() -> Result<(), Error> {
+fn apple_ii() -> Result<(), MBError> {
     //     // Lets suppose that Alice makes a statement about apples. Lets record that having happened.
     //     let alice_statement = mb.alledge(text("I love apples"))?;
 
@@ -233,7 +233,7 @@ fn apple_ii() -> Result<(), Error> {
     Ok(())
 }
 #[test]
-fn fridays() -> Result<(), Error> {
+fn fridays() -> Result<(), MBError> {
     let tmpdir = tempfile::tempdir()?;
     let tmpdirpath = tmpdir.path();
     let mb = MindBase::open(&tmpdirpath)?;

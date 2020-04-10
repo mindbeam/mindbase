@@ -2,7 +2,7 @@ use mindbase::{
     artifact::text,
     Analogy,
     Concept,
-    Error,
+    MBError,
     MindBase,
 };
 
@@ -12,7 +12,7 @@ use criterion::{
     Criterion,
 };
 
-fn insert_test_dataset(mb: &MindBase) -> Result<(), Error> {
+fn insert_test_dataset(mb: &MindBase) -> Result<(), MBError> {
     for _i in 0..50 {
         let mut last_concept: Option<Concept> = None;
         // println!("Loop {}", _i);
@@ -30,7 +30,7 @@ fn insert_test_dataset(mb: &MindBase) -> Result<(), Error> {
     Ok(())
 }
 
-fn get_ground_concept(mb: &MindBase) -> Result<(), Error> {
+fn get_ground_concept(mb: &MindBase) -> Result<(), MBError> {
     let _concept1: Concept = mb.get_ground_concept(vec!["A", "B", "C", "D"])?;
     let _concept2: Concept = mb.get_ground_concept(vec!["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"])?;
     Ok(())

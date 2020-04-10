@@ -1,6 +1,6 @@
-use crate::mbql::error::Error as MBQLError;
+use crate::mbql::error::MBQLError;
 #[derive(Debug)]
-pub enum Error {
+pub enum MBError {
     Sled(sled::Error),
     SerdeJson(serde_json::Error),
     Bincode(bincode::Error),
@@ -10,7 +10,7 @@ pub enum Error {
     TryFromSlice,
     Base64Error,
     AllegationNotFound,
-    MBQL(MBQLError),
+    MBQL(Box<MBQLError>),
 }
 
 // impl std::fmt::Display for Error {
@@ -21,36 +21,36 @@ pub enum Error {
 //     }
 // }
 
-impl From<MBQLError> for Error {
+impl From<MBQLError> for MBError {
     fn from(e: MBQLError) -> Self {
-        Self::MBQL(e)
+        Self::MBQL(Box::new(e))
     }
 }
 
-impl From<sled::Error> for Error {
+impl From<sled::Error> for MBError {
     fn from(e: sled::Error) -> Self {
         Self::Sled(e)
     }
 }
 
-impl From<serde_json::Error> for Error {
+impl From<serde_json::Error> for MBError {
     fn from(e: serde_json::Error) -> Self {
         Self::SerdeJson(e)
     }
 }
-impl From<bincode::Error> for Error {
+impl From<bincode::Error> for MBError {
     fn from(e: bincode::Error) -> Self {
         Self::Bincode(e)
     }
 }
-impl From<std::io::Error> for Error {
+impl From<std::io::Error> for MBError {
     fn from(e: std::io::Error) -> Self {
         Self::IoError(e)
     }
 }
 
-impl std::convert::From<Error> for std::io::Error {
-    fn from(error: Error) -> Self {
+impl std::convert::From<MBError> for std::io::Error {
+    fn from(error: MBError) -> Self {
         use std::io::ErrorKind;
         std::io::Error::new(ErrorKind::Other, format!("{:?}", error))
     }

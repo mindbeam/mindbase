@@ -1,10 +1,10 @@
 use crate::{
     artifact::FlatText,
-    error::Error,
+    error::MBError,
     MindBase,
 };
 
-pub fn genesis(mb: &MindBase) -> Result<(), Error> {
+pub fn genesis(mb: &MindBase) -> Result<(), MBError> {
     let _words = mb.put_artifact(FlatText::new("English words"))?;
 
     Ok(())

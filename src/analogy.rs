@@ -3,7 +3,7 @@ use crate::{
     concept::Concept,
     Agent,
     Allegation,
-    Error,
+    MBError,
     MindBase,
 };
 use std::fmt;
@@ -57,7 +57,7 @@ impl fmt::Display for Analogy {
 }
 
 impl Alledgable for Analogy {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
         let allegation = Allegation::new(agent, crate::allegation::Body::Analogy(self))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)

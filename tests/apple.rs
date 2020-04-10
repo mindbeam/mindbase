@@ -1,7 +1,7 @@
 use mindbase::*;
 
 #[test]
-fn apple() -> Result<(), Error> {
+fn apple() -> Result<(), MBError> {
     let tmpdir = tempfile::tempdir()?;
     let tmpdirpath = tmpdir.path();
     let mb = MindBase::open(&tmpdirpath)?;

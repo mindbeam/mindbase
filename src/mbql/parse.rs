@@ -12,11 +12,11 @@ use pest::{
 #[grammar = "mbql/mbql.pest"]
 pub struct MBQLParser;
 
-pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result<(), Error> {
+pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result<(), MBQLError> {
     for (line_number, line) in reader.lines().enumerate() {
         let line_str: String = line.map_err(|error| {
-                                       Error { position: Position { row: line_number },
-                                               kind:     ErrorKind::IOError { error }, }
+                                       MBQLError { position: Position { row: line_number },
+                                                   kind:     ErrorKind::IOError { error }, }
                                    })?;
 
         parse_line(line_number + 1, &line_str, query)?;
@@ -25,14 +25,13 @@ pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result
     Ok(())
 }
 
-fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), Error> {
+fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), MBQLError> {
     println!("LINE {}", row);
     let mut line = MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| {
-                                                                 Error { position: Position { row },
-                                                                         kind:     ErrorKind::ParseRow { input:
-                                                                                                             input.to_string(),
-                                                                                                         pest_err }, }
-                                                             })?;
+                       MBQLError { position: Position { row },
+                                   kind:     ErrorKind::ParseRow { input: input.to_string(),
+                                                                   pest_err }, }
+                   })?;
 
     let inner = match line.next() {
         None => return Ok(()), // Comment or blank line

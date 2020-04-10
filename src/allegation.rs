@@ -6,7 +6,7 @@ use crate::{
     analogy::Analogy,
     artifact::ArtifactId,
     concept::Concept,
-    error::Error,
+    error::MBError,
     Agent,
     MindBase,
 };
@@ -27,10 +27,10 @@ impl AllegationId {
         AllegationId(generate_ulid_bytes())
     }
 
-    pub fn from_base64(input: &str) -> Result<Self, Error> {
+    pub fn from_base64(input: &str) -> Result<Self, MBError> {
         use std::convert::TryInto;
-        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
-        let array: [u8; 16] = decoded[..].try_into().map_err(|_| Error::TryFromSlice)?;
+        let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
+        let array: [u8; 16] = decoded[..].try_into().map_err(|_| MBError::TryFromSlice)?;
         Ok(AllegationId(array.into()))
     }
 
@@ -55,11 +55,11 @@ impl AllegationId {
 }
 
 impl std::convert::TryFrom<sled::IVec> for AllegationId {
-    type Error = Error;
+    type Error = MBError;
 
-    fn try_from(ivec: sled::IVec) -> Result<Self, Error> {
+    fn try_from(ivec: sled::IVec) -> Result<Self, MBError> {
         use std::convert::TryInto;
-        Ok(Self((&ivec[..]).try_into().map_err(|_| Error::TryFromSlice)?))
+        Ok(Self((&ivec[..]).try_into().map_err(|_| MBError::TryFromSlice)?))
     }
 }
 
@@ -130,7 +130,7 @@ pub enum ArtifactList<'a> {
 }
 
 impl Allegation {
-    pub fn new<T>(agent: &Agent, body: T) -> Result<Self, Error>
+    pub fn new<T>(agent: &Agent, body: T) -> Result<Self, MBError>
         where T: Into<Body>
     {
         let body: Body = body.into();
@@ -160,7 +160,7 @@ impl Allegation {
     }
 
     // Get all artifacts referenced by this allegation
-    pub fn referenced_artifacts(&self, mb: &MindBase) -> Result<ArtifactList, Error> {
+    pub fn referenced_artifacts(&self, mb: &MindBase) -> Result<ArtifactList, MBError> {
         // TODO need to add prefixing for ArtifactId vs other stuff
 
         // Returns
@@ -183,7 +183,7 @@ impl Allegation {
                                 ArtifactList::Many(many) => v.extend(many),
                             }
                         },
-                        None => return Err(Error::AllegationNotFound),
+                        None => return Err(MBError::AllegationNotFound),
                     }
                 }
 
@@ -197,7 +197,7 @@ impl Allegation {
                                 ArtifactList::Many(many) => v.extend(many),
                             }
                         },
-                        None => return Err(Error::AllegationNotFound),
+                        None => return Err(MBError::AllegationNotFound),
                     }
                 }
                 Ok(ArtifactList::Many(v))
@@ -247,5 +247,5 @@ impl fmt::Display for Body {
 }
 
 pub trait Alledgable: std::fmt::Debug {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error>;
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError>;
 }

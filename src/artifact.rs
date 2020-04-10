@@ -13,7 +13,7 @@ use crate::{
         Allegation,
     },
     concept::Concept,
-    error::Error,
+    error::MBError,
     AgentId,
     MindBase,
 };
@@ -39,9 +39,9 @@ pub fn from_base64<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
 {
     use serde::de::Error;
     use std::convert::TryInto;
-    String::deserialize(deserializer).and_then(|string| base64::decode(&string).map_err(|err| Error::custom(err.to_string())))
+    String::deserialize(deserializer).and_then(|string| base64::decode(&string).map_err(|err| D::Error::custom(err.to_string())))
                                      .map(|bytes| bytes[..].try_into())
-                                     .and_then(|opt| opt.map_err(|_| Error::custom("failed to deserialize")))
+                                     .and_then(|opt| opt.map_err(|_| D::Error::custom("failed to deserialize")))
 }
 
 impl fmt::Display for ArtifactId {
@@ -69,25 +69,25 @@ impl Into<crate::allegation::Body> for ArtifactId {
 }
 
 impl ArtifactId {
-    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<AllegationId, Error> {
+    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<AllegationId, MBError> {
         let allegation = Allegation::new(agent, self)?;
         mb.put_allegation(&allegation)
     }
 
-    pub fn from_base64(input: &str) -> Result<Self, Error> {
+    pub fn from_base64(input: &str) -> Result<Self, MBError> {
         use std::convert::TryInto;
-        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
-        let array: [u8; 32] = decoded[..].try_into().map_err(|_| Error::TryFromSlice)?;
+        let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
+        let array: [u8; 32] = decoded[..].try_into().map_err(|_| MBError::TryFromSlice)?;
         Ok(ArtifactId(array.into()))
     }
 }
 
 impl std::convert::TryFrom<sled::IVec> for ArtifactId {
-    type Error = Error;
+    type Error = MBError;
 
-    fn try_from(ivec: sled::IVec) -> Result<Self, Error> {
+    fn try_from(ivec: sled::IVec) -> Result<Self, MBError> {
         use std::convert::TryInto;
-        Ok(Self((&ivec[..]).try_into().map_err(|_| Error::TryFromSlice)?))
+        Ok(Self((&ivec[..]).try_into().map_err(|_| MBError::TryFromSlice)?))
     }
 }
 
@@ -212,14 +212,14 @@ impl Into<Artifact> for DataNode {
 }
 
 impl Alledgable for &ArtifactId {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
         let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(self.clone()))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)
     }
 }
 impl Alledgable for ArtifactId {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
         let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(self))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)
@@ -228,7 +228,7 @@ impl Alledgable for ArtifactId {
 
 impl<T> Alledgable for T where T: Into<Artifact> + std::fmt::Debug
 {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, Error> {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
         let artifact_id = mb.put_artifact(self)?;
         let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
         mb.put_allegation(&allegation)?;

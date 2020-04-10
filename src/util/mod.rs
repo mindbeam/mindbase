@@ -1,4 +1,4 @@
-use crate::Error;
+use crate::MBError;
 
 pub(crate) trait AsBytes {
     fn as_bytes(&self) -> Vec<u8>;
@@ -7,23 +7,23 @@ pub(crate) trait AsBytes {
 pub(crate) trait TryFromBytes
     where Self: Sized
 {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Error>;
+    fn from_bytes(bytes: &[u8]) -> Result<Self, MBError>;
 }
 
 pub(crate) mod array64 {
-    use crate::error::Error;
+    use crate::error::MBError;
     use serde::{
         Deserialize,
         Deserializer,
         Serializer,
     };
 
-    pub(crate) fn try_64_from_slice<'a, T>(slice: &[T]) -> Result<&[T; 64], Error> {
+    pub(crate) fn try_64_from_slice<'a, T>(slice: &[T]) -> Result<&[T; 64], MBError> {
         if slice.len() == 64 {
             let ptr = slice.as_ptr() as *const [T; 64];
             unsafe { Ok(&*ptr) }
         } else {
-            Err(Error::TryFromSlice)
+            Err(MBError::TryFromSlice)
         }
     }
 

@@ -61,6 +61,8 @@ fn run(opt: Opt) -> Result<(), std::io::Error> {
             let mut handle = stdout.lock();
             query.dump(&mut handle)?;
         }
+
+    // query.apply(&mb)?;
     } else if let Some(_file) = opt.export {
         unimplemented!()
         // TODO
