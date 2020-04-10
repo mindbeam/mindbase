@@ -1,0 +1,6 @@
+@first = "First"
+@second = Text("Second")
+@go_again = @first
+@look_ahead = @agent
+@url = Url("https://mindbeam.dev")
+@agent = Agent(default)

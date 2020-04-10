@@ -11,6 +11,7 @@ pub enum MBError {
     Base64Error,
     AllegationNotFound,
     MBQL(Box<MBQLError>),
+    Sanity,
 }
 
 // impl std::fmt::Display for Error {

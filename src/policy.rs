@@ -51,8 +51,8 @@ mod test {
         PolicyBody,
     };
     use crate::{
-        FlatText,
         MindBase,
+        Text,
     };
 
     fn _disclosure_relationship() -> Result<(), std::io::Error> {
@@ -62,11 +62,10 @@ mod test {
 
         let my_agent = &mb.default_agent;
 
-        let group = mb.alledge(FlatText::new("Authorized Members of Project Falcor"))?
-                      .subjective();
+        let group = mb.alledge(Text::new("Authorized Members of Project Falcor"))?.subjective();
         let administrators = mb.alledge(my_agent)?.subjective();
 
-        let what = mb.alledge(FlatText::new("Project Falcor Assets"))?.subjective();
+        let what = mb.alledge(Text::new("Project Falcor Assets"))?.subjective();
 
         mb.add_policy(Policy::new(PolicyBody::DisclosureRelationship { group,
                                                                        administrators,

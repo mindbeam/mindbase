@@ -123,9 +123,9 @@ fn apple() -> Result<(), MBError> {
     let tmpdirpath = tmpdir.path();
     let mb = MindBase::open(&tmpdirpath)?;
 
-    let apple_computers = mb.alledge(FlatText::new("Apple"))?;
-    let apple_the_fruit = mb.alledge(FlatText::new("Apple"))?;
-    let apple_of_my_eye = mb.alledge(FlatText::new("Apple"))?;
+    let apple_computers = mb.alledge(Text::new("Apple"))?;
+    let apple_the_fruit = mb.alledge(Text::new("Apple"))?;
+    let apple_of_my_eye = mb.alledge(Text::new("Apple"))?;
 
     // Look up the "ground symbol" for "Apple" without any additional specificity
     let apple_ground_symbol: Concept = mb.get_ground_concept(vec!["Apple"])?;
@@ -134,7 +134,7 @@ fn apple() -> Result<(), MBError> {
     // We don't have enough information to narrow it down yet and we should not assume what they meant
     assert_eq!(apple_ground_symbol.count(), 3);
 
-    let _statement = mb.alledge(FlatText::new("I love Apple"))?;
+    let _statement = mb.alledge(Text::new("I love Apple"))?;
 
     // TODO 2 - surrogate Concepts
     // let apple_for_the_purposes_of_this_conversation = apple.surrogate();

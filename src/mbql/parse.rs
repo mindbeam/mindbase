@@ -1,6 +1,10 @@
-use super::{
+use crate::mbql::{
     ast,
-    error::*,
+    error::{
+        MBQLError,
+        MBQLErrorKind,
+    },
+    Position,
 };
 
 use pest::{
@@ -16,7 +20,7 @@ pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result
     for (line_number, line) in reader.lines().enumerate() {
         let line_str: String = line.map_err(|error| {
                                        MBQLError { position: Position { row: line_number },
-                                                   kind:     ErrorKind::IOError { error }, }
+                                                   kind:     MBQLErrorKind::IOError { error }, }
                                    })?;
 
         parse_line(line_number + 1, &line_str, query)?;
@@ -27,11 +31,12 @@ pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result
 
 fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), MBQLError> {
     println!("LINE {}", row);
-    let mut line = MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| {
-                       MBQLError { position: Position { row },
-                                   kind:     ErrorKind::ParseRow { input: input.to_string(),
-                                                                   pest_err }, }
-                   })?;
+    let mut line =
+        MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| {
+                                                      MBQLError { position: Position { row },
+                                                                  kind:     MBQLErrorKind::ParseRow { input: input.to_string(),
+                                                                                                      pest_err }, }
+                                                  })?;
 
     let inner = match line.next() {
         None => return Ok(()), // Comment or blank line
@@ -41,11 +46,11 @@ fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), M
     match inner.as_rule() {
         Rule::EOI => return Ok(()), // Comment or blank line
         Rule::artifactstatement => {
-            ast::ArtifactStatement::parse(inner, query)?;
+            ast::ArtifactStatement::parse(inner, Position { row }, query)?;
             // println!("artifact {}", inner);
         },
         Rule::symbolstatement => {
-            ast::SymbolStatement::parse(inner, query)?;
+            ast::SymbolStatement::parse(inner, query, Position { row })?;
             // println!("symbol {}", inner);
         },
         _ => {

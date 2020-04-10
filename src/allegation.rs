@@ -246,6 +246,7 @@ impl fmt::Display for Body {
     }
 }
 
+// TODO 1 - Rename this to Symbolize
 pub trait Alledgable: std::fmt::Debug {
     fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError>;
 }

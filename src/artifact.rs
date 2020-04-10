@@ -95,7 +95,7 @@ impl std::convert::TryFrom<sled::IVec> for ArtifactId {
 pub enum Artifact {
     Agent(AgentId),
     Url(Url),
-    FlatText(FlatText),
+    FlatText(Text),
     DataGraph(DataGraph),
     DataNode(DataNode),
 }
@@ -144,33 +144,39 @@ pub struct Url {
     pub url: String,
 }
 
-pub fn text(text: &str) -> FlatText {
-    FlatText::new(text)
+impl Into<Artifact> for Url {
+    fn into(self) -> Artifact {
+        Artifact::Url(self)
+    }
+}
+
+pub fn text(text: &str) -> Text {
+    Text::new(text)
 }
 
 /// Text of nonspecific structure, origin, and language
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct FlatText {
+pub struct Text {
     text: String,
 }
 
-impl FlatText {
+impl Text {
     pub fn new(text: &str) -> Self {
-        FlatText { text: text.to_string() }
+        Text { text: text.to_string() }
     }
 
     pub fn string(text: String) -> Self {
-        FlatText { text }
+        Text { text }
     }
 }
 
-impl fmt::Display for FlatText {
+impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.text)
     }
 }
 
-impl Into<Artifact> for FlatText {
+impl Into<Artifact> for Text {
     fn into(self) -> Artifact {
         Artifact::FlatText(self)
     }
@@ -178,7 +184,7 @@ impl Into<Artifact> for FlatText {
 
 impl Into<Artifact> for &str {
     fn into(self) -> Artifact {
-        Artifact::FlatText(FlatText::new(self))
+        Artifact::FlatText(Text::new(self))
     }
 }
 

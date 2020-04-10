@@ -2,7 +2,7 @@ use mindbase::{
     analogy::Analogy,
     artifact::{
         text,
-        FlatText,
+        Text,
     },
     *,
 };
@@ -44,7 +44,7 @@ fn main() -> Result<(), std::io::Error> {
         let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                let statement = mb.alledge(FlatText::new(&line))?;
+                let statement = mb.alledge(Text::new(&line))?;
                 let analogy = mb.alledge(Analogy::declarative(statement.subjective(), isaid.clone()))?;
 
                 // TODO 3 - create a linkage between this allegation and the previous one:

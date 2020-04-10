@@ -29,7 +29,7 @@ pub use self::{
     artifact::{
         Artifact,
         ArtifactId,
-        FlatText,
+        Text,
     },
     concept::Concept,
     error::MBError,
@@ -205,9 +205,12 @@ impl MindBase {
         Ok(id)
     }
 
-    // TODO 2 - Update this to take a vec of Categories this new allegation should be alledged to be in
-    // TODO 2 - Update this to take a Concept as the thing – is the Concept Alledgable(Surrogate), or does it circumvent the first
-    // allegation? Alledge an Alledgable thing using the default agent
+    pub fn symbolize<T>(&self, thing: T) -> Result<Concept, MBError>
+        where T: crate::allegation::Alledgable
+    {
+        Ok(thing.alledge(self, &self.default_agent)?.subjective())
+    }
+
     pub fn alledge<T>(&self, thing: T) -> Result<Allegation, MBError>
         where T: crate::allegation::Alledgable
     {
@@ -280,24 +283,27 @@ impl MindBase {
     /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
     /// continuum we hope to create with mindbase.
     pub fn get_ground_symbol<S>(&self, symbolize: S) -> Result<Concept, MBError>
-        where S: Symbolize
+        where S: GroundSymbolize
     {
         // If it's already a symbol, then we're done
         if let Some(symbol) = symbolize.symbol() {
             return Ok(symbol);
         }
 
-        let helper = GSHelper::new(self);
+        let context = GSContext::new(self);
 
+        symbolize.symbolize(&context)?;
+
+        Ok(context.symbol())
+
+        // match symbolize {
+        //     Artifact(a) =>
+        // }
         // Artifact
-        // Symbol ( recurse )
-        // Allege (symbol pair)
-
-        // Artifact(Artifact),
-        // Allege(Allege),
+        // GroundSymbol ( recurse )
+        // GroundPair {left/right GroundSymbol }
         // SymbolVar(SymbolVar),
         // Ground(Ground),
-        // Symbolize(Symbolize),
 
         // // do this bit multiple times
         // scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
@@ -323,7 +329,6 @@ impl MindBase {
         //     }
 
         // }
-        unimplemented!()
     }
 
     pub fn get_ground_concept<A>(&self, artifacts: Vec<A>) -> Result<Concept, MBError>
@@ -429,14 +434,15 @@ impl MindBase {
     }
 }
 
-struct GSHelper {
+pub struct GSContext<'a> {
     scan_min:  [u8; 64],
     scan_max:  [u8; 64],
     gs_agents: Vec<AgentId>,
+    mb:        &'a MindBase,
 }
 
-impl GSHelper {
-    pub fn new(mb: &MindBase) -> Self {
+impl<'a> GSContext<'a> {
+    pub fn new(mb: &'a MindBase) -> Self {
         let gs_agents = mb.ground_symbol_agents.lock().unwrap().clone();
 
         let mut scan_min: [u8; 64] = [0; 64];
@@ -446,12 +452,17 @@ impl GSHelper {
 
         Self { scan_min,
                scan_max,
-               gs_agents }
+               gs_agents,
+               mb }
+    }
+
+    pub fn symbol(self) -> Concept {
+        unimplemented!()
     }
 }
-pub trait Symbolize {
+pub trait GroundSymbolize {
     fn symbol(&self) -> Option<Concept>;
-    fn symbolize(&self, mb: &MindBase) -> Result<Concept, MBError>;
+    fn symbolize(&self, context: &GSContext) -> Result<Concept, MBError>;
 }
 
 fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
@@ -557,21 +568,21 @@ mod tests {
         // Make the ULID play nice for out-of-order testing
         let dur = std::time::Duration::from_millis(50);
 
-        let s1 = mb.alledge(FlatText::new("Saturday"))?;
+        let s1 = mb.alledge(Text::new("Saturday"))?;
         println!("1 {}", s1);
         std::thread::sleep(dur);
-        let s2 = mb.alledge(FlatText::new("Saturday"))?;
+        let s2 = mb.alledge(Text::new("Saturday"))?;
         println!("2 {}", s2);
         std::thread::sleep(dur);
-        let s3 = mb.alledge(FlatText::new("Saturday"))?;
+        let s3 = mb.alledge(Text::new("Saturday"))?;
 
         println!("3 {}", s3);
         std::thread::sleep(dur);
-        let _f1 = mb.alledge(FlatText::new("Night's alright for fighting"))?;
+        let _f1 = mb.alledge(Text::new("Night's alright for fighting"))?;
 
         // TODO 2 - change these to use grounding_symbol:
-        let dow = mb.alledge(FlatText::new("Abstract day of the week"))?;
-        let alright = mb.alledge(FlatText::new("Days that are alright for figting in the evening"))?;
+        let dow = mb.alledge(Text::new("Abstract day of the week"))?;
+        let alright = mb.alledge(Text::new("Days that are alright for figting in the evening"))?;
 
         mb.alledge(Analogy::declarative(s1.subjective(), dow.subjective()))?;
         mb.alledge(Analogy::declarative(s2.subjective(), dow.subjective()))?;
