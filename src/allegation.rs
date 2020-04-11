@@ -181,6 +181,10 @@ impl Allegation {
                 for allegation_id in analogy.left.members.iter() {
                     match mb.get_allegation(allegation_id)? {
                         Some(allegation) => {
+                            // TODO 1 - need to put some upper bound on how much we want to recurse here
+                            // QUESTION: What are the consequences of this uppper bound enforcement?
+                            // TODO 2 - Encode in the number of levels removed?
+                            // What about the trust score / weight of the agents who alledged them?
                             match allegation.referenced_artifacts(mb)? {
                                 ArtifactList::None => {},
                                 ArtifactList::One(id) => v.push(id.clone()),

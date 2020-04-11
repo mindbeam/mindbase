@@ -5,6 +5,7 @@ pub mod artifact;
 pub mod concept;
 pub mod error;
 mod genesis;
+mod ground;
 
 pub mod mbql;
 
