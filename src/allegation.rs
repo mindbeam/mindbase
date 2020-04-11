@@ -178,7 +178,7 @@ impl Allegation {
                 let mut v: Vec<ArtifactId> = Vec::with_capacity(10);
 
                 // Forward
-                for allegation_id in analogy.subject.members.iter() {
+                for allegation_id in analogy.left.members.iter() {
                     match mb.get_allegation(allegation_id)? {
                         Some(allegation) => {
                             match allegation.referenced_artifacts(mb)? {
@@ -192,7 +192,7 @@ impl Allegation {
                 }
 
                 // Backward
-                for allegation_id in analogy.memberof.members.iter() {
+                for allegation_id in analogy.right.members.iter() {
                     match mb.get_allegation(allegation_id)? {
                         Some(allegation) => {
                             match allegation.referenced_artifacts(mb)? {

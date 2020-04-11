@@ -30,7 +30,6 @@ pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result
 }
 
 fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), MBQLError> {
-    println!("LINE {}", row);
     let mut line =
         MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| {
                                                       MBQLError { position: Position { row },
@@ -79,12 +78,14 @@ mod test {
     fn pest_basic() {
         parses_to! {
             parser: MBQLParser,
-            input:  "@url : Url(\"test\")",
+            input:  "@url = Url(\"test\")",
             rule:   Rule::artifactstatement,
-            tokens: [artifactstatement(0,18,[
-                artifactvar(0,4,[ literal(1,4)]),
-                artifact(7,18, [url(7,18,[quoted_string(11,17,[string(12,16)])])])
-            ])]
+            tokens: [
+                artifactstatement(0,18,[
+                    artifactvar(0,4,[ literal(1,4)]),
+                    artifact(7,18, [url(7,18,[quoted_string(11,17,[string(12,16)])])])
+                ])
+            ]
         }
 
         // TODO add more pest tests

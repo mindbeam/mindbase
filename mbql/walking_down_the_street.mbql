@@ -16,7 +16,7 @@ $alice_persondom = Allege($alice : Ground("A Human Person"))
 #      [A1]                       [A2]
 #        \_________________________/
 #                    [A3] (Emotive Movement)
-$emote = Allege(("Smile" : "Mouth") : ("Wink" : "Eye"))
+$emote = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
 
 
 # This will work similarly to the above, except that we are grounding out all of the symbols we are using, rather than declaring wholly new symbols

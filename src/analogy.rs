@@ -14,30 +14,30 @@ use serde::{
 };
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Analogy {
-    pub subject:    Concept,
+    pub left:       Concept,
+    pub right:      Concept,
     pub confidence: f32,
-    pub memberof:   Concept,
 }
 
 impl Analogy {
-    pub fn declarative<T>(concept: T, memberof: T) -> Self
+    pub fn declarative<T>(left: T, right: T) -> Self
         where T: Into<Concept>
     {
-        Analogy { subject:    concept.into(),
-                  confidence: 1.0,
-                  memberof:   memberof.into(), }
+        Analogy { left:       left.into(),
+                  right:      right.into(),
+                  confidence: 1.0, }
     }
 
-    pub fn negative(concept: Concept, memberof: Concept) -> Self {
-        Analogy { subject: concept,
-                  confidence: -1.0,
-                  memberof }
+    pub fn negative(left: Concept, right: Concept) -> Self {
+        Analogy { left,
+                  right,
+                  confidence: -1.0 }
     }
 
     pub fn to_string(&self) -> String {
         format!("{} is in the category of {} ({})",
-                self.subject.to_string(),
-                self.memberof.to_string(),
+                self.left.to_string(),
+                self.right.to_string(),
                 self.confidence).to_string()
     }
 }
@@ -50,9 +50,7 @@ impl Into<crate::allegation::Body> for Analogy {
 
 impl fmt::Display for Analogy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
-               "{} is in the category of {} ({})",
-               self.subject, self.memberof, self.confidence)
+        write!(f, "{} is in the category of {} ({})", self.left, self.right, self.confidence)
     }
 }
 

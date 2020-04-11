@@ -129,19 +129,19 @@ impl Concept {
             let allegation = allegation?;
 
             match allegation.1.body {
-                Body::Analogy(Analogy { ref subject,
-                                        ref confidence,
-                                        ref memberof, }) => {
+                Body::Analogy(Analogy { ref left,
+                                        ref right,
+                                        ref confidence, }) => {
                     // Are you talking about me? (what subset of me are you talking about?)
 
                     // TODO 2 - Stop allocing a Vec for every intersection test. This is crazy inefficient
-                    let overlap = self.intersection(subject);
+                    let overlap = self.intersection(left);
                     if overlap.len() > 0 {
                         // SO YES: self is at least minimally the subject of this Analogy
                         // (I think any overlap should suffice, but the narrowed concept should be the
                         // intersection of these concepts)
 
-                        if memberof.matches(test_memberof) {
+                        if right.matches(test_memberof) {
                             for passing_member in overlap {
                                 if !members.contains(&passing_member) {
                                     members.push(passing_member)
