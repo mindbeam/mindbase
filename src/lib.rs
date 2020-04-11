@@ -290,45 +290,15 @@ impl MindBase {
             return Ok(symbol);
         }
 
-        let context = GSContext::new(self);
+        let mut context = GSContext::new(self);
 
-        symbolize.symbolize(&context)?;
+        symbolize.symbolize(&mut context)
 
-        Ok(context.symbol())
-
-        // match symbolize {
-        //     Artifact(a) =>
-        // }
         // Artifact
         // GroundSymbol ( recurse )
         // GroundPair {left/right GroundSymbol }
         // SymbolVar(SymbolVar),
         // Ground(Ground),
-
-        // // do this bit multiple times
-        // scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
-        // scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
-        // let iter = self.atoms_by_artifact_agent.range(&scan_min[..]..&scan_max[..]);
-        // for item in iter {
-        //     let (key, allegation_list) = item?;
-        //     // allegation_list is a Vec[u8] containing a sorted sequence of 16 bit allegation ids
-
-        //     let item_agent_id = &key[32..64];
-        //     // Remember we're searching for a range of agent ids. Have to confirm it's in the list
-        //     if let Err(_) = gs_agents.binary_search_by(|a| a.as_ref()[..].cmp(item_agent_id)) {
-        //         // No, it's not present in the list. Punt
-        //         continue;
-        //     }
-
-        //     // We could filter the list to include only artifact bodies and get a concept here
-        //     // Or...
-
-        //     //
-        //     if let Some(ref last_concept) = last_concept {
-        //         concept.narrow_by(self, last_concept)?;
-        //     }
-
-        // }
     }
 
     pub fn get_ground_concept<A>(&self, artifacts: Vec<A>) -> Result<Concept, MBError>
@@ -456,13 +426,69 @@ impl<'a> GSContext<'a> {
                mb }
     }
 
-    pub fn symbol(self) -> Concept {
-        unimplemented!()
+    pub fn single_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Concept, MBError> {
+        self.scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
+        self.scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
+
+        let iter = self.mb.atoms_by_artifact_agent.range(&self.scan_min[..]..=&self.scan_max[..]);
+
+        use inverted_index_util::entity_list::insert_entity_mut;
+
+        use typenum::consts::U16;
+        let mut unified: Vec<u8> = Vec::new();
+        for item in iter {
+            let (key, atom_list) = item?;
+            // atom_list is a Vec[u8] containing a sorted sequence of 16 bit atom ids
+
+            let item_agent_id = &key[32..64];
+            // Remember we're searching for a range of agent ids. Have to confirm it's in the list
+            if let Err(_) = self.gs_agents.binary_search_by(|a| a.as_ref()[..].cmp(item_agent_id)) {
+                // No, it's not present in the list. Punt
+                continue;
+            }
+
+            if unified.len() == 0 {
+                unified.extend(&atom_list[..])
+            } else {
+                for chunk in atom_list.chunks(16) {
+                    insert_entity_mut::<U16>(&mut unified, chunk)
+                }
+            }
+        }
+
+        let members: Vec<AllegationId> = unified.chunks_exact(16)
+                                                .map(|c| AllegationId::from_bytes(c.try_into().unwrap()))
+                                                .collect();
+        let mut concept = Concept { members,
+                                    spread_factor: 0.0 };
+
+        if concept.is_null() {
+            // Extend this with a new allegation so we can continue
+            // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
+            // subsequent allegations
+            concept.extend(self.mb.alledge(search_artifact_id)?.id().clone());
+
+            // if let Some(parent) = last_concept {
+            //     self.mb.symbolize(Analogy::declarative(concept.clone(), parent))?;
+            // }
+        }
+
+        Ok(concept)
     }
 }
 pub trait GroundSymbolize {
     fn symbol(&self) -> Option<Concept>;
-    fn symbolize(&self, context: &GSContext) -> Result<Concept, MBError>;
+    fn symbolize(&self, context: &mut GSContext) -> Result<Concept, MBError>;
+}
+
+impl GroundSymbolize for ArtifactId {
+    fn symbol(&self) -> Option<Concept> {
+        None
+    }
+
+    fn symbolize(&self, context: &mut GSContext) -> Result<Concept, MBError> {
+        context.single_artifact(self)
+    }
 }
 
 fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {

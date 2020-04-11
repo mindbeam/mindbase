@@ -206,9 +206,8 @@ impl Into<Artifact> for DataGraph {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNode {
-    pub node_type: Concept,
-    pub data:      Vec<u8>,
-    pub relations: Vec<DataNodeRelation>,
+    pub data_type: Concept,
+    pub data:      Option<Vec<u8>>,
 }
 
 impl Into<Artifact> for DataNode {

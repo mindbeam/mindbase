@@ -160,35 +160,34 @@ impl SymbolStatement {
 }
 
 #[derive(Debug)]
-pub struct Ground(Box<GroundSymbolizable>);
+pub struct Ground {
+    symbolizable: Box<GroundSymbolizable>,
+    position:     Position,
+}
 
 impl Ground {
     fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::ground);
-        // TODO - Constrain Ground so that it may not contain a free Symbolize
-        Ok(Ground(Box::new(GroundSymbolizable::parse(pair.into_inner()
-                                                         .next()
-                                                         .unwrap(),
-                                                     position)?)))
+
+        Ok(Ground { symbolizable: Box::new(GroundSymbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
+                    position })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
         if verbose {
             writer.write(b"Ground(")?;
-            self.0.write(writer, false, false)?;
+            self.symbolizable.write(writer, false, false)?;
             writer.write(b")")?;
         } else {
             writer.write(b"{")?;
-            self.0.write(writer, false, false)?;
+            self.symbolizable.write(writer, false, false)?;
             writer.write(b"}")?;
         }
         Ok(())
     }
 
     pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
-        // let symbol = mb.get_ground_symbol(&*self.0)?;
-        // Ok(symbol)
-        unimplemented!()
+        self.symbolizable.apply(query, mb)
     }
 }
 
@@ -331,7 +330,7 @@ impl Symbolizable {
             },
             // Symbolizable::Allege(a) => a.apply(query, mb),
             // Symbolizable::SymbolVar(sv) => sv.apply(query, mb),
-            // Symbolizable::Ground(g) => g.apply(query, mb),
+            Symbolizable::Ground(g) => g.apply(query, mb)?,
             // Symbolizable::Symbolize(s) => s.apply(query, mb),
             _ => unimplemented!(),
         };
@@ -395,15 +394,17 @@ impl GroundSymbolizable {
     }
 
     pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
-        // match self {
-        //     GroundSymbolizable::Artifact(a) =>{
-        //         let artifact_id = a.apply(query, mb)?;
-        //     },
-        //     GroundSymbolizable::GroundPair(a) => a.apply(query, mb),
-        //     GroundSymbolizable::SymbolVar(sv) => sv.apply(query, mb),
-        //     GroundSymbolizable::Ground(g) => g.apply(query, mb),
-        // }
-        unimplemented!()
+        let symbol = match self {
+            GroundSymbolizable::Artifact(a) => {
+                let artifact_id = a.apply(query, mb)?;
+                mb.get_ground_symbol(artifact_id)?
+            },
+            //     GroundSymbolizable::GroundPair(a) => a.apply(query, mb),
+            //     GroundSymbolizable::SymbolVar(sv) => sv.apply(query, mb),
+            //     GroundSymbolizable::Ground(g) => g.apply(query, mb),
+            _ => unimplemented!(),
+        };
+        Ok(symbol)
     }
 }
 
@@ -412,7 +413,7 @@ impl GroundSymbolize for GroundSymbolizable {
         None
     }
 
-    fn symbolize(&self, context: &crate::GSContext) -> Result<Concept, crate::MBError> {
+    fn symbolize(&self, context: &mut crate::GSContext) -> Result<Concept, crate::MBError> {
         unimplemented!()
     }
 }
@@ -504,7 +505,11 @@ impl Artifact {
             Artifact::Agent(agent) => mb.put_artifact(agent.get_agent_id(mb)?)?,
             Artifact::Url(url) => mb.put_artifact(crate::artifact::Url { url: url.url.clone() })?,
             Artifact::Text(text) => mb.put_artifact(crate::artifact::Text::new(&text.text))?,
-            // Artifact::DataNode(node) => node.write(writer)?,
+            Artifact::DataNode(node) => {
+                let data_type = node.data_type.apply(query, mb)?;
+                mb.put_artifact(crate::artifact::DataNode { data_type,
+                                                            data: node.data.clone() })?
+            },
             // Artifact::DataRelation(relation) => relation.write(writer)?,
             Artifact::ArtifactVar(var) => query.get_artifact_var(var, mb)?,
             _ => unimplemented!(),
