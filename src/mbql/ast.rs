@@ -236,11 +236,15 @@ impl Allege {
 }
 
 #[derive(Debug)]
-pub struct Symbolize(Box<Symbolizable>);
+pub struct Symbolize {
+    symbolizable: Box<Symbolizable>,
+    position:     Position,
+}
 impl Symbolize {
     pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolize);
-        Ok(Symbolize(Box::new(Symbolizable::parse(pair.into_inner().next().unwrap(), position)?)))
+        Ok(Symbolize { symbolizable: Box::new(Symbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
+                       position })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
@@ -248,7 +252,7 @@ impl Symbolize {
             writer.write(b"Symbolize(")?;
         }
 
-        self.0.write(writer, false, false)?;
+        self.symbolizable.write(writer, false, false)?;
 
         if verbose {
             writer.write(b")")?;
@@ -257,7 +261,7 @@ impl Symbolize {
     }
 
     pub fn apply(&self, query: &Query, mb: &MindBase) -> Result<Concept, MBQLError> {
-        unimplemented!()
+        self.symbolizable.apply(query, mb)
     }
 }
 
@@ -331,7 +335,7 @@ impl Symbolizable {
             // Symbolizable::Allege(a) => a.apply(query, mb),
             // Symbolizable::SymbolVar(sv) => sv.apply(query, mb),
             Symbolizable::Ground(g) => g.apply(query, mb)?,
-            // Symbolizable::Symbolize(s) => s.apply(query, mb),
+            Symbolizable::Symbolize(s) => s.apply(query, mb)?,
             _ => unimplemented!(),
         };
 

@@ -5,3 +5,4 @@
 @url = Url("https://mindbeam.dev")
 @agent = Agent(default)
 @data = DataNode({"Something"}; "the data is here")
+$here = Symbolize(@data)

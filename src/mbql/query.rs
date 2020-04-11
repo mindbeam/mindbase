@@ -106,7 +106,13 @@ impl Query {
         for statement in self.artifact_statements.iter() {
             let _artifact_id = statement.apply(self, mb)?;
             // Ignore this artifact_id because it's being stored inside the apply.
-            // We have to do this because it's possible to have artifacts that recursively reference other artifact variables
+            // We have to do this because it's possible to have artifacts/symbols that recursively reference artifact variables
+        }
+
+        for statement in self.symbol_statements.iter() {
+            let _symbol = statement.apply(self, mb)?;
+            // Ignore this symbol because it's being stored inside the apply.
+            // We have to do this because it's possible to have artifacts/symbols that recursively reference symbol variables
         }
 
         Ok(())
