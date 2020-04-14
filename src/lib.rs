@@ -38,6 +38,7 @@ pub use self::{
 
 use allegation::ArtifactList;
 use core::marker::PhantomData;
+use ground::GSContext;
 use policy::Policy;
 use serde::de::DeserializeOwned;
 use sled::IVec;
@@ -61,7 +62,7 @@ pub struct MindBase {
     artifacts: sled::Tree,
 
     /// Reverse lookup for all allegations
-    analogy_rev: sled::Tree,
+    // analogy_rev: sled::Tree,
 
     /// Reverse lookup for all allegations
     atoms_by_artifact_agent: sled::Tree,
@@ -88,12 +89,12 @@ impl MindBase {
         let my_agents = db.open_tree("agents")?;
         let artifacts = db.open_tree("artifacts")?;
         let allegations = db.open_tree("allegations")?;
-        let allegation_rev = db.open_tree("allegation_rev")?;
-        let analogy_rev = db.open_tree("allegation_rev")?;
+        let atoms_by_artifact_agent = db.open_tree("allegation_rev")?;
+        // let analogy_rev = db.open_tree("allegation_rev")?;
 
         // Both of these are &k[..] / Vec<sorted u8;16 chunks>
-        allegation_rev.set_merge_operator(merge_16byte_list);
-        analogy_rev.set_merge_operator(merge_16byte_list);
+        atoms_by_artifact_agent.set_merge_operator(merge_16byte_list);
+        // analogy_rev.set_merge_operator(merge_16byte_list);
 
         let default_agent = _default_agent(&my_agents)?;
         let _known_agents = db.open_tree("known_agents")?;
@@ -104,8 +105,8 @@ impl MindBase {
                             my_agents,
                             artifacts,
                             _known_agents,
-                            atoms_by_artifact_agent: allegation_rev,
-                            analogy_rev,
+                            atoms_by_artifact_agent,
+                            // analogy_rev,
                             ground_symbol_agents,
                             default_agent };
 
@@ -141,39 +142,42 @@ impl MindBase {
         }
     }
 
-    pub fn put_allegation(&self, allegation: &Allegation) -> Result<AllegationId, MBError> {
-        let encoded: Vec<u8> = bincode::serialize(&allegation).unwrap();
+    pub fn put_allegation(&self, atom: &Allegation) -> Result<AllegationId, MBError> {
+        let encoded: Vec<u8> = bincode::serialize(&atom).unwrap();
 
         let mut key: [u8; 64] = [0u8; 64];
 
-        key[32..64].copy_from_slice(allegation.agent_id.as_ref());
+        key[32..64].copy_from_slice(atom.agent_id.as_ref());
 
-        let id = allegation.id().clone();
+        let id = atom.id().clone();
         self.allegations.insert(id.as_ref(), encoded)?;
 
-        match allegation.referenced_artifacts(self)? {
+        // HACK - with ArtifactList::Many commented out, this is only recording direct ( non-vicarious ) artifacts for this atom
+        match atom.referenced_artifacts(self)? {
             ArtifactList::None => {},
             ArtifactList::One(artifact_id) => {
                 key[0..32].copy_from_slice(artifact_id.as_ref());
                 self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
             },
             ArtifactList::Many(artifact_ids) => {
-                for artifact_id in artifact_ids {
-                    key[0..32].copy_from_slice(artifact_id.as_ref());
-                    self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
-                }
+                // HACK - commenting this out because this is only used for analogies
+                //
+                // for artifact_id in artifact_ids {
+                //     key[0..32].copy_from_slice(artifact_id.as_ref());
+                //     self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
+                // }
             },
         }
 
-        use crate::allegation::Body;
-        match allegation.body {
-            Body::Analogy(Analogy { ref left, .. }) => {
-                for subject_member in left.members.iter() {
-                    self.analogy_rev.merge(subject_member.as_ref(), id.as_ref())?;
-                }
-            },
-            _ => {},
-        }
+        // use crate::allegation::Body;
+        // match atom.body {
+        //     Body::Analogy(Analogy { ref left, .. }) => {
+        //         for subject_member in left.members.iter() {
+        //             self.analogy_rev.merge(subject_member.as_ref(), id.as_ref())?;
+        //         }
+        //     },
+        //     _ => {},
+        // }
 
         Ok(id)
     }
@@ -283,24 +287,24 @@ impl MindBase {
     /// This in theory should allow us to resolve upon a single concept which is believed to be meaningful to that agent based on
     /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
     /// continuum we hope to create with mindbase.
-    pub fn get_ground_symbol<S>(&self, symbolize: S) -> Result<Concept, MBError>
-        where S: GroundSymbolize
-    {
-        // If it's already a symbol, then we're done
-        if let Some(symbol) = symbolize.symbol() {
-            return Ok(symbol);
-        }
+    // pub fn get_ground_symbol<S>(&self, symbolize: S) -> Result<Concept, MBError>
+    //     where S: GroundSymbolize
+    // {
+    //     // If it's already a symbol, then we're done
+    //     if let Some(symbol) = symbolize.symbol() {
+    //         return Ok(symbol);
+    //     }
 
-        let mut context = GSContext::new(self);
+    //     let mut context = GSContext::new(self);
 
-        symbolize.symbolize(&mut context)
+    //     symbolize.symbolize(&mut context)
 
-        // Artifact
-        // GroundSymbol ( recurse )
-        // GroundPair {left/right GroundSymbol }
-        // SymbolVar(SymbolVar),
-        // Ground(Ground),
-    }
+    //     // Artifact
+    //     // GroundSymbol ( recurse )
+    //     // GroundPair {left/right GroundSymbol }
+    //     // SymbolVar(SymbolVar),
+    //     // Ground(Ground),
+    // }
 
     pub fn get_ground_concept<A>(&self, artifacts: Vec<A>) -> Result<Concept, MBError>
         where A: Into<crate::artifact::Artifact>
@@ -402,93 +406,6 @@ impl MindBase {
 
     pub fn add_policy(&self, _policy: Policy) -> Result<(), MBError> {
         unimplemented!()
-    }
-}
-
-pub struct GSContext<'a> {
-    scan_min:  [u8; 64],
-    scan_max:  [u8; 64],
-    gs_agents: Vec<AgentId>,
-    mb:        &'a MindBase,
-}
-
-impl<'a> GSContext<'a> {
-    pub fn new(mb: &'a MindBase) -> Self {
-        let gs_agents = mb.ground_symbol_agents.lock().unwrap().clone();
-
-        let mut scan_min: [u8; 64] = [0; 64];
-        scan_min[32..64].copy_from_slice(gs_agents.first().unwrap().as_ref());
-        let mut scan_max: [u8; 64] = [0; 64];
-        scan_max[32..64].copy_from_slice(gs_agents.last().unwrap().as_ref());
-
-        Self { scan_min,
-               scan_max,
-               gs_agents,
-               mb }
-    }
-
-    pub fn single_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Concept, MBError> {
-        self.scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
-        self.scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
-
-        let iter = self.mb.atoms_by_artifact_agent.range(&self.scan_min[..]..=&self.scan_max[..]);
-
-        use inverted_index_util::entity_list::insert_entity_mut;
-
-        use typenum::consts::U16;
-        let mut unified: Vec<u8> = Vec::new();
-        for item in iter {
-            let (key, atom_list) = item?;
-            // atom_list is a Vec[u8] containing a sorted sequence of 16 bit atom ids
-
-            let item_agent_id = &key[32..64];
-            // Remember we're searching for a range of agent ids. Have to confirm it's in the list
-            if let Err(_) = self.gs_agents.binary_search_by(|a| a.as_ref()[..].cmp(item_agent_id)) {
-                // No, it's not present in the list. Punt
-                continue;
-            }
-
-            if unified.len() == 0 {
-                unified.extend(&atom_list[..])
-            } else {
-                for chunk in atom_list.chunks(16) {
-                    insert_entity_mut::<U16>(&mut unified, chunk)
-                }
-            }
-        }
-
-        let members: Vec<AllegationId> = unified.chunks_exact(16)
-                                                .map(|c| AllegationId::from_bytes(c.try_into().unwrap()))
-                                                .collect();
-        let mut concept = Concept { members,
-                                    spread_factor: 0.0 };
-
-        if concept.is_null() {
-            // Extend this with a new allegation so we can continue
-            // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
-            // subsequent allegations
-            concept.extend(self.mb.alledge(search_artifact_id)?.id().clone());
-
-            // if let Some(parent) = last_concept {
-            //     self.mb.symbolize(Analogy::declarative(concept.clone(), parent))?;
-            // }
-        }
-
-        Ok(concept)
-    }
-}
-pub trait GroundSymbolize {
-    fn symbol(&self) -> Option<Concept>;
-    fn symbolize(&self, context: &mut GSContext) -> Result<Concept, MBError>;
-}
-
-impl GroundSymbolize for ArtifactId {
-    fn symbol(&self) -> Option<Concept> {
-        None
-    }
-
-    fn symbolize(&self, context: &mut GSContext) -> Result<Concept, MBError> {
-        context.single_artifact(self)
     }
 }
 

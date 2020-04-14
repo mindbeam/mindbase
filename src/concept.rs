@@ -107,21 +107,6 @@ impl Concept {
 
         let mut members: Vec<AllegationId> = Vec::new();
 
-        // New - uses the inverted index of Analogy.subject.members Analogy.allegation_id
-        // maintained by put_allegation() builds an inverted
-        for member in self.members.iter() {
-            if let Some(list_of_referring_analogy_ids) = mb.analogy_rev.get(member)? {
-                // This is the ID of the actual Analogy. NOT the Analogy memberOf allegation_ids
-                for analogy_id in list_of_referring_analogy_ids.chunks(16) {
-                    // mb.get()
-                    // LEFT OFF HERE
-                    // Seems kinda dumb to have to look up each analogy
-                    // Can we put the memberof symbols directly into the inverted index?
-                    // need to analyze the part labeled ANALYZE THIS
-                }
-            }
-        }
-
         // Old
         // Very inefficient. Looping over ALL allegations in the system
         // Searching for Analogies which point (intersectionally) to this concept

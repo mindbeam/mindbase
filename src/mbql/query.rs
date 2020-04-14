@@ -6,6 +6,7 @@ use super::{
     },
 };
 use crate::{
+    ground::GSContext,
     ArtifactId,
     Concept,
     MBError,
@@ -16,20 +17,23 @@ use std::{
     sync::Mutex,
 };
 
-#[derive(Debug)]
-pub struct Query {
+pub struct Query<'a> {
     pub symbol_statements:   Vec<ast::SymbolStatement>,
     pub artifact_statements: Vec<ast::ArtifactStatement>,
     pub artifact_var_map:    Mutex<BTreeMap<String, (usize, Option<ArtifactId>)>>,
     pub symbol_var_map:      Mutex<BTreeMap<String, (usize, Option<Concept>)>>,
+    pub gscontext:           Mutex<GSContext<'a>>,
+    pub mb:                  &'a MindBase,
 }
 
-impl Query {
-    pub fn new<T: std::io::BufRead>(reader: T) -> Result<Self, MBQLError> {
-        let mut query = Query { symbol_statements:   Vec::new(),
+impl<'a> Query<'a> {
+    pub fn new<T: std::io::BufRead>(mb: &'a MindBase, reader: T) -> Result<Self, MBQLError> {
+        let mut query = Query { symbol_statements: Vec::new(),
                                 artifact_statements: Vec::new(),
-                                artifact_var_map:    Mutex::new(BTreeMap::new()),
-                                symbol_var_map:      Mutex::new(BTreeMap::new()), };
+                                artifact_var_map: Mutex::new(BTreeMap::new()),
+                                symbol_var_map: Mutex::new(BTreeMap::new()),
+                                gscontext: Mutex::new(GSContext::new(mb)),
+                                mb };
         super::parse::parse(reader, &mut query)?;
 
         Ok(query)
@@ -64,7 +68,7 @@ impl Query {
         Ok(())
     }
 
-    pub fn get_artifact_var(&self, var: &ast::ArtifactVar, mb: &MindBase) -> Result<ArtifactId, MBQLError> {
+    pub fn get_artifact_var(&self, var: &ast::ArtifactVar) -> Result<ArtifactId, MBQLError> {
         let offset = match self.artifact_var_map.lock().unwrap().get(&var.var) {
             None => {
                 return Err(MBQLError { position: var.position.clone(),
@@ -79,9 +83,9 @@ impl Query {
         };
 
         // Didn't have it yet. gotta calculate it
-        let statement = self.artifact_statements.get(offset).unwrap();
+        let statement: &ast::ArtifactStatement = self.artifact_statements.get(offset).unwrap();
 
-        statement.apply(self, mb)
+        statement.apply(self)
     }
 
     pub fn dump<T: std::io::Write>(&self, mut writer: T) -> Result<(), std::io::Error> {
@@ -95,7 +99,7 @@ impl Query {
         Ok(())
     }
 
-    pub fn apply(&self, mb: &MindBase) -> Result<(), MBQLError> {
+    pub fn apply(&self) -> Result<(), MBQLError> {
         // iterate over all artifact statements and store
         // iterate over all symbol statements and recurse
 
@@ -104,13 +108,13 @@ impl Query {
         // even artifacts must be able to recurse symbols
 
         for statement in self.artifact_statements.iter() {
-            let _artifact_id = statement.apply(self, mb)?;
+            let _artifact_id = statement.apply(self)?;
             // Ignore this artifact_id because it's being stored inside the apply.
             // We have to do this because it's possible to have artifacts/symbols that recursively reference artifact variables
         }
 
         for statement in self.symbol_statements.iter() {
-            let _symbol = statement.apply(self, mb)?;
+            let _symbol = statement.apply(self)?;
             // Ignore this symbol because it's being stored inside the apply.
             // We have to do this because it's possible to have artifacts/symbols that recursively reference symbol variables
         }

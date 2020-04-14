@@ -1,0 +1,2 @@
+$smilemouth = Ground("Smile" : "Mouth")
+#$emote = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))

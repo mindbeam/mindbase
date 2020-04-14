@@ -17,6 +17,7 @@ use serde::{
     Serialize,
 };
 use std::fmt;
+// TODO 1 - rename AllegationId to Symobl
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct AllegationId(#[serde(serialize_with = "crate::util::serde_helper::as_base64",
                                 deserialize_with = "crate::util::serde_helper::from_base64_16")]
@@ -165,9 +166,6 @@ impl Allegation {
 
     // Get all artifacts referenced by this allegation
     pub fn referenced_artifacts(&self, mb: &MindBase) -> Result<ArtifactList, MBError> {
-        // TODO need to add prefixing for ArtifactId vs other stuff
-
-        // Returns
         match self.body {
             Body::Artifact(ref artifact_id) => Ok(ArtifactList::One(artifact_id)),
             Body::Unit => Ok(ArtifactList::None),
@@ -185,6 +183,8 @@ impl Allegation {
                             // QUESTION: What are the consequences of this uppper bound enforcement?
                             // TODO 2 - Encode in the number of levels removed?
                             // What about the trust score / weight of the agents who alledged them?
+                            // NOTE: I think we may only need to include those allegations which are authored by ground symbol
+                            // agents
                             match allegation.referenced_artifacts(mb)? {
                                 ArtifactList::None => {},
                                 ArtifactList::One(id) => v.push(id.clone()),
