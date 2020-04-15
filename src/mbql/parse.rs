@@ -7,10 +7,7 @@ use crate::mbql::{
     Position,
 };
 
-use pest::{
-    iterators::Pair,
-    Parser,
-};
+use pest::Parser;
 
 #[derive(Parser)]
 #[grammar = "mbql/mbql.pest"]
@@ -42,21 +39,8 @@ fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), M
         Some(s) => s,
     };
 
-    match inner.as_rule() {
-        Rule::EOI => return Ok(()), // Comment or blank line
-        Rule::artifactstatement => {
-            ast::ArtifactStatement::parse(inner, Position { row }, query)?;
-            // println!("artifact {}", inner);
-        },
-        Rule::symbolstatement => {
-            ast::SymbolStatement::parse(inner, query, Position { row })?;
-            // println!("symbol {}", inner);
-        },
-        _ => {
-            println!("{}", inner);
-            unreachable!();
-        },
-    }
+    ast::Statement::parse(inner, query, Position { row })?;
+
     Ok(())
 }
 

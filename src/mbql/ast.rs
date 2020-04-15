@@ -11,6 +11,7 @@ use crate::{
         Query,
     },
     AgentId,
+    Analogy,
     ArtifactId,
     Concept,
     MBError,
@@ -19,6 +20,143 @@ use crate::{
 
 use pest::iterators::Pair;
 
+pub enum Statement {
+    Diag(DiagStatement),
+    Symbol(SymbolStatement),
+    Artifact(ArtifactStatement),
+}
+
+impl Statement {
+    pub fn parse(element: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<(), MBQLError> {
+        let me = match element.as_rule() {
+            Rule::EOI => return Ok(()), // Comment or blank line
+            Rule::artifactstatement => Statement::Artifact(ArtifactStatement::parse(element, position, query)?),
+            Rule::symbolstatement => Statement::Symbol(SymbolStatement::parse(element, query, position)?),
+            Rule::diagstatement => Statement::Diag(DiagStatement::parse(element, query, position)?),
+            _ => {
+                panic!("Invalid parse element {}", element);
+            },
+        };
+
+        query.add_statement(me);
+
+        Ok(())
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        match self {
+            Statement::Artifact(s) => s.write(writer)?,
+            Statement::Symbol(s) => s.write(writer)?,
+            Statement::Diag(s) => s.write(writer)?,
+        }
+        Ok(())
+    }
+
+    pub fn apply(&self, query: &Query) -> Result<(), MBQLError> {
+        match self {
+            Statement::Artifact(s) => {
+                // Ignore this artifact_id because it's being stored inside the apply.
+                // We have to do this because it's possible to have artifacts/symbols that recursively reference artifact
+                // variables
+                s.apply(query)?;
+            },
+            Statement::Symbol(s) => {
+                // Ignore this symbol because it's being stored inside the apply.
+                // We have to do this because it's possible to have artifacts/symbols that recursively reference symbol variables
+                s.apply(query)?;
+            },
+            Statement::Diag(s) => s.apply(query)?,
+        }
+        Ok(())
+    }
+}
+
+pub struct DiagStatement {
+    position: Position,
+    diag:     Diag,
+}
+
+struct Diag {
+    elements: Vec<DiagElement>,
+}
+
+enum DiagElement {
+    ArtifactVar(ArtifactVar),
+    SymbolVar(SymbolVar),
+}
+
+impl DiagStatement {
+    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<Self, MBQLError> {
+        assert_eq!(pair.as_rule(), Rule::diagstatement);
+
+        let mut items = pair.into_inner();
+        let mut elements = Vec::new();
+        while let Some(d) = items.next() {
+            let e = match d.as_rule() {
+                Rule::artifactvar => DiagElement::ArtifactVar(ArtifactVar::parse(d, position.clone())?),
+                Rule::symbolvar => DiagElement::SymbolVar(SymbolVar::parse(d, position.clone())?),
+                _ => {
+                    println!("{:?}", d);
+                    unreachable!()
+                },
+            };
+
+            elements.push(e)
+        }
+
+        Ok(DiagStatement { position,
+                           diag: Diag { elements } })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        writer.write(b"Diag(")?;
+        let mut seen = false;
+        for item in self.diag.elements.iter() {
+            if seen {
+                writer.write(b", ")?;
+            }
+            seen = true;
+
+            item.write(writer)?;
+        }
+        writer.write(b")\n")?;
+        Ok(())
+    }
+
+    pub fn apply(&self, query: &Query) -> Result<(), MBQLError> {
+        let mut out = String::new();
+        let mut seen = false;
+        for item in self.diag.elements.iter() {
+            if seen {
+                out.push_str(", ");
+            }
+            seen = true;
+
+            match item {
+                DiagElement::ArtifactVar(v) => {
+                    let v = query.get_artifact_var(v)?;
+                    out.push_str(&format!("{}", v));
+                },
+                DiagElement::SymbolVar(v) => {
+                    let v = query.get_symbol_var(v)?;
+                    out.push_str(&format!("{}", v));
+                },
+            }
+        }
+        println!("DIAG: {}", out);
+        Ok(())
+    }
+}
+
+impl DiagElement {
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        match self {
+            DiagElement::ArtifactVar(v) => v.write(writer)?,
+            DiagElement::SymbolVar(v) => v.write(writer)?,
+        }
+        Ok(())
+    }
+}
 #[derive(Debug)]
 pub struct ArtifactVar {
     pub var:      String,
@@ -73,7 +211,7 @@ pub struct ArtifactStatement {
 }
 
 impl ArtifactStatement {
-    pub fn parse(pair: Pair<Rule>, position: Position, query: &mut crate::mbql::Query) -> Result<(), MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: Position, query: &mut crate::mbql::Query) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifactstatement);
 
         let mut pairs = pair.into_inner();
@@ -81,11 +219,7 @@ impl ArtifactStatement {
 
         let artifact = Artifact::parse(pairs.next().unwrap(), position.clone())?;
 
-        let me = ArtifactStatement { var, artifact, position };
-
-        query.add_artifact_statement(me);
-
-        Ok(())
+        Ok(ArtifactStatement { var, artifact, position })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -110,7 +244,7 @@ pub struct SymbolStatement {
 }
 
 impl SymbolStatement {
-    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<(), MBQLError> {
+    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolstatement);
 
         let mut pairs = pair.into_inner();
@@ -131,11 +265,7 @@ impl SymbolStatement {
             _ => unreachable!(),
         };
 
-        let me = SymbolStatement { var, symbol };
-
-        query.add_symbol_statement(me);
-
-        Ok(())
+        Ok(SymbolStatement { var, symbol })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -226,7 +356,11 @@ impl Allege {
     }
 
     pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
-        unimplemented!()
+        let left = self.left.apply(query)?;
+        let right = self.right.apply(query)?;
+
+        let symbol = query.mb.symbolize(Analogy::declarative(left, right))?;
+        Ok(symbol)
     }
 }
 
@@ -327,7 +461,7 @@ impl Symbolizable {
                 let artifact_id = a.apply(query)?;
                 query.mb.symbolize(artifact_id)?
             },
-            // Symbolizable::Allege(a) => a.apply(query),
+            Symbolizable::Allege(a) => a.apply(query)?,
             // Symbolizable::SymbolVar(sv) => sv.apply(query),
             Symbolizable::Ground(g) => g.apply(query)?,
             Symbolizable::Symbolize(s) => s.apply(query)?,

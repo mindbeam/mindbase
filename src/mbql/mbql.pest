@@ -1,4 +1,4 @@
-statement = _{ SOI ~ (artifactstatement | symbolstatement)? ~ ( EOI | "#" ) }
+statement = _{ SOI ~ (artifactstatement | symbolstatement | diagstatement)? ~ ( EOI | "#" ) }
 
 symbolvar = ${ "$" ~ literal }
 artifactvar = ${ "@" ~ literal }
@@ -11,6 +11,9 @@ symbolstatement = { (symbolvar ~ "=")? ~ ( allege | ground | symbolize ) }
 // But there's not much point to doing so for an artifact, so the artifactvar is not optional
 // @foo : Url("http://...")
 artifactstatement = { artifactvar ~ "=" ~ artifact }
+
+diagstatement = { "Diag(" ~ diag ~ ("," ~ diag)* ~ ")" }
+diag = _{ (symbolvar|artifactvar) }
 
 // Symbols
 ground = { ( "Ground(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | ("{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }

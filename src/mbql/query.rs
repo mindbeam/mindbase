@@ -18,18 +18,16 @@ use std::{
 };
 
 pub struct Query<'a> {
-    pub symbol_statements:   Vec<ast::SymbolStatement>,
-    pub artifact_statements: Vec<ast::ArtifactStatement>,
-    pub artifact_var_map:    Mutex<BTreeMap<String, (usize, Option<ArtifactId>)>>,
-    pub symbol_var_map:      Mutex<BTreeMap<String, (usize, Option<Concept>)>>,
-    pub gscontext:           Mutex<GSContext<'a>>,
-    pub mb:                  &'a MindBase,
+    pub statements:       Vec<ast::Statement>,
+    pub artifact_var_map: Mutex<BTreeMap<String, (usize, Option<ArtifactId>)>>,
+    pub symbol_var_map:   Mutex<BTreeMap<String, (usize, Option<Concept>)>>,
+    pub gscontext:        Mutex<GSContext<'a>>,
+    pub mb:               &'a MindBase,
 }
 
 impl<'a> Query<'a> {
     pub fn new<T: std::io::BufRead>(mb: &'a MindBase, reader: T) -> Result<Self, MBQLError> {
-        let mut query = Query { symbol_statements: Vec::new(),
-                                artifact_statements: Vec::new(),
+        let mut query = Query { statements: Vec::new(),
                                 artifact_var_map: Mutex::new(BTreeMap::new()),
                                 symbol_var_map: Mutex::new(BTreeMap::new()),
                                 gscontext: Mutex::new(GSContext::new(mb)),
@@ -39,21 +37,23 @@ impl<'a> Query<'a> {
         Ok(query)
     }
 
-    pub fn add_artifact_statement(&mut self, statement: ast::ArtifactStatement) {
-        let idx = self.artifact_statements.len();
-        self.artifact_var_map
-            .lock()
-            .unwrap()
-            .insert(statement.var.var.clone(), (idx, None));
-        self.artifact_statements.push(statement);
-    }
+    pub fn add_statement(&mut self, statement: ast::Statement) {
+        let idx = self.statements.len();
 
-    pub fn add_symbol_statement(&mut self, statement: ast::SymbolStatement) {
-        let idx = self.symbol_statements.len();
-        if let Some(var) = &statement.var {
-            self.symbol_var_map.lock().unwrap().insert(var.to_string(), (idx, None));
-        }
-        self.symbol_statements.push(statement);
+        match &statement {
+            ast::Statement::Artifact(s) => {
+                self.artifact_var_map.lock().unwrap().insert(s.var.var.clone(), (idx, None));
+            },
+            ast::Statement::Symbol(s) => {
+                if let Some(var) = &s.var {
+                    self.symbol_var_map.lock().unwrap().insert(var.to_string(), (idx, None));
+                }
+            },
+
+            ast::Statement::Diag(_) => {},
+        };
+
+        self.statements.push(statement);
     }
 
     // Have to be able to write independently, as Artifact variables may be evaluated recursively
@@ -83,9 +83,11 @@ impl<'a> Query<'a> {
         };
 
         // Didn't have it yet. gotta calculate it
-        let statement: &ast::ArtifactStatement = self.artifact_statements.get(offset).unwrap();
-
-        statement.apply(self)
+        if let ast::Statement::Artifact(statement) = self.statements.get(offset).unwrap() {
+            return statement.apply(self);
+        } else {
+            panic!("Sanity error");
+        }
     }
 
     pub fn get_symbol_var(&self, var: &ast::SymbolVar) -> Result<Concept, MBQLError> {
@@ -103,17 +105,15 @@ impl<'a> Query<'a> {
         };
 
         // Didn't have it yet. gotta calculate it
-        let statement: &ast::SymbolStatement = self.symbol_statements.get(offset).unwrap();
-
-        statement.apply(self)
+        if let ast::Statement::Symbol(statement) = self.statements.get(offset).unwrap() {
+            return statement.apply(self);
+        } else {
+            panic!("Sanity error");
+        }
     }
 
-
     pub fn dump<T: std::io::Write>(&self, mut writer: T) -> Result<(), std::io::Error> {
-        for statement in self.artifact_statements.iter() {
-            statement.write(&mut writer)?;
-        }
-        for statement in self.symbol_statements.iter() {
+        for statement in self.statements.iter() {
             statement.write(&mut writer)?;
         }
 
@@ -128,16 +128,8 @@ impl<'a> Query<'a> {
         // could be a cyclic graph
         // even artifacts must be able to recurse symbols
 
-        for statement in self.artifact_statements.iter() {
-            let _artifact_id = statement.apply(self)?;
-            // Ignore this artifact_id because it's being stored inside the apply.
-            // We have to do this because it's possible to have artifacts/symbols that recursively reference artifact variables
-        }
-
-        for statement in self.symbol_statements.iter() {
-            let _symbol = statement.apply(self)?;
-            // Ignore this symbol because it's being stored inside the apply.
-            // We have to do this because it's possible to have artifacts/symbols that recursively reference symbol variables
+        for statement in self.statements.iter() {
+            statement.apply(self)?;
         }
 
         Ok(())
