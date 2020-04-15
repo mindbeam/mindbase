@@ -416,9 +416,9 @@ impl GroundSymbolizable {
 
 #[derive(Debug)]
 pub struct GroundPair {
-    left:     Box<GroundSymbolizable>,
-    right:    Box<GroundSymbolizable>,
-    position: Position,
+    pub left:  Box<GroundSymbolizable>,
+    pub right: Box<GroundSymbolizable>,
+    position:  Position,
 }
 
 impl GroundPair {

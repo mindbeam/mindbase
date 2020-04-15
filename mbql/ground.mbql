@@ -1,2 +1,2 @@
-$smilemouth = Ground("Smile" : "Mouth")
+$smilemouth = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
 #$emote = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))

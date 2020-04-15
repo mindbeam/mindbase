@@ -43,12 +43,14 @@
 // I'm not certain if this is useful for much
 
 use crate::{
+    allegation::Body,
     mbql::{
         ast,
         Query,
     },
     AgentId,
     AllegationId,
+    Analogy,
     ArtifactId,
     Concept,
     MBError,
@@ -80,34 +82,61 @@ impl<'a> GSContext<'a> {
 
     /// Call this with the top level GroundSymbolizable within a ground symbol statement
     pub fn symbolize(&mut self, symbolizable: &ast::GroundSymbolizable, query: &Query) -> Result<Concept, MBError> {
-        // -
-        // WHAT DO I WANT TO DO HERE?
+        // As a temporary measure, we are doing a fairly inefficient process of building a Symbol for each symbolizable artifact
+        // with all possible symbolic atoms and THEN narrowing that.
         //
-        // Scenario 1 - single Artifact: Ground("Foo")
-        // Just go and look up all base agent symbolizations of artifact ID - No analogical traversal!
-        //
-        // Scenario 2 - Analogy / Artifact pair: Ground( "Foo" : "Bar" )
-        //
-        //
-        // Scenario 3 - Nested Analogy: Ground( ("Foo" : "Bar" ) : "Blah")
+        // Later, we should be able to improve this with strategic indexing such that the narrowing step is less burdensome (or
+        // even unnecessary) and that roundtripping to the data storage layer is reduced
 
-        match symbolizable {
+        // TODO - create a shared context which can be used for a rolling index intersection process
+        // TODO - change this to not return a symbol, but rather to mutate the context
+        let symbol = self.symbolize_recurse(symbolizable, query)?;
+
+        // TODO - convert the rolling index intersection into a symbol and Return.
+
+        Ok(symbol)
+    }
+
+    fn symbolize_recurse(&mut self, s: &ast::GroundSymbolizable, query: &Query) -> Result<Concept, MBError> {
+        //
+
+        let symbol = match s {
             ast::GroundSymbolizable::Artifact(a) => {
                 let artifact_id = a.apply(query)?;
-                self.single_artifact(artifact_id)
+                self.single_artifact(&artifact_id)?
             },
-            ast::GroundSymbolizable::GroundPair(a) => {},
-            ast::GroundSymbolizable::SymbolVar(sv) => {},
+            ast::GroundSymbolizable::GroundPair(a) => {
+                // Symbol grounding is the crux of the biscuit
+                // We don't want to create new symbols if we can possibly help it
+                // We want to try reeally hard to find existing symbols
+                // And only create a new one if we positively must
+
+                // Depth-first search
+
+                let left = self.symbolize_recurse(&*a.left, query)?;
+                let right = self.symbolize_recurse(&*a.right, query)?;
+
+                // find symbols (Analogies) which refer to both of the above
+                self.find_matching_analogy_symbol(&left, &right)?
+            },
+            ast::GroundSymbolizable::SymbolVar(sv) => {
+                //
+                query.get_symbol_var(sv)?
+            },
             ast::GroundSymbolizable::Ground(g) => {
                 // Shouldn't be able to call this directly with a Ground statement
                 unreachable!()
             },
+        };
+
+        if symbol.is_null() {
+            panic!("It's bad mmkay");
         }
 
-        unimplemented!()
+        Ok(symbol)
     }
 
-    pub fn single_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Concept, MBError> {
+    fn single_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Concept, MBError> {
         self.scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
         self.scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
 
@@ -120,6 +149,10 @@ impl<'a> GSContext<'a> {
         for item in iter {
             let (key, atom_list) = item?;
             // atom_list is a Vec[u8] containing a sorted sequence of 16 bit atom ids
+
+            // TODO - differentiate (keys or list items) based on the type and vicariousness of artifact -> atom
+            // Is this a direct symbolization of that artifact? or an Analogy?
+            // At present, we are only indexing direct symbolizations, so we can cheat and skip this
 
             let item_agent_id = &key[32..64];
             // Remember we're searching for a range of agent ids. Have to confirm it's in the list
@@ -143,19 +176,55 @@ impl<'a> GSContext<'a> {
         let mut concept = Concept { members,
                                     spread_factor: 0.0 };
 
-        if concept.is_null() {
-            // Extend this with a new allegation so we can continue
-            // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
-            // subsequent allegations
-            concept.extend(self.mb.alledge(search_artifact_id)?.id().clone());
-
-            // if let Some(parent) = last_concept {
-            //     self.mb.symbolize(Analogy::declarative(concept.clone(), parent))?;
-            // }
-        }
-
         Ok(concept)
     }
+
+    // It's not really just one analogy that we're searching for, but a collection of N analogies which match left and right
+    fn find_matching_analogy_symbol(&self, left: &Concept, right: &Concept) -> Result<Concept, MBError> {
+        // Brute force for now. This whole routine is insanely inefficient
+        // TODO 2 - update this to be a sweet indexed query!
+
+        let mut atoms: Vec<AllegationId> = Vec::new();
+
+        for allegation in self.mb.allegation_iter() {
+            let (allegation_id, allegation) = allegation?;
+
+            match allegation.body {
+                Body::Analogy(analogy) => {
+                    //
+                    if self.gs_agents.contains(&allegation.agent_id) {
+                        // TODO 2 - This is crazy inefficient
+                        if intersect_symbols(left, &analogy.left) && intersect_symbols(right, &analogy.right) {
+                            // atoms.push(Regular(allegation_id))
+                            atoms.push(allegation_id)
+                        } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
+                            // TODO 2 - QUESTION - should we preserve chirality in the concept member list? I think we may need to
+                            // atoms.push(Reverse(allegation_id)) // Uno reverse card yo
+                            atoms.push(allegation_id)
+                        }
+                    }
+                },
+                _ => {},
+            }
+        }
+
+        // Create a Symbol which contains the composite symbol atoms of all Analogies made by ground symbol agents
+        return Ok(Concept { members:       atoms,
+                            spread_factor: 0.0, });
+    }
+}
+
+fn intersect_symbols(a: &Concept, b: &Concept) -> bool {
+    // This is crazy inefficient. At least do a lexicographic presort
+    // can probably eliminate this during rolling inverted index conversion
+    let mut out: Vec<AllegationId> = Vec::new();
+    for member in a.members.iter() {
+        if b.members.contains(member) {
+            return true;
+        }
+    }
+
+    false
 }
 // pub trait GroundSymbolize {
 //     fn symbol(&self) -> Option<Concept>;

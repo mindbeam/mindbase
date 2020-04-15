@@ -12,6 +12,7 @@ pub enum MBError {
     AllegationNotFound,
     MBQL(Box<MBQLError>),
     Sanity,
+    NullSymbol,
 }
 
 // impl std::fmt::Display for Error {

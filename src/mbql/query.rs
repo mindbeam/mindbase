@@ -88,6 +88,27 @@ impl<'a> Query<'a> {
         statement.apply(self)
     }
 
+    pub fn get_symbol_var(&self, var: &ast::SymbolVar) -> Result<Concept, MBQLError> {
+        let offset = match self.symbol_var_map.lock().unwrap().get(&var.var) {
+            None => {
+                return Err(MBQLError { position: var.position.clone(),
+                                       kind:     MBQLErrorKind::SymbolVarNotFound { var: var.var.clone() }, })
+            },
+            Some((offset, maybe_symbol)) => {
+                if let Some(symbol) = maybe_symbol {
+                    return Ok(symbol.clone());
+                }
+                offset.clone()
+            },
+        };
+
+        // Didn't have it yet. gotta calculate it
+        let statement: &ast::SymbolStatement = self.symbol_statements.get(offset).unwrap();
+
+        statement.apply(self)
+    }
+
+
     pub fn dump<T: std::io::Write>(&self, mut writer: T) -> Result<(), std::io::Error> {
         for statement in self.artifact_statements.iter() {
             statement.write(&mut writer)?;
