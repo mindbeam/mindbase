@@ -20,13 +20,13 @@ fn main() -> Result<(), std::io::Error> {
     let agent = mb.default_agent().unwrap();
     println!("Using Agent {}", agent);
 
-    let isaid = mb.get_ground_concept(vec![text("Things that I said"), text("In mbcli")])?;
+    let isaid = mb.get_ground_symbol(vec![text("Things that I said"), text("In mbcli")])?;
 
-    // What situations might have precipitated that would lead me to conjuring a non-narrow concept?
+    // What situations might have precipitated that would lead me to conjuring a non-narrow symbol?
 
-    // A: Hey, do you want to take a [trip1] with me? -- Narrow concept conjured from new allegation I just made
+    // A: Hey, do you want to take a [trip1] with me? -- Narrow symbol conjured from new allegation I just made
     // B: Sure, I'll take a [trip2,trip1] with you    -- Create a new allegation to represent interpreted meaning (same artifact)
-    // A: What's a good day for our [trip1,trip2]?    -- "trip" Concept broadens to 2 allegations
+    // A: What's a good day for our [trip1,trip2]?    -- "trip" Symbol broadens to 2 allegations
     // B: How about tuesday? A: Great, I'll get the psilocybin
     // B: Whoa, I thought you meant a [trip2] not a [trip1] -- {negative analogy between [trip1] and [trip2]}
 

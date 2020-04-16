@@ -36,32 +36,32 @@ fn alice() -> Result<(), MBError> {
     // [Alice] catOf [Joe's friend]
     // [Alice] catOf [Things that are definable with this picture]
     //
-    //  [Artifact("Alice")][789] --\          (Subjective) Concept {789,123}
+    //  [Artifact("Alice")][789] --\          (Subjective) Symbol {789,123}
     //                              |
     //                          Unit[123] ---> [Joe's Friend]
     //                              |
     //      [Artifact(AliceJPG)] ->/
     //
     //
-    //    Artifact("Alice")[456]   (Subjective) Concept {456}
+    //    Artifact("Alice")[456]   (Subjective) Symbol {456}
     //
     //
     //   <->
     //
-    //  D:Allege (456 catof 123)  -> (Intersubjective) Concept{123,456,789} I talk about this ALice which is a little bigger
-    //       than your alice concept
-    //  R:Allege (123 catof 456)  -> (Intersubjective) Concept{456,123}   You talk about this Alice, which is very closely
+    //  D:Allege (456 catof 123)  -> (Intersubjective) Symbol{123,456,789} I talk about this ALice which is a little bigger
+    //       than your alice symbol
+    //  R:Allege (123 catof 456)  -> (Intersubjective) Symbol{456,123}   You talk about this Alice, which is very closely
     //       aligned with mine
     //
-    // TODO 2 - concept surrogates
+    // TODO 2 - symbol surrogates
     //
     //    **Critically* My previous statements about Alice{123,789} can be compared with your statements about Alice {456}
     //    and vice versa
     //
-    //  Question: When Daniel gets a ground symbol (Concept) about Alice *after* Daniel and Rob have exchanged alices, is that
+    //  Question: When Daniel gets a ground symbol (Symbol) about Alice *after* Daniel and Rob have exchanged alices, is that
     //  expansive of both, or is it the responsibility of the projection to fill this in.
     //  IS ROOT SYMBOL CONJURING INCLUSIVE OF OTHER SEMI-TRUSTED AGENTS? (I think no. Only of ground agents)
-    //  if a disjunction is later found that invalidates some dimension(s) of the concept that was used for OTHER allegations
+    //  if a disjunction is later found that invalidates some dimension(s) of the symbol that was used for OTHER allegations
     //
     //
     //
@@ -86,7 +86,7 @@ fn alice() -> Result<(), MBError> {
     // It feels like there may be something to this
     //
     // TODO 2 - clarify in the code that:
-    //  * An allegation/Concept is a category
+    //  * An allegation/Symbol is a category
     //  * That category be automatically expanded based on Analogies defined against it
     //  Q: how do we make it clear to the user that such Analogies are being traversed?
     //  A: we probably don't - if it's done lazily
@@ -128,7 +128,7 @@ fn apple() -> Result<(), MBError> {
     let apple_of_my_eye = mb.alledge(Text::new("Apple"))?;
 
     // Look up the "ground symbol" for "Apple" without any additional specificity
-    let apple_ground_symbol: Concept = mb.get_ground_concept(vec!["Apple"])?;
+    let apple_ground_symbol: Symbol = mb.get_ground_symbol(vec!["Apple"])?;
 
     // It's... all of them. Why? Because meaning is contextual/intersectional.
     // We don't have enough information to narrow it down yet and we should not assume what they meant
@@ -136,15 +136,15 @@ fn apple() -> Result<(), MBError> {
 
     let _statement = mb.alledge(Text::new("I love Apple"))?;
 
-    // TODO 2 - surrogate Concepts
+    // TODO 2 - surrogate Symbols
     // let apple_for_the_purposes_of_this_conversation = apple.surrogate();
 
-    //     // // Lets be a liittle more specific. (Using get_ground_concept here as a shortcut)
+    //     // // Lets be a liittle more specific. (Using get_ground_symbol here as a shortcut)
     mb.alledge(Analogy::declarative(apple_computers.subjective(), mb.alledge("Corporation")?.subjective()))?;
     mb.alledge(Analogy::declarative(apple_the_fruit.subjective(), mb.alledge("Edible Fruit")?.subjective()))?;
     mb.alledge(Analogy::declarative(apple_of_my_eye.subjective(), mb.alledge("Amorousness")?.subjective()))?;
 
-    let apple: Concept = mb.get_ground_concept(vec!["Corporation", "Apple"])?;
+    let apple: Symbol = mb.get_ground_symbol(vec!["Corporation", "Apple"])?;
     assert_eq!(apple.count(), 1);
 
     Ok(())
@@ -189,13 +189,13 @@ fn apple_ii() -> Result<(), MBError> {
     //     // mb.alledge(Analogy::declarative(apples.subjective(), things_i_love.subjective()))?;
 
     //     // // Lets start out simple. Apple. Which apple are you talking about?
-    //     // let fruit = mb.get_ground_concept(vec![text("Apple")])?;
+    //     // let fruit = mb.get_ground_symbol(vec![text("Apple")])?;
 
     //     // // Just for fun, Lets get reeal specific with the biological taxonomy. Note that it's conceivable that this
     // exact     // taxonomy // could also be present which might mean something completely different! While the
     // length of our     // specified // taxonomy makes this a bit less likely, remember that there is nothing magical
     // about these     // artifacts.
-    // let malus_domestica1 = mb.get_ground_concept(vec![text("Domain: Eukarya"),
+    // let malus_domestica1 = mb.get_ground_symbol(vec![text("Domain: Eukarya"),
     //                                                  text("Kingdom: Plantae"),
     //                                                  text("Phylum: Magnoliophyta"),
     //                                                  text("Class: Magnoliopsida"),
@@ -204,8 +204,8 @@ fn apple_ii() -> Result<(), MBError> {
     //                                                  text("Genus: Malus"),
     //                                                  text("Species: Malus domestica"),])?;
 
-    //     // let tree = mb.get_ground_concept(vec![text("Plant"), text("Tree")])?;
-    //     // let fruit = mb.get_ground_concept(vec![text("Fruit")])?;
+    //     // let tree = mb.get_ground_symbol(vec![text("Plant"), text("Tree")])?;
+    //     // let fruit = mb.get_ground_symbol(vec![text("Fruit")])?;
 
     //     // //  text("with an elongated stem or trunk"),
     //     // //  text("has branches and leaves"),
@@ -217,7 +217,7 @@ fn apple_ii() -> Result<(), MBError> {
     //     // // text("Apple");
     //     // // text("Fruit of the");;
 
-    // let malus_domestica2 = mb.get_ground_concept(vec![text("Domain: Eukarya"),
+    // let malus_domestica2 = mb.get_ground_symbol(vec![text("Domain: Eukarya"),
     //                                                  text("Kingdom: Plantae"),
     //                                                  text("Phylum: Magnoliophyta"),
     //                                                  text("Class: Magnoliopsida"),
@@ -241,7 +241,7 @@ fn fridays() -> Result<(), MBError> {
     // Next Friday
     let f1 = mb.alledge("Friday")?.subjective();
 
-    // The abstract concept of Friday
+    // The abstract symbol of Friday
     let f2 = mb.alledge("Friday")?.subjective();
 
     // The person named Friday
@@ -255,7 +255,7 @@ fn fridays() -> Result<(), MBError> {
     mb.alledge(Analogy::declarative(f2, dow))?;
     mb.alledge(Analogy::declarative(f3, per))?;
 
-    let _friday_person = mb.get_ground_concept(vec!["Friday", "Names for a person"])?;
+    let _friday_person = mb.get_ground_symbol(vec!["Friday", "Names for a person"])?;
     // let names = mb.get_ground_symbols_for_artifact(FlatText::new("Names for a person"))?
     //               .expect("Option");
 

@@ -55,9 +55,9 @@ use crate::{
     AgentId,
     AllegationId,
     ArtifactId,
-    Concept,
     MBError,
     MindBase,
+    Symbol,
 };
 use std::convert::TryInto;
 
@@ -84,7 +84,7 @@ impl<'a> GSContext<'a> {
     }
 
     /// Call this with the top level GroundSymbolizable within a ground symbol statement
-    pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, query: &Query) -> Result<Concept, MBError> {
+    pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, query: &Query) -> Result<Symbol, MBError> {
         // As a temporary measure, we are doing a fairly inefficient process of building a Symbol for each symbolizable artifact
         // with all possible symbolic atoms and THEN narrowing that.
         //
@@ -100,7 +100,7 @@ impl<'a> GSContext<'a> {
         Ok(symbol)
     }
 
-    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, query: &Query) -> Result<Concept, MBError> {
+    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, query: &Query) -> Result<Symbol, MBError> {
         //
 
         let symbol = match s {
@@ -144,7 +144,7 @@ impl<'a> GSContext<'a> {
         Ok(symbol)
     }
 
-    fn single_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Concept, MBError> {
+    fn single_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Symbol, MBError> {
         self.scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
         self.scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
 
@@ -181,14 +181,14 @@ impl<'a> GSContext<'a> {
         let members: Vec<AllegationId> = unified.chunks_exact(16)
                                                 .map(|c| AllegationId::from_bytes(c.try_into().unwrap()))
                                                 .collect();
-        let concept = Concept { members,
-                                spread_factor: 0.0 };
+        let symbol = Symbol { members,
+                              spread_factor: 0.0 };
 
-        Ok(concept)
+        Ok(symbol)
     }
 
     // It's not really just one analogy that we're searching for, but a collection of N analogies which match left and right
-    fn find_matching_analogy_symbol(&self, left: &Concept, right: &Concept) -> Result<Concept, MBError> {
+    fn find_matching_analogy_symbol(&self, left: &Symbol, right: &Symbol) -> Result<Symbol, MBError> {
         // Brute force for now. This whole routine is insanely inefficient
         // TODO 2 - update this to be a sweet indexed query!
 
@@ -206,7 +206,7 @@ impl<'a> GSContext<'a> {
                             // atoms.push(Regular(allegation_id))
                             atoms.push(allegation_id)
                         } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
-                            // TODO 2 - QUESTION - should we preserve chirality in the concept member list? I think we may need to
+                            // TODO 2 - QUESTION - should we preserve chirality in the symbol member list? I think we may need to
                             // atoms.push(Reverse(allegation_id)) // Uno reverse card yo
                             atoms.push(allegation_id)
                         }
@@ -217,12 +217,12 @@ impl<'a> GSContext<'a> {
         }
 
         // Create a Symbol which contains the composite symbol atoms of all Analogies made by ground symbol agents
-        return Ok(Concept { members:       atoms,
-                            spread_factor: 0.0, });
+        return Ok(Symbol { members:       atoms,
+                           spread_factor: 0.0, });
     }
 }
 
-fn intersect_symbols(a: &Concept, b: &Concept) -> bool {
+fn intersect_symbols(a: &Symbol, b: &Symbol) -> bool {
     // This is crazy inefficient. At least do a lexicographic presort
     // can probably eliminate this during rolling inverted index conversion
     // let mut out: Vec<AllegationId> = Vec::new();

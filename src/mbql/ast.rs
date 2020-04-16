@@ -13,9 +13,9 @@ use crate::{
     AgentId,
     Analogy,
     ArtifactId,
-    Concept,
     MBError,
     MindBase,
+    Symbol,
 };
 
 use super::error::MBQLErrorKind;
@@ -214,7 +214,7 @@ impl SymbolVar {
         self.var.clone()
     }
 
-    pub fn apply(&self, _query: &Query) -> Result<Concept, MBQLError> {
+    pub fn apply(&self, _query: &Query) -> Result<Symbol, MBQLError> {
         unimplemented!()
     }
 }
@@ -299,7 +299,7 @@ impl SymbolStatement {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
         let symbol = self.symbol.apply(query)?;
 
         if let Some(var) = &self.var {
@@ -337,9 +337,9 @@ impl Ground {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
-        let concept = query.gscontext.lock().unwrap().symbolize(&*self.symbolizable, query)?;
-        Ok(concept)
+    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+        let symbol = query.gscontext.lock().unwrap().symbolize(&*self.symbolizable, query)?;
+        Ok(symbol)
     }
 }
 
@@ -382,7 +382,7 @@ impl Allege {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
         let left = self.left.apply(query)?;
         let right = self.right.apply(query)?;
 
@@ -416,7 +416,7 @@ impl Symbolize {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
         self.symbolizable.apply(query)
     }
 }
@@ -482,7 +482,7 @@ impl Symbolizable {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
         let symbol = match self {
             Symbolizable::Artifact(a) => {
                 let artifact_id = a.apply(query)?;
@@ -554,7 +554,7 @@ impl GSymbolizable {
         Ok(())
     }
 
-    // pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
+    // pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
     //     let symbol = match self {
     //         GroundSymbolizable::Artifact(a) => query.mb.get_ground_symbol(a)?,
     //         GroundSymbolizable::GroundPair(a) => a.apply(query),
@@ -567,11 +567,11 @@ impl GSymbolizable {
 }
 
 // impl GroundSymbolize for GroundSymbolizable {
-//     fn symbol(&self) -> Option<Concept> {
+//     fn symbol(&self) -> Option<Symbol> {
 //         None
 //     }
 
-//     fn symbolize(&self, context: &mut crate::GSContext) -> Result<Concept, crate::MBError> {
+//     fn symbolize(&self, context: &mut crate::GSContext) -> Result<Symbol, crate::MBError> {
 //         unimplemented!()
 //     }
 // }
@@ -613,7 +613,7 @@ impl GPair {
         Ok(())
     }
 
-    // pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
+    // pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
     //     unimplemented!()
     // }
 }
@@ -684,21 +684,6 @@ impl Artifact {
         Ok(artifact_id)
     }
 }
-
-// impl GroundSymbolize for Artifact {
-//     fn symbol(&self) -> Option<Concept> {
-//         None
-//     }
-
-//     fn symbolize(&self, context: &mut crate::ground::GSContext) -> Result<Concept, MBError> {
-//         Ok(a.apply(query)?.subjective())
-//     }
-// }
-// impl Into<crate::artifact::Artifact> for Agent {
-//     fn into(self) -> crate::artifact::Artifact {
-//         crate::artifact::Artifact::Agent(crate::agent::Agent)
-//     }
-// }
 
 #[derive(Debug)]
 pub struct Agent {

@@ -2,10 +2,10 @@ pub mod agent;
 pub mod allegation;
 pub mod analogy;
 pub mod artifact;
-pub mod concept;
 pub mod error;
 mod genesis;
 mod ground;
+pub mod symbol;
 
 pub mod mbql;
 
@@ -32,8 +32,8 @@ pub use self::{
         ArtifactId,
         Text,
     },
-    concept::Concept,
     error::MBError,
+    symbol::Symbol,
 };
 
 use allegation::ArtifactList;
@@ -209,7 +209,7 @@ impl MindBase {
         Ok(id)
     }
 
-    pub fn symbolize<T>(&self, thing: T) -> Result<Concept, MBError>
+    pub fn symbolize<T>(&self, thing: T) -> Result<Symbol, MBError>
         where T: crate::allegation::Alledgable
     {
         Ok(thing.alledge(self, &self.default_agent)?.subjective())
@@ -249,7 +249,7 @@ impl MindBase {
                phantomvalue: PhantomData, }
     }
 
-    pub fn concept_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Concept, MBError>
+    pub fn symbol_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Symbol, MBError>
         where F: Fn(&Allegation) -> bool
     {
         let mut members = Vec::new();
@@ -261,11 +261,11 @@ impl MindBase {
             }
         }
 
-        Ok(Concept { members,
-                     spread_factor: 0.0 })
+        Ok(Symbol { members,
+                    spread_factor: 0.0 })
     }
 
-    /// For an ordered list of artifacts, we want to try to resolve upon the most precise conceptual definition possible, and
+    /// For an ordered list of artifacts, we want to try to resolve upon the most precise symbolual definition possible, and
     /// arrive at a "ground symbol" which is meaningful to a given agent. This agent ascribes to a list of "grounding agents",
     /// which the agent trusts implicitly as a source of ground symbols. This list of grounding agents should generally include
     /// the agent itself, plus any "genesis" or "neighbor" agents to which the user chooses to ascribe.
@@ -279,14 +279,14 @@ impl MindBase {
     /// the real world, at least to some degree.
     ///
     /// This list of artifacts is taken to be a single thread of a taxonomy. Each artifact is initially translated into
-    /// the the broadest possible Concept which is inclusive of _all_ potential interpretations of that artifact.
-    /// The initial Concept of that taxonomy is not able to be narrowed, but the subsequent concepts in the taxonomy are narrowed
+    /// the the broadest possible Symbol which is inclusive of _all_ potential interpretations of that artifact.
+    /// The initial Symbol of that taxonomy is not able to be narrowed, but the subsequent symbols in the taxonomy are narrowed
     /// to include only those which are alledged to be in the category of the parent by one of the grounding/neighbor agents.
     ///
-    /// This in theory should allow us to resolve upon a single concept which is believed to be meaningful to that agent based on
+    /// This in theory should allow us to resolve upon a single symbol which is believed to be meaningful to that agent based on
     /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
     /// continuum we hope to create with mindbase.
-    // pub fn get_ground_symbol<S>(&self, symbolize: S) -> Result<Concept, MBError>
+    // pub fn get_ground_symbol<S>(&self, symbolize: S) -> Result<Symbol, MBError>
     //     where S: GroundSymbolize
     // {
     //     // If it's already a symbol, then we're done
@@ -305,24 +305,24 @@ impl MindBase {
     //     // Ground(Ground),
     // }
 
-    pub fn get_ground_concept<A>(&self, artifacts: Vec<A>) -> Result<Concept, MBError>
+    pub fn get_ground_symbol<A>(&self, artifacts: Vec<A>) -> Result<Symbol, MBError>
         where A: Into<crate::artifact::Artifact>
     {
         let mut search_chain = Vec::with_capacity(artifacts.len());
 
-        // TODO 1 - Update this to accept Vec<ConceptOrArtifact>
+        // TODO 1 - Update this to accept Vec<SymbolOrArtifact>
         for a in artifacts.into_iter() {
             let artifact_id = self.put_artifact(a.into())?;
             search_chain.push(artifact_id);
         }
 
         // TODO 1 - Upgrade this to use the inverted index
-        // TODO 2 - Upgrade concepts to be lazy
+        // TODO 2 - Upgrade symbols to be lazy
 
         // ground_symbol_agents is pre-sorted
         let gs_agents = self.ground_symbol_agents.lock().unwrap();
 
-        let mut last_concept: Option<Concept> = None;
+        let mut last_symbol: Option<Symbol> = None;
 
         // find allegations for a given agent + artifactid
 
@@ -339,36 +339,36 @@ impl MindBase {
 
         for search_artifact_id in search_chain {
             use crate::allegation::Body;
-            let mut concept = self.concept_filter_allegations_by(|a| {
-                                      gs_agents.contains(&a.agent_id)
-                                      && match &a.body {
-                                          Body::Artifact(artifact_id) => *artifact_id == search_artifact_id,
-                                          _ => false,
-                                      }
-                                  })?;
+            let mut symbol = self.symbol_filter_allegations_by(|a| {
+                                     gs_agents.contains(&a.agent_id)
+                                     && match &a.body {
+                                         Body::Artifact(artifact_id) => *artifact_id == search_artifact_id,
+                                         _ => false,
+                                     }
+                                 })?;
 
-            if let Some(ref parent) = last_concept {
-                concept.narrow_by(self, parent)?;
+            if let Some(ref parent) = last_symbol {
+                symbol.narrow_by(self, parent)?;
             }
 
             // None of our ground/neighbor agents have declared this taxonomic/analogic relationship before
-            // But we are implicitly doing so now. Lets extend our concept with a new allegation corresponding to a new atom of
+            // But we are implicitly doing so now. Lets extend our symbol with a new allegation corresponding to a new atom of
             // meaning, and ALSO define that meaning by alledging
-            if concept.is_null() {
+            if symbol.is_null() {
                 // Extend this with a new allegation so we can continue
                 // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
                 // subsequent allegations
-                concept.extend(self.alledge(search_artifact_id)?.id().clone());
+                symbol.extend(self.alledge(search_artifact_id)?.id().clone());
 
-                if let Some(parent) = last_concept {
-                    self.alledge(Analogy::declarative(concept.clone(), parent))?;
+                if let Some(parent) = last_symbol {
+                    self.alledge(Analogy::declarative(symbol.clone(), parent))?;
                 }
             }
 
-            last_concept = Some(concept);
+            last_symbol = Some(symbol);
         }
 
-        Ok(last_concept.unwrap())
+        Ok(last_symbol.unwrap())
 
         // let mut members = Vec::new();
         // for agent_id in self.ground_symbol_agents.lock().unwrap().iter() {
@@ -386,7 +386,7 @@ impl MindBase {
         // if members.len() == 0 {
         //     return Ok(None);
         // } else {
-        //     return Ok(Some(Concept { members,
+        //     return Ok(Some(Symbol { members,
         //                              spread_factor: 0.0 }));
         // }
     }

@@ -12,8 +12,8 @@ use crate::{
         Alledgable,
         Allegation,
     },
-    concept::Concept,
     error::MBError,
+    symbol::Symbol,
     AgentId,
     MindBase,
 };
@@ -192,7 +192,7 @@ impl Into<Artifact> for &str {
 // This can be used to store XML or JSON documents, or other application specific formats
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataGraph {
-    pub graph_type: Concept,
+    pub graph_type: Symbol,
     pub bytes:      u32, // Optional
     /// Must contain all unreachable nodes. Optionally reachable nodes may be present
     pub nodes:      Vec<AllegationId>,
@@ -206,7 +206,7 @@ impl Into<Artifact> for DataGraph {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNode {
-    pub data_type: Concept,
+    pub data_type: Symbol,
     pub data:      Option<Vec<u8>>,
 }
 
@@ -244,5 +244,5 @@ impl<T> Alledgable for T where T: Into<Artifact> + std::fmt::Debug
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNodeRelation {
     pub to:            AllegationId,
-    pub relation_type: Concept,
+    pub relation_type: Symbol,
 }

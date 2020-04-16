@@ -6,30 +6,30 @@ fn apple() -> Result<(), MBError> {
     let tmpdirpath = tmpdir.path();
     let mb = MindBase::open(&tmpdirpath)?;
 
-    let malus_domestica1 = mb.get_ground_concept(vec!["Biological Taxonomy",
-                                                      "Domain: Eukarya",
-                                                      "Kingdom: Plantae",
-                                                      "Phylum: Magnoliophyta",
-                                                      "Class: Magnoliopsida",
-                                                      "Order: Rosales",
-                                                      "Family: Rosaceae",
-                                                      "Genus: Malus",
-                                                      "Species: Malus domestica",])?;
+    let malus_domestica1 = mb.get_ground_symbol(vec!["Biological Taxonomy",
+                                                     "Domain: Eukarya",
+                                                     "Kingdom: Plantae",
+                                                     "Phylum: Magnoliophyta",
+                                                     "Class: Magnoliopsida",
+                                                     "Order: Rosales",
+                                                     "Family: Rosaceae",
+                                                     "Genus: Malus",
+                                                     "Species: Malus domestica",])?;
 
-    let malus_domestica2 = mb.get_ground_concept(vec!["Biological Taxonomy",
-                                                      "Domain: Eukarya",
-                                                      "Kingdom: Plantae",
-                                                      "Phylum: Magnoliophyta",
-                                                      "Class: Magnoliopsida",
-                                                      "Order: Rosales",
-                                                      "Family: Rosaceae",
-                                                      "Genus: Malus",
-                                                      "Species: Malus domestica",])?;
+    let malus_domestica2 = mb.get_ground_symbol(vec!["Biological Taxonomy",
+                                                     "Domain: Eukarya",
+                                                     "Kingdom: Plantae",
+                                                     "Phylum: Magnoliophyta",
+                                                     "Class: Magnoliopsida",
+                                                     "Order: Rosales",
+                                                     "Family: Rosaceae",
+                                                     "Genus: Malus",
+                                                     "Species: Malus domestica",])?;
 
     assert_eq!(malus_domestica1, malus_domestica2);
 
-    // let tree = mb.get_ground_concept(vec!["Plant", "Tree"])?;
-    // let fruit = mb.get_ground_concept(vec!["Fruit"])?;
+    // let tree = mb.get_ground_symbol(vec!["Plant", "Tree"])?;
+    // let fruit = mb.get_ground_symbol(vec!["Fruit"])?;
 
     // A Tree is a
     //   "Type of Plant"

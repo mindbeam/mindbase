@@ -11,12 +11,12 @@ use serde::{
 use std::fmt;
 
 // QUESTION: What is an "uncertainty budget" and how can it help us?
-// TODO 2 - create a Context object that contains a lossy lookup of Concepts on a rolling basis
+// TODO 2 - create a Context object that contains a lossy lookup of Symbols on a rolling basis
 
-// TODO 2 - rename Concept -> Symbol and AllegationID to... Atom?
+// TODO 2 - rename Symbol -> Symbol and AllegationID to... Atom?
 /// Pointer to a region within Semantic/Knowledge-Space
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct Concept {
+pub struct Symbol {
     // # how would the agent know which entities they are referring to?
     // # I suppose the UI could remember a list of entities which are being
     // # converged in the rendering. Not really in love with the fact that
@@ -32,14 +32,14 @@ pub struct Concept {
      * # radius: Float */
 }
 
-impl fmt::Display for Concept {
+impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let parts: Vec<String> = self.members.iter().map(|e| format!("{}", e)).collect();
         write!(f, "[{}]", parts.join(","))
     }
 }
 
-impl Concept {
+impl Symbol {
     pub fn is_subjective(&self, _mb: &MindBase) -> Result<bool, MBError> {
         unimplemented!()
     }
@@ -60,8 +60,8 @@ impl Concept {
         self.members.push(allegation_id)
     }
 
-    /// Create a new concept which is analagous to this concept, but consists of only a single allegation
-    pub fn surrogate() -> Concept {
+    /// Create a new symbol which is analagous to this symbol, but consists of only a single allegation
+    pub fn surrogate() -> Symbol {
         // TODO 2
 
         // let surrogate = mb.alledge(Unit)?;
@@ -71,7 +71,7 @@ impl Concept {
     }
 
     // TODO 4 - make this return a match score rather than just bool
-    pub fn intersects(&self, other: &Concept) -> bool {
+    pub fn intersects(&self, other: &Symbol) -> bool {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
 
         for member in self.members.iter() {
@@ -82,7 +82,7 @@ impl Concept {
         false
     }
 
-    pub fn intersection(&self, other: &Concept) -> Vec<AllegationId> {
+    pub fn intersection(&self, other: &Symbol) -> Vec<AllegationId> {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
         let mut out: Vec<AllegationId> = Vec::new();
         for member in self.members.iter() {
@@ -94,14 +94,14 @@ impl Concept {
         out
     }
 
-    /// Narrow the Symbols in this concept to include only those
-    pub fn narrow_by(&mut self, mb: &MindBase, test_memberof: &Concept) -> Result<(), MBError> {
+    /// Narrow the Symbols in this symbol to include only those
+    pub fn narrow_by(&mut self, mb: &MindBase, test_memberof: &Symbol) -> Result<(), MBError> {
         if self.is_null() {
             // Can't pull over any further
             return Ok(());
         }
 
-        // We're looking for Analogies mentioning the memberof Concept which mention the allegations in our concept
+        // We're looking for Analogies mentioning the memberof Symbol which mention the allegations in our symbol
 
         use crate::allegation::Body;
 
@@ -109,7 +109,7 @@ impl Concept {
 
         // Old
         // Very inefficient. Looping over ALL allegations in the system
-        // Searching for Analogies which point (intersectionally) to this concept
+        // Searching for Analogies which point (intersectionally) to this symbol
         for allegation in mb.allegation_iter() {
             let allegation = allegation?;
 
@@ -121,8 +121,8 @@ impl Concept {
                     let overlap = self.intersection(left);
                     if overlap.len() > 0 {
                         // SO YES: self is at least minimally the subject of this Analogy
-                        // (I think any overlap should suffice, but the narrowed concept should be the
-                        // intersection of these concepts)
+                        // (I think any overlap should suffice, but the narrowed symbol should be the
+                        // intersection of these symbols)
 
                         if right.intersects(test_memberof) {
                             for passing_member in overlap {

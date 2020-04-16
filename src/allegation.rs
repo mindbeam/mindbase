@@ -5,8 +5,8 @@ use crate::{
     },
     analogy::Analogy,
     artifact::ArtifactId,
-    concept::Concept,
     error::MBError,
+    symbol::Symbol,
     Agent,
     MindBase,
 };
@@ -17,7 +17,6 @@ use serde::{
     Serialize,
 };
 use std::fmt;
-// TODO 1 - rename AllegationId to Symobl
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct AllegationId(#[serde(serialize_with = "crate::util::serde_helper::as_base64",
                                 deserialize_with = "crate::util::serde_helper::from_base64_16")]
@@ -40,14 +39,14 @@ impl AllegationId {
         base64::encode_config(&self.0, STANDARD_NO_PAD)
     }
 
-    /// Create a "Narrow" Concept which refers exclusively to this Allegation
-    /// As a general rule, we should avoid using narrow concepts whenever possible
+    /// Create a "Narrow" Symbol which refers exclusively to this Allegation
+    /// As a general rule, we should avoid using narrow symbols whenever possible
     /// This is because we want to be convergent with our neighbors. I am not an island.
-    /// Narrow concepts should be created ONLY when referring to some other entities we just
+    /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
-    pub fn subjective(&self) -> Concept {
-        Concept { members:       vec![self.clone()],
-                  spread_factor: 0.0, }
+    pub fn subjective(&self) -> Symbol {
+        Symbol { members:       vec![self.clone()],
+                 spread_factor: 0.0, }
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -88,23 +87,23 @@ impl fmt::Debug for AllegationId {
 
 /// # Allegation
 /// An allogation is kind of like an "Atom" of meaning. In the same way that you typically interact with molecules rather than
-/// atoms in the physical world, so to do you interact with "Concepts" in the ontological world. These
-/// molecules/concepts don't simply spring into existence however. Molecules must be built of atoms, and Concepts must be built of
+/// atoms in the physical world, so to do you interact with "Symbols" in the ontological world. These
+/// molecules/symbols don't simply spring into existence however. Molecules must be built of atoms, and Symbols must be built of
 /// Allegations.
 ///
-/// NOMENCLATURE QUESTION: Concept/Symbol/Allegation/Atom etc?
+/// NOMENCLATURE QUESTION: Symbol/Symbol/Allegation/Atom etc?
 /// There must be a bifurcation between the Subjective and the Intersubjective.
 /// The Subjective is actually more than just according to a person or agent.
 /// It's also according to a context – A time, A place, A frame of mind, An intention.
 /// As such, these subjective elements are really more like events. In this sense, the term Allegation is nice, because it implies
 /// that provenance is involved. The question is: Is "Symbol" a nicer term for Allegation? In some sense its nicer, because it
-/// symbolizes some occurrent. Unfortunately it also muddies the idea of a Concept. A concept is also kind of a symbol, because it
-/// symbolizes an "idea" (Some ontologists quibble about Concepts being bad, as "Concept" implies that it's a thought about a
+/// symbolizes some occurrent. Unfortunately it also muddies the idea of a Symbol. A symbol is also kind of a symbol, because it
+/// symbolizes an "idea" (Some ontologists quibble about Symbols being bad, as "Symbol" implies that it's a thought about a
 /// thing rather than a symbol of that thing)
 ///
 /// For this reason, I've been thinking about nomenclature like:
-///    Proto-Symbol (Allegation) and Symbol (Concept)
-///       * Unfortunately this is muddy, because both allegations and concepts are symbols
+///    Proto-Symbol (Allegation) and Symbol (Symbol)
+///       * Unfortunately this is muddy, because both allegations and symbols are symbols
 /// or Subjective-Symbol and Intersubjective Symbol
 ///       * unfortunately this is muddy, because Subjectivity might be wrongly taken to mean "Person"-al, rather than situational.
 ///
@@ -115,9 +114,9 @@ impl fmt::Debug for AllegationId {
 /// So whatever shall we do to make sense of the world?
 ///
 /// In MindBase an Allegation is essentially an opinion of, or measurement about the world which is attributable to a specific
-/// Agent. Agents may then form `Concepts` from a collection of allegations which are believed to one degree of confidence or
+/// Agent. Agents may then form `Symbols` from a collection of allegations which are believed to one degree of confidence or
 /// another to be referring to approximately the "same" thing
-/// See [`mindbase::concept::Concept`][Concept] for more details
+/// See [`mindbase::symbol::Symbol`][Symbol] for more details
 #[derive(Serialize, Deserialize)]
 pub struct Allegation {
     /// TODO 3 - Consider renaming "Allegation*" to "Symbol*"
@@ -150,14 +149,14 @@ impl Allegation {
                         signature })
     }
 
-    /// Create a "Narrow" Concept which refers exclusively to this Allegation
-    /// As a general rule, we should avoid using narrow concepts whenever possible
+    /// Create a "Narrow" Symbol which refers exclusively to this Allegation
+    /// As a general rule, we should avoid using narrow symbols whenever possible
     /// This is because we want to be convergent with our neighbors. I am not an island.
-    /// Narrow concepts should be created ONLY when referring to some other entities we just
+    /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
-    pub fn subjective(&self) -> Concept {
-        Concept { members:       vec![self.id().clone()],
-                  spread_factor: 0.0, }
+    pub fn subjective(&self) -> Symbol {
+        Symbol { members:       vec![self.id().clone()],
+                 spread_factor: 0.0, }
     }
 
     pub fn id(&self) -> &AllegationId {

@@ -1,9 +1,9 @@
 use mindbase::{
     artifact::text,
     Analogy,
-    Concept,
     MBError,
     MindBase,
+    Symbol,
 };
 
 use criterion::{
@@ -14,25 +14,25 @@ use criterion::{
 
 fn insert_test_dataset(mb: &MindBase) -> Result<(), MBError> {
     for _i in 0..50 {
-        let mut last_concept: Option<Concept> = None;
+        let mut last_symbol: Option<Symbol> = None;
         // println!("Loop {}", _i);
         for letter in (b'A'..=b'Z').map(|v| String::from_utf8(vec![v]).unwrap()) {
-            let concept = mb.alledge(text(&letter))?.subjective();
+            let symbol = mb.alledge(text(&letter))?.subjective();
 
-            if let Some(parent) = last_concept.take() {
-                mb.alledge(Analogy::declarative(concept.clone(), parent))?;
+            if let Some(parent) = last_symbol.take() {
+                mb.alledge(Analogy::declarative(symbol.clone(), parent))?;
             }
 
-            last_concept = Some(concept);
+            last_symbol = Some(symbol);
         }
     }
 
     Ok(())
 }
 
-fn get_ground_concept(mb: &MindBase) -> Result<(), MBError> {
-    let _concept1: Concept = mb.get_ground_concept(vec!["A", "B", "C", "D"])?;
-    let _concept2: Concept = mb.get_ground_concept(vec!["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"])?;
+fn get_ground_symbol(mb: &MindBase) -> Result<(), MBError> {
+    let _symbol1: Symbol = mb.get_ground_symbol(vec!["A", "B", "C", "D"])?;
+    let _symbol2: Symbol = mb.get_ground_symbol(vec!["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"])?;
     Ok(())
 }
 
@@ -44,7 +44,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     insert_test_dataset(&mb).unwrap();
 
     // c.bench_function("insert_test_dataset", |b| b.iter(|| insert_test_dataset(&mb).unwrap()));
-    c.bench_function("get_ground_concept", |b| b.iter(|| get_ground_concept(&mb).unwrap()));
+    c.bench_function("get_ground_symbol", |b| b.iter(|| get_ground_symbol(&mb).unwrap()));
 }
 
 criterion_group!(benches, criterion_benchmark);

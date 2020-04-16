@@ -36,8 +36,8 @@ fn dialog_1() -> Result<(), std::io::Error> {
     // The goal is to explain, categorize, and correlate each of these things from their own perspectives
 
     // They haven't yet bumped into each other. What are they doing?
-    let _a_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Alice"])?;
-    let _b_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Bob"])?;
+    let _a_things_imdoing = mb.get_ground_symbol(vec!["Things I'm doing", "Alice"])?;
+    let _b_things_imdoing = mb.get_ground_symbol(vec!["Things I'm doing", "Bob"])?;
 
     // Alice is going to describe an event, and so we need a unique symbol for that. (each Allegation is a universally unique
     // Symbol) We are alledging/creating a symbol for this event against text artifact, but it could easily be an
@@ -61,8 +61,8 @@ fn dialog_1() -> Result<(), std::io::Error> {
 
     // In order to do this, Alice and Bob need to be able to *reproducibly* retrieve the same symbols using external value(s)
 
-    // let a_said = mb.get_ground_concept(&alice, vec!["Things that I said", "Walking down the sidewalk"])?;
-    // let b_said = mb.get_ground_concept(&alice, vec!["My thoughts", "When I was on my way to lunch"])?;
+    // let a_said = mb.get_ground_symbol(&alice, vec!["Things that I said", "Walking down the sidewalk"])?;
+    // let b_said = mb.get_ground_symbol(&alice, vec!["My thoughts", "When I was on my way to lunch"])?;
 
     // mb.alledge2(&alice, FlatText::new("I like turtles"))?;
 
@@ -73,16 +73,16 @@ fn dialog_1() -> Result<(), std::io::Error> {
     // let general = mb.put_artifact(FlatText::new("In general"))?;
     // let things = mb.put_artifact(FlatText::new("Things that I said"))?;
 
-    // I want to conjure/scrounge/locate/triangulate/intersect a Concept based on:
+    // I want to conjure/scrounge/locate/triangulate/intersect a Symbol based on:
     // My AgentId + ArtifactId
     // And what else?
     // There needs to be something that this is rooted.
 
-    // What situations might have precipitated that would lead me to conjuring a non-narrow concept?
+    // What situations might have precipitated that would lead me to conjuring a non-narrow symbol?
 
-    // A: Hey, do you want to take a [trip1] with me? -- Narrow concept conjured from new allegation I just made
+    // A: Hey, do you want to take a [trip1] with me? -- Narrow symbol conjured from new allegation I just made
     // B: Sure, I'll take a [trip2,trip1] with you    -- Create a new allegation to represent interpreted meaning (same artifact)
-    // A: What's a good day for our [trip1,trip2]?    -- "trip" Concept broadens to 2 allegations
+    // A: What's a good day for our [trip1,trip2]?    -- "trip" Symbol broadens to 2 allegations
     // B: How about tuesday? A: Great, I'll get the psilocybin
     // B: Whoa, I thought you meant a [trip2] not a [trip1] -- {negative analogy between [trip1] and [trip2]}
 

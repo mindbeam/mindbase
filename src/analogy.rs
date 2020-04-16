@@ -1,6 +1,6 @@
 use crate::{
     allegation::Alledgable,
-    concept::Concept,
+    symbol::Symbol,
     Agent,
     Allegation,
     MBError,
@@ -14,21 +14,21 @@ use serde::{
 };
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Analogy {
-    pub left:       Concept,
-    pub right:      Concept,
+    pub left:       Symbol,
+    pub right:      Symbol,
     pub confidence: f32,
 }
 
 impl Analogy {
     pub fn declarative<T>(left: T, right: T) -> Self
-        where T: Into<Concept>
+        where T: Into<Symbol>
     {
         Analogy { left:       left.into(),
                   right:      right.into(),
                   confidence: 1.0, }
     }
 
-    pub fn negative(left: Concept, right: Concept) -> Self {
+    pub fn negative(left: Symbol, right: Symbol) -> Self {
         Analogy { left,
                   right,
                   confidence: -1.0 }

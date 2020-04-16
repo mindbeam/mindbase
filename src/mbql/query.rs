@@ -8,9 +8,9 @@ use super::{
 use crate::{
     ground::GSContext,
     ArtifactId,
-    Concept,
     MBError,
     MindBase,
+    Symbol,
 };
 use std::{
     collections::BTreeMap,
@@ -20,7 +20,7 @@ use std::{
 pub struct Query<'a> {
     pub statements:       Vec<ast::Statement>,
     pub artifact_var_map: Mutex<BTreeMap<String, (usize, Option<ArtifactId>)>>,
-    pub symbol_var_map:   Mutex<BTreeMap<String, (usize, Option<Concept>)>>,
+    pub symbol_var_map:   Mutex<BTreeMap<String, (usize, Option<Symbol>)>>,
     pub gscontext:        Mutex<GSContext<'a>>,
     pub mb:               &'a MindBase,
 }
@@ -87,7 +87,7 @@ impl<'a> Query<'a> {
         }
     }
 
-    pub fn store_symbol_for_var(&self, var: &ast::SymbolVar, symbol: Concept) -> Result<(), MBQLError> {
+    pub fn store_symbol_for_var(&self, var: &ast::SymbolVar, symbol: Symbol) -> Result<(), MBQLError> {
         match self.symbol_var_map.lock().unwrap().get_mut(&var.var) {
             None => {
                 return Err(MBQLError { position: var.position.clone(),
@@ -98,7 +98,7 @@ impl<'a> Query<'a> {
         Ok(())
     }
 
-    pub fn get_symbol_var(&self, var: &str) -> Result<Option<Concept>, MBError> {
+    pub fn get_symbol_var(&self, var: &str) -> Result<Option<Symbol>, MBError> {
         let offset = match self.symbol_var_map.lock().unwrap().get(var) {
             None => return Ok(None),
             Some((offset, maybe_symbol)) => {

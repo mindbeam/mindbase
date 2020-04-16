@@ -24,17 +24,17 @@ pub enum PolicyBody {
     // do I want to specify some sort of pattern?
     // Or do I want to attach the policy to my allegation context?
     DisclosureRelationship {
-        // Concept referring to an abstract group (the identity of the group itself. Not its members)
+        // Symbol referring to an abstract group (the identity of the group itself. Not its members)
         // Allegations of Agent membership to this group can be changed by other Agents, but who?
-        group:          Concept,
-        administrators: Concept, //
+        group:          Symbol,
+        administrators: Symbol, //
 
-        what: Concept,
+        what: Symbol,
     },
 }
 
 use crate::{
-    concept::Concept,
+    symbol::Symbol,
     util::AsBytes,
 };
 
