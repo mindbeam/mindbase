@@ -54,6 +54,7 @@ use crate::{
     },
     AgentId,
     AllegationId,
+    Analogy,
     ArtifactId,
     MBError,
     MindBase,
@@ -120,7 +121,14 @@ impl<'a> GSContext<'a> {
                 let right = self.symbolize_recurse(&*a.right, query)?;
 
                 // find symbols (Analogies) which refer to both of the above
-                self.find_matching_analogy_symbol(&left, &right)?
+                let mut symbol = self.find_matching_analogy_symbol(&left, &right)?;
+                if symbol.is_null() {
+                    // Naive version
+                    // Most likely will have to re-descend the tree and re-symbolize each element narrowly
+                    let allegation = self.mb.alledge(Analogy::declarative(left, right))?;
+                    symbol.extend(allegation.id().clone());
+                }
+                symbol
             },
             ast::GSymbolizable::SymbolVar(sv) => {
                 //
@@ -136,10 +144,6 @@ impl<'a> GSContext<'a> {
                 unreachable!()
             },
         };
-
-        if symbol.is_null() {
-            panic!("It's bad mmkay");
-        }
 
         Ok(symbol)
     }
@@ -283,7 +287,9 @@ mod test {
         let query = Query::new(&mb, mbql)?;
         query.apply()?;
 
-        let _foo = query.get_symbol_var("gs")?.expect("gs");
+        let gs = query.get_symbol_var("gs")?.expect("gs");
+
+        assert!(!gs.is_null());
 
         Ok(())
     }
@@ -307,6 +313,7 @@ mod test {
 
         let foo = query.get_symbol_var("foo")?.expect("foo");
         let bar = query.get_symbol_var("bar")?.expect("bar");
+        assert!(!foo.is_null());
 
         assert_eq!(foo, bar);
         assert!(foo.intersects(&bar));
