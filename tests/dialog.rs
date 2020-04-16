@@ -36,18 +36,18 @@ fn dialog_1() -> Result<(), std::io::Error> {
     // The goal is to explain, categorize, and correlate each of these things from their own perspectives
 
     // They haven't yet bumped into each other. What are they doing?
-    let a_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Alice"])?;
-    let b_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Bob"])?;
+    let _a_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Alice"])?;
+    let _b_things_imdoing = mb.get_ground_concept(vec!["Things I'm doing", "Bob"])?;
 
     // Alice is going to describe an event, and so we need a unique symbol for that. (each Allegation is a universally unique
     // Symbol) We are alledging/creating a symbol for this event against text artifact, but it could easily be an
     // anonymous "Unit" artifact. Either way, the symbol itself, and its association to this artifact is meaningless of its own
     // accord, except that it's a thing that's discrete from the rest of the universe, at least to start.
-    let a_walking = mb.alledge2(&alice, "Walking down the street")?;
+    let _a_walking = mb.alledge2(&alice, "Walking down the street")?;
     // mb.alledge2(&alice, Analogy::declarative(a_walking, a_things_imdoing.clone()))?;
 
     // Bob describes a different event. Again, it, and the artifact associated with it is meaningless of its own accord.
-    let b_on_my_way = mb.alledge2(&bob, "On my way to get a haircut")?;
+    let _b_on_my_way = mb.alledge2(&bob, "On my way to get a haircut")?;
     // mb.alledge2(&alice, Analogy::declarative(a_walking, b_things_imdoing))?;
 
     //         Alice is defining this (     )  <- (       ) <- (       )

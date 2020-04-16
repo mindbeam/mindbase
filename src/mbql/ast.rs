@@ -31,9 +31,9 @@ impl Statement {
     pub fn parse(element: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<(), MBQLError> {
         let me = match element.as_rule() {
             Rule::EOI => return Ok(()), // Comment or blank line
-            Rule::artifactstatement => Statement::Artifact(ArtifactStatement::parse(element, position, query)?),
-            Rule::symbolstatement => Statement::Symbol(SymbolStatement::parse(element, query, position)?),
-            Rule::diagstatement => Statement::Diag(DiagStatement::parse(element, query, position)?),
+            Rule::artifactstatement => Statement::Artifact(ArtifactStatement::parse(element, position)?),
+            Rule::symbolstatement => Statement::Symbol(SymbolStatement::parse(element, position)?),
+            Rule::diagstatement => Statement::Diag(DiagStatement::parse(element, position)?),
             _ => {
                 panic!("Invalid parse element {}", element);
             },
@@ -73,6 +73,7 @@ impl Statement {
 }
 
 pub struct DiagStatement {
+    #[allow(unused)]
     position: Position,
     diag:     Diag,
 }
@@ -87,7 +88,7 @@ enum DiagElement {
 }
 
 impl DiagStatement {
-    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::diagstatement);
 
         let mut items = pair.into_inner();
@@ -213,7 +214,7 @@ impl SymbolVar {
         self.var.clone()
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
+    pub fn apply(&self, _query: &Query) -> Result<Concept, MBQLError> {
         unimplemented!()
     }
 }
@@ -231,7 +232,7 @@ pub struct ArtifactStatement {
 }
 
 impl ArtifactStatement {
-    pub fn parse(pair: Pair<Rule>, position: Position, query: &mut crate::mbql::Query) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifactstatement);
 
         let mut pairs = pair.into_inner();
@@ -264,7 +265,7 @@ pub struct SymbolStatement {
 }
 
 impl SymbolStatement {
-    pub fn parse(pair: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolstatement);
 
         let mut pairs = pair.into_inner();
@@ -311,7 +312,7 @@ impl SymbolStatement {
 
 #[derive(Debug)]
 pub struct Ground {
-    symbolizable: Box<GroundSymbolizable>,
+    symbolizable: Box<GSymbolizable>,
     position:     Position,
 }
 
@@ -319,7 +320,7 @@ impl Ground {
     fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::ground);
 
-        Ok(Ground { symbolizable: Box::new(GroundSymbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
+        Ok(Ground { symbolizable: Box::new(GSymbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
                     position })
     }
 
@@ -500,38 +501,38 @@ impl Symbolizable {
 }
 
 #[derive(Debug)]
-pub enum GroundSymbolizable {
+pub enum GSymbolizable {
     Artifact(Artifact),
     SymbolVar(SymbolVar),
     Ground(Ground),
-    GroundPair(GroundPair),
+    GroundPair(GPair),
 }
 
-impl GroundSymbolizable {
+impl GSymbolizable {
     pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
         let s = match pair.as_rule() {
             Rule::ground_symbol_pair => {
                 let mut inner = pair.into_inner();
-                let left = GroundSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                let right = GroundSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                GroundSymbolizable::GroundPair(GroundPair { left: Box::new(left),
-                                                            right: Box::new(right),
-                                                            position })
+                let left = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
+                let right = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
+                GSymbolizable::GroundPair(GPair { left: Box::new(left),
+                                                  right: Box::new(right),
+                                                  position })
             },
             Rule::ground_symbolizable => {
                 let element = pair.into_inner().next().unwrap();
 
                 match element.as_rule() {
-                    Rule::artifact => GroundSymbolizable::Artifact(Artifact::parse(element, position)?),
-                    Rule::symbolvar => GroundSymbolizable::SymbolVar(SymbolVar::parse(element, position)?),
-                    Rule::ground => GroundSymbolizable::Ground(Ground::parse(element, position)?),
+                    Rule::artifact => GSymbolizable::Artifact(Artifact::parse(element, position)?),
+                    Rule::symbolvar => GSymbolizable::SymbolVar(SymbolVar::parse(element, position)?),
+                    Rule::ground => GSymbolizable::Ground(Ground::parse(element, position)?),
                     Rule::ground_symbol_pair => {
                         let mut inner = element.into_inner();
-                        let left = GroundSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        let right = GroundSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        GroundSymbolizable::GroundPair(GroundPair { left: Box::new(left),
-                                                                    right: Box::new(right),
-                                                                    position })
+                        let left = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
+                        let right = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
+                        GSymbolizable::GroundPair(GPair { left: Box::new(left),
+                                                          right: Box::new(right),
+                                                          position })
                     },
                     _ => unreachable!(),
                 }
@@ -544,10 +545,10 @@ impl GroundSymbolizable {
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool, nest: bool) -> Result<(), std::io::Error> {
         match self {
-            GroundSymbolizable::Artifact(a) => a.write(writer, verbose)?,
-            GroundSymbolizable::GroundPair(p) => p.write(writer, nest)?,
-            GroundSymbolizable::SymbolVar(sv) => sv.write(writer)?,
-            GroundSymbolizable::Ground(g) => g.write(writer, verbose)?,
+            GSymbolizable::Artifact(a) => a.write(writer, verbose)?,
+            GSymbolizable::GroundPair(p) => p.write(writer, nest)?,
+            GSymbolizable::SymbolVar(sv) => sv.write(writer)?,
+            GSymbolizable::Ground(g) => g.write(writer, verbose)?,
         }
 
         Ok(())
@@ -576,25 +577,25 @@ impl GroundSymbolizable {
 // }
 
 #[derive(Debug)]
-pub struct GroundPair {
-    pub left:  Box<GroundSymbolizable>,
-    pub right: Box<GroundSymbolizable>,
+pub struct GPair {
+    pub left:  Box<GSymbolizable>,
+    pub right: Box<GSymbolizable>,
     position:  Position,
 }
 
-impl GroundPair {
+impl GPair {
     pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::allege);
 
         let mut ground_symbol_pair = pair.into_inner().next().unwrap().into_inner();
 
         // According to the grammar, Allege may only contain symbol_pair
-        let left = GroundSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
-        let right = GroundSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
+        let left = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
+        let right = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
 
-        Ok(GroundPair { left: Box::new(left),
-                        right: Box::new(right),
-                        position })
+        Ok(GPair { left: Box::new(left),
+                   right: Box::new(right),
+                   position })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, nest: bool) -> Result<(), std::io::Error> {

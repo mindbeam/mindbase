@@ -4,7 +4,7 @@
 // generates this AST Structure:
 //                           Ground
 //                             |
-//                  GroundSymbolizable::GroundPair
+//                    GSymbolizable::GroundPair
 //                                 |
 //                GroundPair{ left    right    }
 //                            /          \
@@ -54,7 +54,6 @@ use crate::{
     },
     AgentId,
     AllegationId,
-    Analogy,
     ArtifactId,
     Concept,
     MBError,
@@ -85,7 +84,7 @@ impl<'a> GSContext<'a> {
     }
 
     /// Call this with the top level GroundSymbolizable within a ground symbol statement
-    pub fn symbolize(&mut self, symbolizable: &ast::GroundSymbolizable, query: &Query) -> Result<Concept, MBError> {
+    pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, query: &Query) -> Result<Concept, MBError> {
         // As a temporary measure, we are doing a fairly inefficient process of building a Symbol for each symbolizable artifact
         // with all possible symbolic atoms and THEN narrowing that.
         //
@@ -101,15 +100,15 @@ impl<'a> GSContext<'a> {
         Ok(symbol)
     }
 
-    fn symbolize_recurse(&mut self, s: &ast::GroundSymbolizable, query: &Query) -> Result<Concept, MBError> {
+    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, query: &Query) -> Result<Concept, MBError> {
         //
 
         let symbol = match s {
-            ast::GroundSymbolizable::Artifact(a) => {
+            ast::GSymbolizable::Artifact(a) => {
                 let artifact_id = a.apply(query)?;
                 self.single_artifact(&artifact_id)?
             },
-            ast::GroundSymbolizable::GroundPair(a) => {
+            ast::GSymbolizable::GroundPair(a) => {
                 // Symbol grounding is the crux of the biscuit
                 // We don't want to create new symbols if we can possibly help it
                 // We want to try reeally hard to find existing symbols
@@ -123,7 +122,7 @@ impl<'a> GSContext<'a> {
                 // find symbols (Analogies) which refer to both of the above
                 self.find_matching_analogy_symbol(&left, &right)?
             },
-            ast::GroundSymbolizable::SymbolVar(sv) => {
+            ast::GSymbolizable::SymbolVar(sv) => {
                 //
                 if let Some(symbol) = query.get_symbol_var(&sv.var)? {
                     symbol
@@ -132,7 +131,7 @@ impl<'a> GSContext<'a> {
                                            kind:     MBQLErrorKind::SymbolVarNotFound { var: sv.var.clone() }, }.into());
                 }
             },
-            ast::GroundSymbolizable::Ground(g) => {
+            ast::GSymbolizable::Ground(_) => {
                 // Shouldn't be able to call this directly with a Ground statement
                 unreachable!()
             },
@@ -182,8 +181,8 @@ impl<'a> GSContext<'a> {
         let members: Vec<AllegationId> = unified.chunks_exact(16)
                                                 .map(|c| AllegationId::from_bytes(c.try_into().unwrap()))
                                                 .collect();
-        let mut concept = Concept { members,
-                                    spread_factor: 0.0 };
+        let concept = Concept { members,
+                                spread_factor: 0.0 };
 
         Ok(concept)
     }
@@ -226,7 +225,7 @@ impl<'a> GSContext<'a> {
 fn intersect_symbols(a: &Concept, b: &Concept) -> bool {
     // This is crazy inefficient. At least do a lexicographic presort
     // can probably eliminate this during rolling inverted index conversion
-    let mut out: Vec<AllegationId> = Vec::new();
+    // let mut out: Vec<AllegationId> = Vec::new();
     for member in a.members.iter() {
         if b.members.contains(member) {
             return true;
@@ -284,7 +283,7 @@ mod test {
         let query = Query::new(&mb, mbql)?;
         query.apply()?;
 
-        let foo = query.get_symbol_var("gs")?.expect("gs");
+        let _foo = query.get_symbol_var("gs")?.expect("gs");
 
         Ok(())
     }

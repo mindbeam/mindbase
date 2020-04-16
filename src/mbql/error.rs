@@ -1,4 +1,3 @@
-use crate::mbql::ast;
 #[derive(Debug)]
 pub struct MBQLError {
     pub position: Position,
@@ -58,13 +57,13 @@ impl std::fmt::Display for MBQLError {
         match &self.kind {
             MBQLErrorKind::IOError { error } => f.write_fmt(format_args!("IO Error: {}", error)),
             MBQLErrorKind::InvalidLine { input } => f.write_fmt(format_args!("Invalid row at {}: {}", self.position.row, input)),
-            MBQLErrorKind::ParseRow { input, pest_err } => {
+            MBQLErrorKind::ParseRow { pest_err, .. } => {
                 // TODO - fix line numbers
                 f.write_fmt(format_args!("Failed to parse row {}: {}", self.position.row, pest_err))
             },
-            MBQLErrorKind::InvalidCommand { command } => f.write_str("meow"),
-            MBQLErrorKind::UnknownCommand { command } => f.write_str("meow"),
-            MBQLErrorKind::CommandParse { body } => f.write_str("meow"),
+            MBQLErrorKind::InvalidCommand { .. } => f.write_str("meow"),
+            MBQLErrorKind::UnknownCommand { .. } => f.write_str("meow"),
+            MBQLErrorKind::CommandParse { .. } => f.write_str("meow"),
             MBQLErrorKind::MBError(e) => write!(f, "{:?}", e),
             MBQLErrorKind::ArtifactVarNotFound { var } => {
                 write!(f, "Artifact Variable `{}` not found at row {}", var, self.position.row)

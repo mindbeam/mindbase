@@ -38,7 +38,6 @@ pub use self::{
 
 use allegation::ArtifactList;
 use core::marker::PhantomData;
-use ground::GSContext;
 use policy::Policy;
 use serde::de::DeserializeOwned;
 use sled::IVec;
@@ -159,7 +158,7 @@ impl MindBase {
                 key[0..32].copy_from_slice(artifact_id.as_ref());
                 self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
             },
-            ArtifactList::Many(artifact_ids) => {
+            ArtifactList::Many(_artifact_ids) => {
                 // HACK - commenting this out because this is only used for analogies
                 //
                 // for artifact_id in artifact_ids {

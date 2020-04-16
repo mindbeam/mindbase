@@ -114,9 +114,7 @@ impl Concept {
             let allegation = allegation?;
 
             match allegation.1.body {
-                Body::Analogy(Analogy { ref left,
-                                        ref right,
-                                        ref confidence, }) => {
+                Body::Analogy(Analogy { ref left, ref right, .. }) => {
                     // Are you talking about me? (what subset of me are you talking about?)
 
                     // TODO 2 - Stop allocing a Vec for every intersection test. This is crazy inefficient
