@@ -272,4 +272,46 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn ground2() -> Result<(), std::io::Error> {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdirpath = tmpdir.path();
+        let mb = MindBase::open(&tmpdirpath).unwrap();
+
+        let mbql = Cursor::new(r#"$gs = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))"#);
+
+        let query = Query::new(&mb, mbql)?;
+        query.apply()?;
+
+        let foo = query.get_symbol_var("gs")?.expect("gs");
+
+        Ok(())
+    }
+
+    #[test]
+    fn ground3() -> Result<(), std::io::Error> {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdirpath = tmpdir.path();
+        let mb = MindBase::open(&tmpdirpath).unwrap();
+
+        let mbql = Cursor::new(
+                               r#"
+            $foo = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
+            $bar = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
+            Diag($foo, $bar)
+        "#,
+        );
+
+        let query = Query::new(&mb, mbql)?;
+        query.apply()?;
+
+        let foo = query.get_symbol_var("foo")?.expect("foo");
+        let bar = query.get_symbol_var("bar")?.expect("bar");
+
+        assert_eq!(foo, bar);
+        assert!(foo.intersects(&bar));
+
+        Ok(())
+    }
 }
