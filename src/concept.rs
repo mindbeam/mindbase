@@ -35,7 +35,7 @@ pub struct Concept {
 impl fmt::Display for Concept {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let parts: Vec<String> = self.members.iter().map(|e| format!("{}", e)).collect();
-        write!(f, "$[{}]", parts.join(","))
+        write!(f, "[{}]", parts.join(","))
     }
 }
 

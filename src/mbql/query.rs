@@ -90,6 +90,17 @@ impl<'a> Query<'a> {
         }
     }
 
+    pub fn store_symbol_for_var(&self, var: &ast::SymbolVar, symbol: Concept) -> Result<(), MBQLError> {
+        match self.symbol_var_map.lock().unwrap().get_mut(&var.var) {
+            None => {
+                return Err(MBQLError { position: var.position.clone(),
+                                       kind:     MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() }, })
+            },
+            Some(v) => v.1 = Some(symbol),
+        }
+        Ok(())
+    }
+
     pub fn get_symbol_var(&self, var: &ast::SymbolVar) -> Result<Concept, MBQLError> {
         let offset = match self.symbol_var_map.lock().unwrap().get(&var.var) {
             None => {

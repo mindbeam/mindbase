@@ -47,7 +47,7 @@ pub fn from_base64<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
 impl fmt::Display for ArtifactId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use base64::STANDARD_NO_PAD;
-        write!(f, "@{}", base64::encode_config(&self.0, STANDARD_NO_PAD))
+        write!(f, "{}", base64::encode_config(&self.0, STANDARD_NO_PAD))
     }
 }
 impl fmt::Debug for ArtifactId {

@@ -134,12 +134,12 @@ impl DiagStatement {
 
             match item {
                 DiagElement::ArtifactVar(v) => {
-                    let v = query.get_artifact_var(v)?;
-                    out.push_str(&format!("{}", v));
+                    let artifact_id = query.get_artifact_var(v)?;
+                    out.push_str(&format!("{} = {}", v, artifact_id));
                 },
                 DiagElement::SymbolVar(v) => {
-                    let v = query.get_symbol_var(v)?;
-                    out.push_str(&format!("{}", v));
+                    let symbol = query.get_symbol_var(v)?;
+                    out.push_str(&format!("{} = {}", v, symbol));
                 },
             }
         }
@@ -176,6 +176,12 @@ impl ArtifactVar {
     }
 }
 
+impl std::fmt::Display for ArtifactVar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "@{}", self.var)
+    }
+}
+
 #[derive(Debug)]
 pub struct SymbolVar {
     pub var:      String,
@@ -203,6 +209,11 @@ impl SymbolVar {
     }
 }
 
+impl std::fmt::Display for SymbolVar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "${}", self.var)
+    }
+}
 #[derive(Debug)]
 pub struct ArtifactStatement {
     pub var:      ArtifactVar,
@@ -279,7 +290,13 @@ impl SymbolStatement {
     }
 
     pub fn apply(&self, query: &Query) -> Result<Concept, MBQLError> {
-        self.symbol.apply(query)
+        let symbol = self.symbol.apply(query)?;
+
+        if let Some(var) = &self.var {
+            query.store_symbol_for_var(var, symbol.clone())?;
+        }
+
+        Ok(symbol)
     }
 }
 
@@ -459,6 +476,7 @@ impl Symbolizable {
         let symbol = match self {
             Symbolizable::Artifact(a) => {
                 let artifact_id = a.apply(query)?;
+                println!("SYMBOLIZE: {}", artifact_id);
                 query.mb.symbolize(artifact_id)?
             },
             Symbolizable::Allege(a) => a.apply(query)?,

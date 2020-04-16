@@ -226,17 +226,41 @@ fn intersect_symbols(a: &Concept, b: &Concept) -> bool {
 
     false
 }
-// pub trait GroundSymbolize {
-//     fn symbol(&self) -> Option<Concept>;
-//     fn symbolize(&self, context: &mut GSContext) -> Result<Concept, MBError>;
-// }
 
-// impl GroundSymbolize for ArtifactId {
-//     fn symbol(&self) -> Option<Concept> {
-//         None
-//     }
+#[cfg(test)]
+mod test {
+    use crate::{
+        mbql::Query,
+        MindBase,
+    };
+    use std::io::Cursor;
 
-//     fn symbolize(&self, context: &mut GSContext) -> Result<Concept, MBError> {
-//         context.single_artifact(self)
-//     }
-// }
+    #[test]
+    fn ground() -> Result<(), std::io::Error> {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdirpath = tmpdir.path();
+        let mb = MindBase::open(&tmpdirpath).unwrap();
+
+        let mbql = Cursor::new(
+                               r#"
+            $smilemouth = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
+            $emote = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
+            Diag($smilemouth, $emote)
+        "#,
+        );
+
+        Query::new(&mb, mbql)?.apply()?;
+
+        // TODO 1 - test the symbolvars directly on the query object, and hook this into the machinery of the test
+
+        // let stdout = std::io::stdout();
+        // // Query::new(&mb, Cursor::new("Symbolize(\"Smile\")"))?.apply()?;
+        // crate::xport::dump_json(&mb, stdout.lock()).unwrap();
+        // Query::new(&mb,
+        //            Cursor::new("$foo = Symbolize(\"Smile\")\n$bar = Ground(\"Smile\")\nDiag($foo, $bar)"))?.apply()?;
+        // println!("\n\nAFTER\n\n");
+        // crate::xport::dump_json(&mb, stdout.lock()).unwrap();
+
+        Ok(())
+    }
+}
