@@ -46,6 +46,10 @@ use crate::{
     allegation::Body,
     mbql::{
         ast,
+        error::{
+            MBQLError,
+            MBQLErrorKind,
+        },
         Query,
     },
     AgentId,
@@ -121,7 +125,12 @@ impl<'a> GSContext<'a> {
             },
             ast::GroundSymbolizable::SymbolVar(sv) => {
                 //
-                query.get_symbol_var(sv)?
+                if let Some(symbol) = query.get_symbol_var(&sv.var)? {
+                    symbol
+                } else {
+                    return Err(MBQLError { position: sv.position.clone(),
+                                           kind:     MBQLErrorKind::SymbolVarNotFound { var: sv.var.clone() }, }.into());
+                }
             },
             ast::GroundSymbolizable::Ground(g) => {
                 // Shouldn't be able to call this directly with a Ground statement
@@ -236,30 +245,30 @@ mod test {
     use std::io::Cursor;
 
     #[test]
-    fn ground() -> Result<(), std::io::Error> {
+    fn ground1() -> Result<(), std::io::Error> {
         let tmpdir = tempfile::tempdir().unwrap();
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath).unwrap();
 
         let mbql = Cursor::new(
                                r#"
-            $smilemouth = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
-            $emote = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
-            Diag($smilemouth, $emote)
+            $foo = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
+            $bar = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
+            Diag($foo, $bar)
         "#,
         );
 
-        Query::new(&mb, mbql)?.apply()?;
+        let query = Query::new(&mb, mbql)?;
+        query.apply()?;
 
-        // TODO 1 - test the symbolvars directly on the query object, and hook this into the machinery of the test
+        let bogus = query.get_symbol_var("bogus")?;
+        assert_eq!(bogus, None);
 
-        // let stdout = std::io::stdout();
-        // // Query::new(&mb, Cursor::new("Symbolize(\"Smile\")"))?.apply()?;
-        // crate::xport::dump_json(&mb, stdout.lock()).unwrap();
-        // Query::new(&mb,
-        //            Cursor::new("$foo = Symbolize(\"Smile\")\n$bar = Ground(\"Smile\")\nDiag($foo, $bar)"))?.apply()?;
-        // println!("\n\nAFTER\n\n");
-        // crate::xport::dump_json(&mb, stdout.lock()).unwrap();
+        let foo = query.get_symbol_var("foo")?.expect("foo");
+        let bar = query.get_symbol_var("bar")?.expect("bar");
+
+        assert_eq!(foo, bar);
+        assert!(foo.intersects(&bar));
 
         Ok(())
     }

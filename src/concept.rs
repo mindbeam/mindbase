@@ -71,7 +71,7 @@ impl Concept {
     }
 
     // TODO 4 - make this return a match score rather than just bool
-    pub fn matches(&self, other: &Concept) -> bool {
+    pub fn intersects(&self, other: &Concept) -> bool {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
 
         for member in self.members.iter() {
@@ -126,7 +126,7 @@ impl Concept {
                         // (I think any overlap should suffice, but the narrowed concept should be the
                         // intersection of these concepts)
 
-                        if right.matches(test_memberof) {
+                        if right.intersects(test_memberof) {
                             for passing_member in overlap {
                                 if !members.contains(&passing_member) {
                                     members.push(passing_member)

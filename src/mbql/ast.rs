@@ -18,6 +18,7 @@ use crate::{
     MindBase,
 };
 
+use super::error::MBQLErrorKind;
 use pest::iterators::Pair;
 
 pub enum Statement {
@@ -133,13 +134,21 @@ impl DiagStatement {
             seen = true;
 
             match item {
-                DiagElement::ArtifactVar(v) => {
-                    let artifact_id = query.get_artifact_var(v)?;
-                    out.push_str(&format!("{} = {}", v, artifact_id));
+                DiagElement::ArtifactVar(var) => {
+                    if let Some(artifact_id) = query.get_artifact_var(&var.var)? {
+                        out.push_str(&format!("{} = {}", var, artifact_id));
+                    } else {
+                        return Err(MBQLError { position: var.position.clone(),
+                                               kind:     MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() }, });
+                    }
                 },
                 DiagElement::SymbolVar(v) => {
-                    let symbol = query.get_symbol_var(v)?;
-                    out.push_str(&format!("{} = {}", v, symbol));
+                    if let Some(symbol) = query.get_symbol_var(&v.var)? {
+                        out.push_str(&format!("{} = {}", v, symbol));
+                    } else {
+                        return Err(MBQLError { position: v.position.clone(),
+                                               kind:     MBQLErrorKind::SymbolVarNotFound { var: v.var.clone() }, });
+                    }
                 },
             }
         }
@@ -659,7 +668,15 @@ impl Artifact {
                                                                    data: node.data.clone() })?
             },
             // Artifact::DataRelation(relation) => relation.write(writer)?,
-            Artifact::ArtifactVar(var) => query.get_artifact_var(var)?,
+            Artifact::ArtifactVar(var) => {
+                match query.get_artifact_var(&var.var)? {
+                    None => {
+                        return Err(MBQLError { position: var.position.clone(),
+                                               kind:     MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() }, })
+                    },
+                    Some(a) => a,
+                }
+            },
             _ => unimplemented!(),
         };
 

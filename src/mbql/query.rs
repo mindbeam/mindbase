@@ -68,15 +68,12 @@ impl<'a> Query<'a> {
         Ok(())
     }
 
-    pub fn get_artifact_var(&self, var: &ast::ArtifactVar) -> Result<ArtifactId, MBQLError> {
-        let offset = match self.artifact_var_map.lock().unwrap().get(&var.var) {
-            None => {
-                return Err(MBQLError { position: var.position.clone(),
-                                       kind:     MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() }, })
-            },
+    pub fn get_artifact_var(&self, var: &str) -> Result<Option<ArtifactId>, MBError> {
+        let offset = match self.artifact_var_map.lock().unwrap().get(var) {
+            None => return Ok(None),
             Some((offset, maybe_artifact_id)) => {
                 if let Some(artifact_id) = maybe_artifact_id {
-                    return Ok(artifact_id.clone());
+                    return Ok(Some(artifact_id.clone()));
                 }
                 offset.clone()
             },
@@ -84,7 +81,7 @@ impl<'a> Query<'a> {
 
         // Didn't have it yet. gotta calculate it
         if let ast::Statement::Artifact(statement) = self.statements.get(offset).unwrap() {
-            return statement.apply(self);
+            return Ok(Some(statement.apply(self)?));
         } else {
             panic!("Sanity error");
         }
@@ -101,15 +98,12 @@ impl<'a> Query<'a> {
         Ok(())
     }
 
-    pub fn get_symbol_var(&self, var: &ast::SymbolVar) -> Result<Concept, MBQLError> {
-        let offset = match self.symbol_var_map.lock().unwrap().get(&var.var) {
-            None => {
-                return Err(MBQLError { position: var.position.clone(),
-                                       kind:     MBQLErrorKind::SymbolVarNotFound { var: var.var.clone() }, })
-            },
+    pub fn get_symbol_var(&self, var: &str) -> Result<Option<Concept>, MBError> {
+        let offset = match self.symbol_var_map.lock().unwrap().get(var) {
+            None => return Ok(None),
             Some((offset, maybe_symbol)) => {
                 if let Some(symbol) = maybe_symbol {
-                    return Ok(symbol.clone());
+                    return Ok(Some(symbol.clone()));
                 }
                 offset.clone()
             },
@@ -117,7 +111,7 @@ impl<'a> Query<'a> {
 
         // Didn't have it yet. gotta calculate it
         if let ast::Statement::Symbol(statement) = self.statements.get(offset).unwrap() {
-            return statement.apply(self);
+            return Ok(Some(statement.apply(self)?));
         } else {
             panic!("Sanity error");
         }
