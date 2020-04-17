@@ -42,6 +42,15 @@
 // Index `analogy_rev` contains only analogies (AllegationID) keyed on left-hand symbol atoms (AllegationIDs)
 // I'm not certain if this is useful for much
 
+// TODO 2 - rewrite this explanation:
+// * recurse to the leaf
+//   * get a full scoop  for {left, right}
+//   * identify the atoms which alledge BOTH of these
+//     * recurse
+// * If any branch runs dry, we have to vivify it all the way to the leaf... but we can't use the full scoops we gathered for each
+//   leaf
+//   * we have to create new symbols which are just for this
+
 use crate::{
     allegation::Body,
     mbql::{
@@ -84,6 +93,13 @@ impl<'a> GSContext<'a> {
                mb }
     }
 
+    // TODO 3 - come up with a better name for this
+    pub fn raw_symbolize<T>(&self, thing: T) -> Result<Symbol, MBError>
+        where T: crate::allegation::Alledgable
+    {
+        self.mb.symbolize(thing)
+    }
+
     /// Call this with the top level GroundSymbolizable within a ground symbol statement
     pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, query: &Query) -> Result<Symbol, MBError> {
         // As a temporary measure, we are doing a fairly inefficient process of building a Symbol for each symbolizable artifact
@@ -94,46 +110,20 @@ impl<'a> GSContext<'a> {
 
         // TODO - create a shared context which can be used for a rolling index intersection process
         // TODO - change this to not return a symbol, but rather to mutate the context
-        let symbol = self.symbolize_recurse(symbolizable, query)?;
+        let node = self.symbolize_recurse(symbolizable, query)?;
 
         // TODO - convert the rolling index intersection into a symbol and Return.
 
-        Ok(symbol)
+        Ok(node.take_symbol())
     }
 
-    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, query: &Query) -> Result<Symbol, MBError> {
-        //
-
+    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, query: &Query) -> Result<GSNode, MBError> {
         let symbol = match s {
-            ast::GSymbolizable::Artifact(a) => {
-                let artifact_id = a.apply(query)?;
-                self.single_artifact(&artifact_id)?
-            },
-            ast::GSymbolizable::GroundPair(a) => {
-                // Symbol grounding is the crux of the biscuit
-                // We don't want to create new symbols if we can possibly help it
-                // We want to try reeally hard to find existing symbols
-                // And only create a new one if we positively must
-
-                // Depth-first search
-
-                let left = self.symbolize_recurse(&*a.left, query)?;
-                let right = self.symbolize_recurse(&*a.right, query)?;
-
-                // find symbols (Analogies) which refer to both of the above
-                let mut symbol = self.find_matching_analogy_symbol(&left, &right)?;
-                if symbol.is_null() {
-                    // Naive version
-                    // Most likely will have to re-descend the tree and re-symbolize each element narrowly
-                    let allegation = self.mb.alledge(Analogy::declarative(left, right))?;
-                    symbol.extend(allegation.id().clone());
-                }
-                symbol
-            },
+            ast::GSymbolizable::Artifact(a) => GSNode::artifact(self, query, a)?,
+            ast::GSymbolizable::GroundPair(a) => GSNode::pair(self, query, a)?,
             ast::GSymbolizable::SymbolVar(sv) => {
-                //
                 if let Some(symbol) = query.get_symbol_var(&sv.var)? {
-                    symbol
+                    GSNode::Given(symbol)
                 } else {
                     return Err(MBQLError { position: sv.position.clone(),
                                            kind:     MBQLErrorKind::SymbolVarNotFound { var: sv.var.clone() }, }.into());
@@ -148,7 +138,7 @@ impl<'a> GSContext<'a> {
         Ok(symbol)
     }
 
-    fn single_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Symbol, MBError> {
+    fn unrefined_symbol_for_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Option<Symbol>, MBError> {
         self.scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
         self.scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
 
@@ -182,17 +172,14 @@ impl<'a> GSContext<'a> {
             }
         }
 
-        let members: Vec<AllegationId> = unified.chunks_exact(16)
-                                                .map(|c| AllegationId::from_bytes(c.try_into().unwrap()))
-                                                .collect();
-        let symbol = Symbol { members,
-                              spread_factor: 0.0 };
-
-        Ok(symbol)
+        let atoms: Vec<AllegationId> = unified.chunks_exact(16)
+                                              .map(|c| AllegationId::from_bytes(c.try_into().unwrap()))
+                                              .collect();
+        Ok(Symbol::new(atoms))
     }
 
     // It's not really just one analogy that we're searching for, but a collection of N analogies which match left and right
-    fn find_matching_analogy_symbol(&self, left: &Symbol, right: &Symbol) -> Result<Symbol, MBError> {
+    fn find_matching_analogy_symbol(&self, left: &Symbol, right: &Symbol) -> Result<Option<Symbol>, MBError> {
         // Brute force for now. This whole routine is insanely inefficient
         // TODO 2 - update this to be a sweet indexed query!
 
@@ -207,11 +194,11 @@ impl<'a> GSContext<'a> {
                     if self.gs_agents.contains(&allegation.agent_id) {
                         // TODO 2 - This is crazy inefficient
                         if intersect_symbols(left, &analogy.left) && intersect_symbols(right, &analogy.right) {
-                            // atoms.push(Regular(allegation_id))
+                            // atoms.push(Spin::Up(allegation_id))
                             atoms.push(allegation_id)
                         } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
                             // TODO 2 - QUESTION - should we preserve chirality in the symbol member list? I think we may need to
-                            // atoms.push(Reverse(allegation_id)) // Uno reverse card yo
+                            // atoms.push(Spin::Down(allegation_id)) // Uno reverse card yo
                             atoms.push(allegation_id)
                         }
                     }
@@ -221,8 +208,7 @@ impl<'a> GSContext<'a> {
         }
 
         // Create a Symbol which contains the composite symbol atoms of all Analogies made by ground symbol agents
-        return Ok(Symbol { members:       atoms,
-                           spread_factor: 0.0, });
+        return Ok(Symbol::new(atoms));
     }
 }
 
@@ -230,13 +216,105 @@ fn intersect_symbols(a: &Symbol, b: &Symbol) -> bool {
     // This is crazy inefficient. At least do a lexicographic presort
     // can probably eliminate this during rolling inverted index conversion
     // let mut out: Vec<AllegationId> = Vec::new();
-    for member in a.members.iter() {
-        if b.members.contains(member) {
+    for member in a.atoms.iter() {
+        if b.atoms.contains(member) {
             return true;
         }
     }
 
     false
+}
+
+enum GSNode {
+    // May need to go back and re-symbolize these
+    Artifact {
+        artifact_id: ArtifactId,
+        symbol:      Symbol,
+    },
+    Pair {
+        symbol: Symbol,
+        left:   Box<GSNode>,
+        right:  Box<GSNode>,
+    },
+
+    // Someone gave us this symbol, and said "use it", so there's nothing to be done
+    Given(Symbol),
+
+    // These are done, and thus don't need to contain any child GSNodes
+    Created(Symbol),
+}
+
+/// Because we are asserting ground symbols, we don't know if it's necessary to create a new symbol until we identify a
+/// preexisting symbol at ALL levels of the tree. If we come up dry, we need to go all the way back to the leaves and create new
+/// symbols along the way
+impl GSNode {
+    pub fn artifact(ctx: &mut GSContext, query: &Query, artifact: &ast::Artifact) -> Result<Self, MBError> {
+        let artifact_id = artifact.apply(query)?;
+
+        let node = match ctx.unrefined_symbol_for_artifact(&artifact_id)? {
+            Some(symbol) => GSNode::Artifact { artifact_id, symbol },
+            None => {
+                let symbol = ctx.raw_symbolize(artifact_id)?;
+                GSNode::Created(symbol)
+            },
+        };
+
+        Ok(node)
+    }
+
+    pub fn pair(ctx: &mut GSContext, query: &Query, gpair: &ast::GPair) -> Result<Self, MBError> {
+        // Symbol grounding is the crux of the biscuit
+        // We don't want to create new symbols if we can possibly help it
+        // We want to try reeally hard to find existing symbols
+        // And only create a new one if we positively must
+
+        let left = ctx.symbolize_recurse(&*gpair.left, query)?;
+        let right = ctx.symbolize_recurse(&*gpair.right, query)?;
+
+        // find symbols (Analogies) which refer to both of the above
+        let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(left.symbol(), right.symbol())? {
+            GSNode::Pair { symbol,
+                           left: Box::new(left),
+                           right: Box::new(right) }
+        } else {
+            let symbol = ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?;
+            // Doesn't matter how we got here
+            GSNode::Created(symbol)
+        };
+
+        Ok(node)
+    }
+
+    pub fn take_symbol(self) -> Symbol {
+        match self {
+            GSNode::Artifact { symbol, .. } => symbol,
+            GSNode::Pair { symbol, .. } => symbol,
+            GSNode::Given(symbol) => symbol,
+            GSNode::Created(symbol) => symbol,
+        }
+    }
+
+    pub fn symbol(&self) -> &Symbol {
+        match self {
+            GSNode::Artifact { symbol, .. } => symbol,
+            GSNode::Pair { symbol, .. } => symbol,
+            GSNode::Given(symbol) => symbol,
+            GSNode::Created(symbol) => symbol,
+        }
+    }
+
+    pub fn novel_symbol(self, ctx: &GSContext) -> Result<Symbol, MBError> {
+        let symbol = match self {
+            GSNode::Artifact { artifact_id, .. } => ctx.raw_symbolize(artifact_id)?,
+            GSNode::Pair { left, right, .. } => {
+                ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?
+            },
+            GSNode::Created(s) => s,
+            GSNode::Given(symbol) => symbol,
+        };
+
+        Ok(symbol)
+    }
 }
 
 #[cfg(test)]
@@ -287,9 +365,7 @@ mod test {
         let query = Query::new(&mb, mbql)?;
         query.apply()?;
 
-        let gs = query.get_symbol_var("gs")?.expect("gs");
-
-        assert!(!gs.is_null());
+        let _gs = query.get_symbol_var("gs")?.expect("gs");
 
         Ok(())
     }
@@ -313,7 +389,6 @@ mod test {
 
         let foo = query.get_symbol_var("foo")?.expect("foo");
         let bar = query.get_symbol_var("bar")?.expect("bar");
-        assert!(!foo.is_null());
 
         assert_eq!(foo, bar);
         assert!(foo.intersects(&bar));

@@ -24,7 +24,7 @@ pub struct Symbol {
     // # Of the cluster they're actually referring to, but it will suffice
     // # for now I think.
     /// A list of entities which serve as a representative sample of the K-Space cluster
-    pub members:       Vec<AllegationId>,
+    pub atoms:         Vec<AllegationId>,
     // TODO 4 - update members to include a "weight" for each allegation id.
     pub spread_factor: f32,
     /* # Here's a slightly different way, but still not great
@@ -34,12 +34,21 @@ pub struct Symbol {
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let parts: Vec<String> = self.members.iter().map(|e| format!("{}", e)).collect();
+        let parts: Vec<String> = self.atoms.iter().map(|e| format!("{}", e)).collect();
         write!(f, "[{}]", parts.join(","))
     }
 }
 
 impl Symbol {
+    pub fn new(atoms: Vec<AllegationId>) -> Option<Self> {
+        if atoms.len() == 0 {
+            None
+        } else {
+            Some(Symbol { atoms,
+                          spread_factor: 0.0 })
+        }
+    }
+
     pub fn is_subjective(&self, _mb: &MindBase) -> Result<bool, MBError> {
         unimplemented!()
     }
@@ -48,16 +57,12 @@ impl Symbol {
         unimplemented!()
     }
 
-    pub fn is_null(&self) -> bool {
-        self.members.len() == 0
-    }
-
     pub fn count(&self) -> usize {
-        self.members.len()
+        self.atoms.len()
     }
 
     pub fn extend(&mut self, allegation_id: AllegationId) {
-        self.members.push(allegation_id)
+        self.atoms.push(allegation_id)
     }
 
     /// Create a new symbol which is analagous to this symbol, but consists of only a single allegation
@@ -74,8 +79,8 @@ impl Symbol {
     pub fn intersects(&self, other: &Symbol) -> bool {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
 
-        for member in self.members.iter() {
-            if other.members.contains(member) {
+        for member in self.atoms.iter() {
+            if other.atoms.contains(member) {
                 return true;
             }
         }
@@ -85,8 +90,8 @@ impl Symbol {
     pub fn intersection(&self, other: &Symbol) -> Vec<AllegationId> {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
         let mut out: Vec<AllegationId> = Vec::new();
-        for member in self.members.iter() {
-            if other.members.contains(member) {
+        for member in self.atoms.iter() {
+            if other.atoms.contains(member) {
                 out.push(member.clone());
             }
         }
@@ -96,11 +101,6 @@ impl Symbol {
 
     /// Narrow the Symbols in this symbol to include only those
     pub fn narrow_by(&mut self, mb: &MindBase, test_memberof: &Symbol) -> Result<(), MBError> {
-        if self.is_null() {
-            // Can't pull over any further
-            return Ok(());
-        }
-
         // We're looking for Analogies mentioning the memberof Symbol which mention the allegations in our symbol
 
         use crate::allegation::Body;
@@ -138,7 +138,7 @@ impl Symbol {
             }
         }
 
-        self.members = members;
+        self.atoms = members;
 
         Ok(())
     }

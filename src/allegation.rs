@@ -45,7 +45,7 @@ impl AllegationId {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { members:       vec![self.clone()],
+        Symbol { atoms:         vec![self.clone()],
                  spread_factor: 0.0, }
     }
 
@@ -155,7 +155,7 @@ impl Allegation {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { members:       vec![self.id().clone()],
+        Symbol { atoms:         vec![self.id().clone()],
                  spread_factor: 0.0, }
     }
 
@@ -175,7 +175,7 @@ impl Allegation {
                 let mut v: Vec<ArtifactId> = Vec::with_capacity(10);
 
                 // Forward
-                for allegation_id in analogy.left.members.iter() {
+                for allegation_id in analogy.left.atoms.iter() {
                     match mb.get_allegation(allegation_id)? {
                         Some(allegation) => {
                             // TODO 1 - need to put some upper bound on how much we want to recurse here
@@ -195,7 +195,7 @@ impl Allegation {
                 }
 
                 // Backward
-                for allegation_id in analogy.right.members.iter() {
+                for allegation_id in analogy.right.atoms.iter() {
                     match mb.get_allegation(allegation_id)? {
                         Some(allegation) => {
                             match allegation.referenced_artifacts(mb)? {

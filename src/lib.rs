@@ -249,20 +249,19 @@ impl MindBase {
                phantomvalue: PhantomData, }
     }
 
-    pub fn symbol_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Symbol, MBError>
+    pub fn symbol_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Option<Symbol>, MBError>
         where F: Fn(&Allegation) -> bool
     {
-        let mut members = Vec::new();
+        let mut atoms = Vec::new();
 
         for allegation in self.allegation_iter() {
             let allegation = allegation?;
             if f(&allegation.1) {
-                members.push(allegation.0);
+                atoms.push(allegation.0);
             }
         }
 
-        Ok(Symbol { members,
-                    spread_factor: 0.0 })
+        Ok(Symbol::new(atoms))
     }
 
     /// For an ordered list of artifacts, we want to try to resolve upon the most precise symbolual definition possible, and
@@ -305,6 +304,7 @@ impl MindBase {
     //     // Ground(Ground),
     // }
 
+    // TODO 2 - remove / replace this with ::ground stuff
     pub fn get_ground_symbol<A>(&self, artifacts: Vec<A>) -> Result<Symbol, MBError>
         where A: Into<crate::artifact::Artifact>
     {
@@ -339,31 +339,36 @@ impl MindBase {
 
         for search_artifact_id in search_chain {
             use crate::allegation::Body;
-            let mut symbol = self.symbol_filter_allegations_by(|a| {
-                                     gs_agents.contains(&a.agent_id)
-                                     && match &a.body {
-                                         Body::Artifact(artifact_id) => *artifact_id == search_artifact_id,
-                                         _ => false,
-                                     }
-                                 })?;
+            let maybe_symbol = self.symbol_filter_allegations_by(|a| {
+                                       gs_agents.contains(&a.agent_id)
+                                       && match &a.body {
+                                           Body::Artifact(artifact_id) => *artifact_id == search_artifact_id,
+                                           _ => false,
+                                       }
+                                   })?;
 
-            if let Some(ref parent) = last_symbol {
-                symbol.narrow_by(self, parent)?;
-            }
+            let symbol = match maybe_symbol {
+                Some(mut symbol) => {
+                    if let Some(ref parent) = last_symbol {
+                        symbol.narrow_by(self, parent)?;
+                    }
+                    symbol
+                },
+                None => {
+                    // None of our ground/neighbor agents have declared this taxonomic/analogic relationship before
+                    // But we are implicitly doing so now. Lets extend our symbol with a new allegation corresponding to a new
+                    // atom of meaning, and ALSO define that meaning by alledging
+                    // Extend this with a new allegation so we can continue
+                    // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
+                    // subsequent allegations
+                    let symbol = self.symbolize(search_artifact_id)?;
 
-            // None of our ground/neighbor agents have declared this taxonomic/analogic relationship before
-            // But we are implicitly doing so now. Lets extend our symbol with a new allegation corresponding to a new atom of
-            // meaning, and ALSO define that meaning by alledging
-            if symbol.is_null() {
-                // Extend this with a new allegation so we can continue
-                // We are doing this because the caller is essentially saying that there is a taxonomic relationship between
-                // subsequent allegations
-                symbol.extend(self.alledge(search_artifact_id)?.id().clone());
-
-                if let Some(parent) = last_symbol {
-                    self.alledge(Analogy::declarative(symbol.clone(), parent))?;
-                }
-            }
+                    if let Some(parent) = last_symbol {
+                        self.alledge(Analogy::declarative(symbol.clone(), parent))?;
+                    }
+                    symbol
+                },
+            };
 
             last_symbol = Some(symbol);
         }
