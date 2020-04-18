@@ -214,8 +214,13 @@ impl SymbolVar {
         self.var.clone()
     }
 
-    pub fn apply(&self, _query: &Query) -> Result<Symbol, MBQLError> {
-        unimplemented!()
+    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+        if let Some(symbol) = query.get_symbol_var(&self.var)? {
+            Ok(symbol)
+        } else {
+            return Err(MBQLError { position: self.position.clone(),
+                                   kind:     MBQLErrorKind::SymbolVarNotFound { var: self.var.clone() }, });
+        }
     }
 }
 
@@ -518,7 +523,7 @@ impl Symbolizable {
             // Symbolizable::SymbolVar(sv) => sv.apply(query),
             Symbolizable::Ground(g) => g.apply(query)?,
             Symbolizable::Symbolize(s) => s.apply(query)?,
-            _ => unimplemented!(),
+            Symbolizable::SymbolVar(sv) => sv.apply(query)?,
         };
 
         Ok(symbol)
