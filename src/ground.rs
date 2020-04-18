@@ -101,7 +101,7 @@ impl<'a> GSContext<'a> {
     }
 
     /// Call this with the top level GroundSymbolizable within a ground symbol statement
-    pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, query: &Query) -> Result<Symbol, MBError> {
+    pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, vivify: bool, query: &Query) -> Result<Symbol, MBQLError> {
         // As a temporary measure, we are doing a fairly inefficient process of building a Symbol for each symbolizable artifact
         // with all possible symbolic atoms and THEN narrowing that.
         //
@@ -110,17 +110,17 @@ impl<'a> GSContext<'a> {
 
         // TODO - create a shared context which can be used for a rolling index intersection process
         // TODO - change this to not return a symbol, but rather to mutate the context
-        let node = self.symbolize_recurse(symbolizable, query)?;
+        let node = self.symbolize_recurse(symbolizable, vivify, query)?;
 
         // TODO - convert the rolling index intersection into a symbol and Return.
 
         Ok(node.take_symbol())
     }
 
-    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, query: &Query) -> Result<GSNode, MBError> {
+    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, vivify: bool, query: &Query) -> Result<GSNode, MBQLError> {
         let symbol = match s {
-            ast::GSymbolizable::Artifact(a) => GSNode::artifact(self, query, a)?,
-            ast::GSymbolizable::GroundPair(a) => GSNode::pair(self, query, a)?,
+            ast::GSymbolizable::Artifact(a) => GSNode::artifact(self, vivify, query, a)?,
+            ast::GSymbolizable::GroundPair(a) => GSNode::pair(self, vivify, query, a)?,
             ast::GSymbolizable::SymbolVar(sv) => {
                 if let Some(symbol) = query.get_symbol_var(&sv.var)? {
                     GSNode::Given(symbol)
@@ -248,38 +248,46 @@ enum GSNode {
 /// preexisting symbol at ALL levels of the tree. If we come up dry, we need to go all the way back to the leaves and create new
 /// symbols along the way
 impl GSNode {
-    pub fn artifact(ctx: &mut GSContext, query: &Query, artifact: &ast::Artifact) -> Result<Self, MBError> {
+    pub fn artifact(ctx: &mut GSContext, vivify: bool, query: &Query, artifact: &ast::Artifact) -> Result<Self, MBQLError> {
         let artifact_id = artifact.apply(query)?;
 
         let node = match ctx.unrefined_symbol_for_artifact(&artifact_id)? {
             Some(symbol) => GSNode::Artifact { artifact_id, symbol },
             None => {
-                let symbol = ctx.raw_symbolize(artifact_id)?;
-                GSNode::Created(symbol)
+                if vivify {
+                    let symbol = ctx.raw_symbolize(artifact_id)?;
+                    GSNode::Created(symbol)
+                } else {
+                    return Err(MBQLError { position: artifact.position().clone(),
+                                           kind:     MBQLErrorKind::GSymNotFound, });
+                }
             },
         };
 
         Ok(node)
     }
 
-    pub fn pair(ctx: &mut GSContext, query: &Query, gpair: &ast::GPair) -> Result<Self, MBError> {
+    pub fn pair(ctx: &mut GSContext, vivify: bool, query: &Query, gpair: &ast::GPair) -> Result<Self, MBQLError> {
         // Symbol grounding is the crux of the biscuit
         // We don't want to create new symbols if we can possibly help it
         // We want to try reeally hard to find existing symbols
         // And only create a new one if we positively must
 
-        let left = ctx.symbolize_recurse(&*gpair.left, query)?;
-        let right = ctx.symbolize_recurse(&*gpair.right, query)?;
+        let left = ctx.symbolize_recurse(&*gpair.left, vivify, query)?;
+        let right = ctx.symbolize_recurse(&*gpair.right, vivify, query)?;
 
         // find symbols (Analogies) which refer to both of the above
         let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(left.symbol(), right.symbol())? {
             GSNode::Pair { symbol,
                            left: Box::new(left),
                            right: Box::new(right) }
-        } else {
+        } else if vivify {
             let symbol = ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?;
             // Doesn't matter how we got here
             GSNode::Created(symbol)
+        } else {
+            return Err(MBQLError { position: gpair.position().clone(),
+                                   kind:     MBQLErrorKind::GSymNotFound, });
         };
 
         Ok(node)

@@ -37,6 +37,7 @@ pub enum MBQLErrorKind {
     SymbolVarNotFound {
         var: String,
     },
+    GSymNotFound,
     MBError(Box<MBError>),
 }
 
@@ -71,6 +72,7 @@ impl std::fmt::Display for MBQLError {
             MBQLErrorKind::SymbolVarNotFound { var } => {
                 write!(f, "Symbol Variable `{}` not found at row {}", var, self.position.row)
             },
+            MBQLErrorKind::GSymNotFound => write!(f, "Ground Symbol not found at row {}", self.position.row),
         }
     }
 }

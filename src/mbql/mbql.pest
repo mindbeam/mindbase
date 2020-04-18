@@ -16,7 +16,7 @@ diagstatement = { "Diag(" ~ diag ~ ("," ~ diag)* ~ ")" }
 diag = _{ (symbolvar|artifactvar) }
 
 // Symbols
-ground = { ( "Ground(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | ("{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
+ground = { ( "Ground" ~ bang? ~ "(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | (bang? ~ "{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
 symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
 allege =  { "Allege(" ~ symbol_pair ~ ")" }
 
@@ -46,5 +46,6 @@ symbol_pair = { symbolizable ~ ":" ~ symbolizable }
 // You can use a symbolvar, but you can't Symbolize or Allege in a ground symbolizable
 ground_symbolizable = { artifact | symbolvar | ground | "(" ~ ground_symbol_pair ~ ")" }
 ground_symbol_pair = { ground_symbolizable ~ ":" ~ ground_symbolizable }
+bang = { "!" }
 
 WHITESPACE = _{ " " | "\t" }

@@ -312,6 +312,7 @@ impl SymbolStatement {
 
 #[derive(Debug)]
 pub struct Ground {
+    vivify:       bool,
     symbolizable: Box<GSymbolizable>,
     position:     Position,
 }
@@ -320,17 +321,38 @@ impl Ground {
     fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::ground);
 
-        Ok(Ground { symbolizable: Box::new(GSymbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
-                    position })
+        let mut inner = pair.into_inner();
+        let next = inner.next().unwrap();
+
+        let (next, vivify) = if next.as_rule() == Rule::bang {
+            // Ground!(..) means don't vivify any ground symbols
+            (inner.next().unwrap(), false)
+        } else {
+            // Ground(..) means default behavior, vivification is ok
+            (next, true)
+        };
+
+        Ok(Ground { symbolizable: Box::new(GSymbolizable::parse(next, position.clone())?),
+                    position,
+                    vivify })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
         if verbose {
-            writer.write(b"Ground(")?;
+            if self.vivify {
+                writer.write(b"Ground(")?;
+            } else {
+                writer.write(b"Ground!(")?;
+            }
             self.symbolizable.write(writer, false, false)?;
             writer.write(b")")?;
         } else {
-            writer.write(b"{")?;
+            if self.vivify {
+                writer.write(b"{")?;
+            } else {
+                writer.write(b"!{")?;
+            }
+
             self.symbolizable.write(writer, false, false)?;
             writer.write(b"}")?;
         }
@@ -338,7 +360,10 @@ impl Ground {
     }
 
     pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
-        let symbol = query.gscontext.lock().unwrap().symbolize(&*self.symbolizable, query)?;
+        let symbol = query.gscontext
+                          .lock()
+                          .unwrap()
+                          .symbolize(&*self.symbolizable, self.vivify, query)?;
         Ok(symbol)
     }
 }
@@ -613,6 +638,9 @@ impl GPair {
         Ok(())
     }
 
+    pub fn position(&self) -> &Position {
+        &self.position
+    }
     // pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
     //     unimplemented!()
     // }
@@ -682,6 +710,17 @@ impl Artifact {
         };
 
         Ok(artifact_id)
+    }
+
+    pub fn position(&self) -> &Position {
+        match self {
+            Artifact::Agent(agent) => &agent.position,
+            Artifact::Url(url) => &url.position,
+            Artifact::Text(text) => &text.position,
+            Artifact::DataNode(node) => &node.position,
+            Artifact::DataRelation(relation) => &relation.position,
+            Artifact::ArtifactVar(var) => &var.position,
+        }
     }
 }
 
