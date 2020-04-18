@@ -172,4 +172,37 @@ impl Symbol {
 
         Ok(())
     }
+
+    pub fn left_right(&self, mb: &MindBase) -> Result<Option<(Symbol, Symbol)>, MBError> {
+        // TODO 3 - optimize this. Presumably via indexing?
+
+        // smush all the analogies together to form a left symbol and a right symbol which is the composition of their (Spin
+        // Up/Down aware) branches
+
+        let mut left: Vec<Atom> = Vec::new();
+        let mut right: Vec<Atom> = Vec::new();
+
+        for atom in self.atoms.iter() {
+            use crate::allegation::Body;
+            match mb.get_allegation(atom.id())? {
+                None => return Err(MBError::TraversalFailed),
+                Some(a) => {
+                    if let Body::Analogy(analogy) = a.body {
+                        match atom {
+                            Atom::Up(_) => {
+                                left.extend(analogy.left.atoms);
+                                right.extend(analogy.right.atoms);
+                            },
+                            Atom::Down(_) => {
+                                left.extend(analogy.right.atoms);
+                                right.extend(analogy.left.atoms);
+                            },
+                        }
+                    }
+                },
+            }
+        }
+
+        Ok(Some((Symbol::new(left), Symbol::new(right))))
+    }
 }
