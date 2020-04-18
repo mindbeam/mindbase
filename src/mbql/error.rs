@@ -37,7 +37,10 @@ pub enum MBQLErrorKind {
     SymbolVarNotFound {
         var: String,
     },
+
+    // TODO 2 - Move this to MBError
     GSymNotFound,
+
     MBError(Box<MBError>),
 }
 

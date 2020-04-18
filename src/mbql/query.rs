@@ -132,6 +132,9 @@ impl<'a> Query<'a> {
     }
 
     pub fn apply(&self) -> Result<(), MBQLError> {
+        // TODO 2 - Validate all possible MBQLErrors at query creation time so that all remaining errors are MBErrors
+        // and then change this to return Result<(),MBError>
+
         // iterate over all artifact statements and store
         // iterate over all symbol statements and recurse
 
