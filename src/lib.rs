@@ -52,6 +52,7 @@ use std::{
         Mutex,
     },
 };
+use symbol::Atom;
 
 // pub mod allegation_capnp {
 //     include!(concat!(env!("OUT_DIR"), "/capnp/allegation_capnp.rs"));
@@ -174,9 +175,9 @@ impl MindBase {
 
         // use crate::allegation::Body;
         // match atom.body {
-        //     Body::Analogy(Analogy { ref left, .. }) => {
-        //         for subject_member in left.members.iter() {
-        //             self.analogy_rev.merge(subject_member.as_ref(), id.as_ref())?;
+        //     Body::Analogy(Analogy { ref left, ref right, .. }) => {
+        //         for atom in left.atoms.iter() {
+        //             self.analogy_index.merge(id.as_ref(), atom.as_ref())?;
         //         }
         //     },
         //     _ => {},
@@ -269,11 +270,11 @@ impl MindBase {
         for allegation in self.allegation_iter() {
             let allegation = allegation?;
             if f(&allegation.1) {
-                atoms.push(allegation.0);
+                atoms.push(Atom::Up(allegation.0));
             }
         }
 
-        Ok(Symbol::new(atoms))
+        Ok(Symbol::new_option(atoms))
     }
 
     /// For an ordered list of artifacts, we want to try to resolve upon the most precise symbolual definition possible, and

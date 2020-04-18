@@ -6,7 +6,10 @@ use crate::{
     analogy::Analogy,
     artifact::ArtifactId,
     error::MBError,
-    symbol::Symbol,
+    symbol::{
+        Atom,
+        Symbol,
+    },
     Agent,
     MindBase,
 };
@@ -45,7 +48,7 @@ impl AllegationId {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { atoms:         vec![self.clone()],
+        Symbol { atoms:         vec![Atom::Up(self.clone())],
                  spread_factor: 0.0, }
     }
 
@@ -155,7 +158,7 @@ impl Allegation {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { atoms:         vec![self.id().clone()],
+        Symbol { atoms:         vec![Atom::Up(self.id().clone())],
                  spread_factor: 0.0, }
     }
 
@@ -175,8 +178,8 @@ impl Allegation {
                 let mut v: Vec<ArtifactId> = Vec::with_capacity(10);
 
                 // Forward
-                for allegation_id in analogy.left.atoms.iter() {
-                    match mb.get_allegation(allegation_id)? {
+                for atom in analogy.left.atoms.iter() {
+                    match mb.get_allegation(atom.id())? {
                         Some(allegation) => {
                             // TODO 1 - need to put some upper bound on how much we want to recurse here
                             // QUESTION: What are the consequences of this uppper bound enforcement?
@@ -195,8 +198,8 @@ impl Allegation {
                 }
 
                 // Backward
-                for allegation_id in analogy.right.atoms.iter() {
-                    match mb.get_allegation(allegation_id)? {
+                for atom in analogy.right.atoms.iter() {
+                    match mb.get_allegation(atom.id())? {
                         Some(allegation) => {
                             match allegation.referenced_artifacts(mb)? {
                                 ArtifactList::None => {},

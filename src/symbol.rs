@@ -24,12 +24,35 @@ pub struct Symbol {
     // # Of the cluster they're actually referring to, but it will suffice
     // # for now I think.
     /// A list of entities which serve as a representative sample of the K-Space cluster
-    pub atoms:         Vec<AllegationId>,
+    pub atoms:         Vec<Atom>,
     // TODO 4 - update members to include a "weight" for each allegation id.
     pub spread_factor: f32,
     /* # Here's a slightly different way, but still not great
      * # median_entity: Entity,
      * # radius: Float */
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub enum Atom {
+    Up(AllegationId),
+    Down(AllegationId),
+}
+
+impl Atom {
+    pub fn id(&self) -> &AllegationId {
+        match self {
+            Atom::Up(a) | Atom::Down(a) => a,
+        }
+    }
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Atom::Up(a) => write!(f, "↑{}", a),
+            Atom::Down(a) => write!(f, "↓{}", a),
+        }
+    }
 }
 
 impl fmt::Display for Symbol {
@@ -40,7 +63,14 @@ impl fmt::Display for Symbol {
 }
 
 impl Symbol {
-    pub fn new(atoms: Vec<AllegationId>) -> Option<Self> {
+    pub fn new(atoms: Vec<Atom>) -> Self {
+        assert!(atoms.len() > 0);
+
+        Symbol { atoms,
+                 spread_factor: 0.0 }
+    }
+
+    pub fn new_option(atoms: Vec<Atom>) -> Option<Self> {
         if atoms.len() == 0 {
             None
         } else {
@@ -61,8 +91,8 @@ impl Symbol {
         self.atoms.len()
     }
 
-    pub fn extend(&mut self, allegation_id: AllegationId) {
-        self.atoms.push(allegation_id)
+    pub fn extend(&mut self, atom: Atom) {
+        self.atoms.push(atom)
     }
 
     /// Create a new symbol which is analagous to this symbol, but consists of only a single allegation
@@ -87,9 +117,9 @@ impl Symbol {
         false
     }
 
-    pub fn intersection(&self, other: &Symbol) -> Vec<AllegationId> {
+    pub fn intersection(&self, other: &Symbol) -> Vec<Atom> {
         // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
-        let mut out: Vec<AllegationId> = Vec::new();
+        let mut out: Vec<Atom> = Vec::new();
         for member in self.atoms.iter() {
             if other.atoms.contains(member) {
                 out.push(member.clone());
@@ -105,7 +135,7 @@ impl Symbol {
 
         use crate::allegation::Body;
 
-        let mut members: Vec<AllegationId> = Vec::new();
+        let mut members: Vec<Atom> = Vec::new();
 
         // Old
         // Very inefficient. Looping over ALL allegations in the system

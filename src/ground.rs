@@ -61,6 +61,7 @@ use crate::{
         },
         Query,
     },
+    symbol::Atom,
     AgentId,
     AllegationId,
     Analogy,
@@ -172,10 +173,10 @@ impl<'a> GSContext<'a> {
             }
         }
 
-        let atoms: Vec<AllegationId> = unified.chunks_exact(16)
-                                              .map(|c| AllegationId::from_bytes(c.try_into().unwrap()))
-                                              .collect();
-        Ok(Symbol::new(atoms))
+        let atoms: Vec<Atom> = unified.chunks_exact(16)
+                                      .map(|c| Atom::Up(AllegationId::from_bytes(c.try_into().unwrap())))
+                                      .collect();
+        Ok(Symbol::new_option(atoms))
     }
 
     // It's not really just one analogy that we're searching for, but a collection of N analogies which match left and right
@@ -183,7 +184,7 @@ impl<'a> GSContext<'a> {
         // Brute force for now. This whole routine is insanely inefficient
         // TODO 2 - update this to be a sweet indexed query!
 
-        let mut atoms: Vec<AllegationId> = Vec::new();
+        let mut atoms: Vec<Atom> = Vec::new();
 
         for allegation in self.mb.allegation_iter() {
             let (allegation_id, allegation) = allegation?;
@@ -194,12 +195,9 @@ impl<'a> GSContext<'a> {
                     if self.gs_agents.contains(&allegation.agent_id) {
                         // TODO 2 - This is crazy inefficient
                         if intersect_symbols(left, &analogy.left) && intersect_symbols(right, &analogy.right) {
-                            // atoms.push(Spin::Up(allegation_id))
-                            atoms.push(allegation_id)
+                            atoms.push(Atom::Up(allegation_id))
                         } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
-                            // TODO 2 - QUESTION - should we preserve chirality in the symbol member list? I think we may need to
-                            // atoms.push(Spin::Down(allegation_id)) // Uno reverse card yo
-                            atoms.push(allegation_id)
+                            atoms.push(Atom::Down(allegation_id))
                         }
                     }
                 },
@@ -208,7 +206,7 @@ impl<'a> GSContext<'a> {
         }
 
         // Create a Symbol which contains the composite symbol atoms of all Analogies made by ground symbol agents
-        return Ok(Symbol::new(atoms));
+        return Ok(Symbol::new_option(atoms));
     }
 }
 
