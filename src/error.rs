@@ -11,7 +11,7 @@ pub enum MBError {
     Base64Error,
     AllegationNotFound,
     MBQL(Box<MBQLError>),
-    Sanity,
+    TraversalFailed,
     NullSymbol,
 }
 
