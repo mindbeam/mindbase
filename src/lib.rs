@@ -38,6 +38,10 @@ pub use self::{
 
 use allegation::ArtifactList;
 use core::marker::PhantomData;
+use mbql::{
+    error::MBQLError,
+    Query,
+};
 use policy::Policy;
 use serde::de::DeserializeOwned;
 use sled::IVec;
@@ -184,6 +188,14 @@ impl MindBase {
     #[allow(unused)]
     pub fn create_agent(&self) -> Result<Agent, MBError> {
         _create_agent(&self.my_agents)
+    }
+
+    pub fn query_str(&self, mbql_str: &str) -> Result<Query, MBQLError> {
+        Query::from_str(self, mbql_str)
+    }
+
+    pub fn query<T: std::io::BufRead>(&self, reader: T) -> Result<Query, MBQLError> {
+        Query::new(self, reader)
     }
 
     pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, MBError>

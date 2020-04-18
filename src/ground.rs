@@ -328,7 +328,13 @@ impl GSNode {
 #[cfg(test)]
 mod test {
     use crate::{
-        mbql::Query,
+        mbql::{
+            error::{
+                MBQLError,
+                MBQLErrorKind,
+            },
+            Query,
+        },
         MindBase,
     };
     use std::io::Cursor;

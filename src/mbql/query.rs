@@ -14,6 +14,7 @@ use crate::{
 };
 use std::{
     collections::BTreeMap,
+    io::Cursor,
     sync::Mutex,
 };
 
@@ -35,6 +36,11 @@ impl<'a> Query<'a> {
         super::parse::parse(reader, &mut query)?;
 
         Ok(query)
+    }
+
+    pub fn from_str(mb: &'a MindBase, mbql_string: &str) -> Result<Self, MBQLError> {
+        let cur = Cursor::new(mbql_string);
+        Self::new(mb, cur)
     }
 
     pub fn add_statement(&mut self, statement: ast::Statement) {
