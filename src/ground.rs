@@ -419,4 +419,46 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn ground4() -> Result<(), std::io::Error> {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdirpath = tmpdir.path();
+        let mb = MindBase::open(&tmpdirpath).unwrap();
+
+        // $a = Allege("Raggedy Ann": "Ragdoll")
+        // $b = Allege("Raggedy Andy": "Ragdoll")
+
+        // WIP: How to validate that we're properly re-symbolizing?
+        let query = mb.query_str(
+                                 r#"
+            $a = Allege("Ragdoll" : "Leopard")
+            $b = Allege("Shepherd" : "Wolf")
+            $c = Allege($a, $b)
+            $x = Ground(("Ragdoll" : "Leopard") : ("Shepherd" : "Wolf"))
+            Diag($a, $b, $x)
+        "#,
+        )?;
+
+        query.apply()?;
+
+        let a = query.get_symbol_var("a")?.expect("a");
+        let b = query.get_symbol_var("b")?.expect("b");
+        let x = query.get_symbol_var("x")?.expect("x");
+
+        assert_eq!(a, x.left());
+        assert_eq!(b, x.right());
+
+        let stdout = std::io::stdout();
+        let handle = stdout.lock();
+        crate::xport::dump_json(&mb, handle).unwrap();
+
+        // let foo = query.get_symbol_var("foo")?.expect("foo");
+        // let bar = query.get_symbol_var("bar")?.expect("bar");
+
+        // assert_eq!(foo, bar);
+        // assert!(foo.intersects(&bar));
+
+        Ok(())
+    }
 }
