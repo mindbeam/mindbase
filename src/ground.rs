@@ -345,15 +345,25 @@ mod test {
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath).unwrap();
 
-        let mbql = Cursor::new(
-                               r#"
-            $foo = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
-            $bar = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
-            Diag($foo, $bar)
-        "#,
-        );
+        let query = mb.query_str(r#"Ground!(("Smile" : "Mouth") : ("Wink" : "Eye"))"#)?;
+        match query.apply() {
+            Err(MBQLError { kind: MBQLErrorKind::GSymNotFound,
+                            .. }) => {
+                // This should fail, because we're disallowing vivification
+            },
+            r @ _ => panic!("Ground symbol vivification is disallowed {:?}", r),
+        }
 
-        let query = Query::new(&mb, mbql)?;
+        let query = mb.query_str(
+                                 r#"
+        $foo = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
+        $bar = Ground!(("Smile" : "Mouth") : ("Wink" : "Eye"))
+        Diag($foo, $bar)
+        "#,
+        )?;
+
+        // This time it should work, because we are alleging it above in what happens to be exactly the right way to be matched by
+        // the ground symbol search
         query.apply()?;
 
         let bogus = query.get_symbol_var("bogus")?;
