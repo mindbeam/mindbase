@@ -1,0 +1,4 @@
+WordNet is a lexical database of English.
+
+For details about WordNet see:
+http://wordnet.princeton.edu/

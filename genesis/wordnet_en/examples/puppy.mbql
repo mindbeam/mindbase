@@ -1,0 +1,35 @@
+# General symbols which we will use below
+$en = Ground("English Language")
+$pos = Ground($en : "Part of Speech")
+$def = Ground($en : "Definition")
+$syn = Ground($en : "Synonym")
+$a = Ground($pos : "Adjective")
+$s = Ground($pos : "Adjective Satellite")
+$r = Ground($pos : "Adverb")
+$n = Ground($pos : "Noun")
+$v = Ground($pos : "Verb")
+# Link these definitions to words in the corpus, where appropriate
+# We can index into symbols we expect to be created. Cycles are not a problem
+Ground($a : $def_adverb.n.01)
+Ground($a : $def_adverb.n.01)
+$ss = Ground("Wordnet" : "Synset Name")
+
+# Dump of synsets, lemmas, etc
+
+# Synset: puppy.n.01
+$def_puppy.n.01 = Ground($def : "a young dog")
+$puppy.n.01.puppy = Ground("puppy" : $def_puppy.n.01)
+
+# Record the synset name, and its association to the above symbols for posterity
+$ss_puppy.n.01 = Ground(DataNode($ss; "puppy.n.01"))
+Ground($puppy.n.01.puppy : $ss_puppy.n.01)
+
+# Synset: puppy.n.02
+$def_puppy.n.02 = Ground($def : "an inexperienced young person")
+$puppy.n.02.puppy = Ground("puppy" : $def_puppy.n.02)
+$puppy.n.02.pup = Ground("pup" : $def_puppy.n.02)
+
+# Record the synset name, and its association to the above symbols for posterity
+$ss_puppy.n.02 = Ground(DataNode($ss; "puppy.n.02"))
+Ground($puppy.n.02.pup : $ss_puppy.n.02)
+Ground($puppy.n.02.pup : $ss_puppy.n.02)
