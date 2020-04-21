@@ -16,3 +16,4 @@ attic
 Cargo.lock
 *.sled
 .mindbasecli_history
+.vscode
