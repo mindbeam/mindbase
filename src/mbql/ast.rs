@@ -455,8 +455,6 @@ impl Symbolize {
 pub enum Symbolizable {
     Artifact(Artifact),
     Allege(Allege),
-    // TODO 1 - determine if we want to flatten/variablize/pointerize the tree as we parse it
-    // or if we flatten that structure at a later phase?
     SymbolVar(SymbolVar),
     Ground(Ground),
     Symbolize(Symbolize),
