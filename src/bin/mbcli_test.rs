@@ -20,7 +20,9 @@ fn main() -> Result<(), std::io::Error> {
     let agent = mb.default_agent().unwrap();
     println!("Using Agent {}", agent);
 
-    let isaid = mb.get_ground_symbol(vec![text("Things that I said"), text("In mbcli")])?;
+    let query = mb.query_str(r#"$isaid = Ground("Things that I said" : "In mbcli")"#)?;
+    query.apply()?;
+    let isaid = query.get_symbol_var("isaid")?.unwrap();
 
     // What situations might have precipitated that would lead me to conjuring a non-narrow symbol?
 

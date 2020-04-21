@@ -128,7 +128,10 @@ fn apple() -> Result<(), MBError> {
     let apple_of_my_eye = mb.alledge(Text::new("Apple"))?;
 
     // Look up the "ground symbol" for "Apple" without any additional specificity
-    let apple_ground_symbol: Symbol = mb.get_ground_symbol(vec!["Apple"])?;
+    let query = mb.query_str(r#"$a = Ground("Apple")"#)?;
+    query.apply()?;
+
+    let apple_ground_symbol = query.get_symbol_var("a")?.unwrap();
 
     // It's... all of them. Why? Because meaning is contextual/intersectional.
     // We don't have enough information to narrow it down yet and we should not assume what they meant
@@ -144,7 +147,9 @@ fn apple() -> Result<(), MBError> {
     mb.alledge(Analogy::declarative(apple_the_fruit.subjective(), mb.alledge("Edible Fruit")?.subjective()))?;
     mb.alledge(Analogy::declarative(apple_of_my_eye.subjective(), mb.alledge("Amorousness")?.subjective()))?;
 
-    let apple: Symbol = mb.get_ground_symbol(vec!["Corporation", "Apple"])?;
+    let query = mb.query_str(r#"$a = Ground("Corporation" : "Apple")"#)?;
+    query.apply()?;
+    let apple = query.get_symbol_var("a")?.unwrap();
     assert_eq!(apple.count(), 1);
 
     Ok(())
