@@ -101,7 +101,26 @@ impl<'a> GSContext<'a> {
         self.mb.symbolize(thing)
     }
 
-    /// Call this with the top level GroundSymbolizable within a ground symbol statement
+    /// Call this with the top level GSymbolizable within a ground symbol statement
+    /// The goal here is to try to resolve upon the most precise symbolic definition possible, and
+    /// arrive at a "ground symbol" which we hope is able to bridge the gap between `External Meaning` and `Internal Meaning`
+    ///
+    /// The list of ground agents are important, because they represent the starting point of common, culturally originated
+    /// defintions in the form of "default" Analogies, which the agent would otherwise have to define for themselves. The
+    /// agent in question could theoretically define all of this themselves, but it would be very time consuming, and
+    /// crucially, it would impede rather than seed convergence with their neighbors - unless those neighbors first accepted said
+    /// agent to be a grounding/neighbor agent. This is of course the goal: that you should ascribe, at least in part, to the set
+    /// of definitions which is provided by your neighbor. This is because it reflects ontological alignments which exist in
+    /// the real world, at least to some degree.
+    ///
+    /// This list of artifacts is taken to be a single thread of a taxonomy. Each artifact is initially translated into
+    /// the the broadest possible Symbol which is inclusive of _all_ potential interpretations of that artifact.
+    /// The initial Symbol of that taxonomy is not able to be narrowed, but the subsequent symbols in the taxonomy are narrowed
+    /// to include only those which are alledged to be in the category of the parent by one of the grounding/neighbor agents.
+    ///
+    /// This in theory should allow us to resolve upon a single symbol which is believed to be meaningful to that agent based on
+    /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
+    /// continuum we hope to create with mindbase.
     pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, vivify: bool, query: &Query) -> Result<Symbol, MBQLError> {
         // As a temporary measure, we are doing a fairly inefficient process of building a Symbol for each symbolizable artifact
         // with all possible symbolic atoms and THEN narrowing that.
