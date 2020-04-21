@@ -31,7 +31,7 @@ datarelation = { "DataRelation(" ~ symbolizable  ~ ";" ~ symbolizable  ~ ">" ~ s
 
 base64 = @{ base64_char+ ~ "="{,2} }
 base64_char = { '0'..'9' | 'a'..'z' | 'A'..'Z' | "+" | "/"  }
-literal = { (ASCII_ALPHANUMERIC | "_")+ }
+literal = { (ASCII_ALPHANUMERIC | "_" | "." )+ }
 quoted_string = ${ "\"" ~ string ~ "\"" }
 string = @{ char* }
 char = {
