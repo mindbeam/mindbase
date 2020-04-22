@@ -26,7 +26,9 @@ fn apple() -> Result<(), MBError> {
     //     catagorical ~
     //     associative :
     //     what others?
-    //     Eg: $pets = Ground(("Cat"? : "Kitty") : ("Dog"? : "Doggy"))
+    //     Eg: $pets = Ground("Dog" ~ "Cat") # Find a preexisting symbol which correlates Dog and Cat OR create one
+    //     Eg: $petz = Ground(("Dog"? : "Doggy") : ("Cat"? : "Kitty" )) # Extract "Dog" and "Cat" into a single symbol
+    //              QUESTION: How does $pets compare to $petz? Should they be identical? or different?
     //     Eg: $shmoopy_pets = Ground(("Cat" : "Kitty"?) : ("Dog" : "Doggy"?))
     //     Eg: ("Cat" ~ "Kitty") : ("Synonyms")
     //     Eg: ("The tree fruit relationship as a single entity" ~ ("Tree" : "Fruit"))
