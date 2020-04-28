@@ -19,7 +19,7 @@
 // these symbol   |           |             |           |
 // being created: |           |             |           |
 //                |           |             |           |
-//         # S1[Smile]   S2[Mouth]      S3[Wink]    S4[Eye]
+//         # S1[Smile]   S2[Mouth]      S3[Wink]    S4[Eye] <~> [Eye]
 //         #  \__________/               \__________/
 //         #      [A1]                       [A2]
 //         #        \_________________________/
@@ -460,7 +460,7 @@ mod test {
         query.apply()?;
 
         let a = query.get_symbol_var("a")?.expect("a");
-        let b = query.get_symbol_var("b")?.expect("b");
+        let b = query.get_symbol_var("b")?.ex]pect("b");
         let x = query.get_symbol_var("x")?.expect("x");
 
         let lr = x.left_right(&mb)?.expect("left/right referents");

@@ -30,8 +30,11 @@ fn apple() -> Result<(), MBError> {
     //     Eg: $petz = Ground(("Dog"? : "Doggy") : ("Cat"? : "Kitty" )) # Extract "Dog" and "Cat" into a single symbol
     //              QUESTION: How does $pets compare to $petz? Should they be identical? or different?
     //     Eg: $shmoopy_pets = Ground(("Cat" : "Kitty"?) : ("Dog" : "Doggy"?))
-    //     Eg: ("Cat" ~ "Kitty") : ("Synonyms")
+    //     Eg: ("Cat" "Kitty") : ("Synonyms")
     //     Eg: ("The tree fruit relationship as a single entity" ~ ("Tree" : "Fruit"))
+
+    //    ("Smirk") ~ ("Smile"? : "Mouth")
+    //    ("Smirk") :
 
     let query = mb.query_str(
                              r#"
@@ -40,7 +43,8 @@ fn apple() -> Result<(), MBError> {
 
         $tt = Ground("Type" : "Token")? # Trailing ? is the default if omitted
         $hh = Ground("Holonym" : "Hyponym")?
-        $d = Ground( $tt : ("Domain"  : "Eukarya"?))
+        $euk = Lazy("Eukarya")
+        $d = Ground( $tt : ("Domain"  : $euk))
         $k = Ground( $tt : ("Kingdom" : "Plantae"?))
         $p = Ground( $tt : ("Phylum"  : "Magnoliophyta"?))
         $c = Ground( $tt : ("Class"   : "Magnoliopsida"?))
@@ -49,10 +53,10 @@ fn apple() -> Result<(), MBError> {
         $g = Ground( $tt : ("Genus"   : "Malus"?))
         $s = Ground( $tt : ("Species" : "Malus domestica"?))
         $1 = Ground( $hh : ( $d : $k? ) )
-        $2 = Ground( $hh : ( $1 : $p? ) )
-        $3 = Ground( $hh : ( $2 : $c? ) )
-        $4 = Ground( $hh : ( $3 : $o? ) )
-        $5 = Ground( $hh : ( $4 : $f? ) )
+        $2 = Ground( $hh : ( $c : $p? ) )
+        $3 = Ground( $hh : ( $o : $c? ) )
+        $4 = Ground( $hh : ( $f : $o? ) )
+        $5 = Ground( $hh : ( $g : $f? ) )
         $6 = Ground( $hh : ( $5 : $g? ) )
         $apple = Ground( $hh : ( $6 : $s? ) )
 

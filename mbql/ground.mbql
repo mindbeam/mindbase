@@ -1,3 +1,11 @@
-$smilemouth = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
-$emote = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
-Diag($smilemouth, $emote)
+#$smilemouth = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
+$smilemouth = Inquire(("Smile" : "Mouth") : ("Wink": X ))
+
+#$emote = Ground(("Smile" : "Mouth") : ("Wink" : "Eye") )
+$emote = Ground(("Eye" : "Wink" ) : ("Mouth": "Smile")) # TODO - Bug
+#Diag($smilemouth, $emote)
+Diag($emote)
+
+# Does catagorical analogy ... isomorphism
+Ground( (("Smile" : "Mouth") : ("Wink":"Eye") ) ~ (("Eye" : "Wink" ) : ("Mouth": "Smile")) )
+Ground(("Smile" : "Mouth") : ("Wink" : "Eye") )

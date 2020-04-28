@@ -1,7 +1,7 @@
 $html = Ground("HTML Parse Tree")
 
 $parent = Ground("Relationship" : "Parent/Child")
-$svg = Ground("File Format" : "SVG")
+$svg = Ground("File Format" : "SVG"?)
 Allege( $svg : {"sub-format" : $html} )
 
 $n_html = Symbolize(DataNode({$html : "html"}))
