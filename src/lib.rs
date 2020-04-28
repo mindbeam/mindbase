@@ -84,6 +84,13 @@ pub struct MindBase {
 }
 
 impl MindBase {
+    pub fn open_temp() -> Result<Self, MBError> {
+        let tmpdir = tempfile::tempdir().unwrap();
+        let tmpdirpath = tmpdir.path();
+
+        Self::open(tmpdirpath)
+    }
+
     #[allow(dead_code)]
     pub fn open(basedir: &std::path::Path) -> Result<Self, MBError> {
         let pathbuf = basedir.join(format!("./mindbase.sled"));
