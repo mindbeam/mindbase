@@ -7,6 +7,7 @@ license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/mindbeam/mindbase"
 # build = "build.rs"
+exclude = ["mbql/*"]
 
 [dependencies]
 typenum = "1.11.2"
