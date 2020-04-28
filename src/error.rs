@@ -15,13 +15,11 @@ pub enum MBError {
     NullSymbol,
 }
 
-// impl std::fmt::Display for Error {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self.kind {
-//             MBQLErrorKind::IOError { error } => f.write_fmt(format_args!("MBQL IO Error: {}", error)),
-//         }
-//     }
-// }
+impl std::fmt::Display for MBError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 impl From<MBQLError> for MBError {
     fn from(e: MBQLError) -> Self {

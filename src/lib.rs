@@ -17,7 +17,30 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
-pub use self::{
+pub mod prelude {
+    pub use super::{
+        agent::{
+            Agent,
+            AgentId,
+        },
+        allegation::{
+            Allegation,
+            AllegationId,
+        },
+        analogy::Analogy,
+        artifact::{
+            Artifact,
+            ArtifactId,
+            Text,
+        },
+        error::MBError,
+        mbql::query::Query,
+        symbol::Symbol,
+        MindBase,
+    };
+}
+
+use self::{
     agent::{
         Agent,
         AgentId,
@@ -30,7 +53,6 @@ pub use self::{
     artifact::{
         Artifact,
         ArtifactId,
-        Text,
     },
     error::MBError,
     symbol::Symbol,
@@ -298,6 +320,10 @@ impl MindBase {
 
     pub fn add_policy(&self, _policy: Policy) -> Result<(), MBError> {
         unimplemented!()
+    }
+
+    pub fn atom_count(&self) -> usize {
+        self.allegations.len()
     }
 }
 

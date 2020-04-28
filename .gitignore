@@ -17,3 +17,4 @@ Cargo.lock
 *.sled
 .mindbasecli_history
 .vscode
+.ipynb_checkpoints
