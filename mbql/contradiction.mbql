@@ -1,0 +1,23 @@
+$x = Allege("a" : "b")
+$y = Allege("c" : "d")
+
+$z = Allege($1 : $2)
+#$z is ↑([↑$x], [↑$y])
+
+$g = Ground( ("a":"b") : ("d":"c") )
+#g is ↑(↑$x, ↓$y)
+
+$q = $z | $g
+# $x = ↑(↑$x, ↑$y, ↓$y] # should this cancel out y?
+
+
+$r = $z & $g
+
+#how is     [↑$a, ↓$b]
+#related to [↑$a, ↑$b]
+---
+# is it     true         ?
+# or is it  [↑$a]        ?
+# or is it  [↑$a, ↓$b]   ?
+# or is it  [↑$a, !$b]   ?
+
