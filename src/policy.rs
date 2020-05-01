@@ -50,7 +50,7 @@ mod test {
         Policy,
         PolicyBody,
     };
-    use crate::{
+    use crate::prelude::{
         MindBase,
         Text,
     };

@@ -1,4 +1,4 @@
-use mindbase::*;
+use mindbase::prelude::*;
 
 #[test]
 fn apple() -> Result<(), MBError> {

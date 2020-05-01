@@ -418,8 +418,7 @@ fn merge_16byte_list(_key: &[u8],               // the key being merged
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
-    use analogy::Analogy;
+    use crate::prelude::*;
 
     #[test]
     fn dump() -> Result<(), MBError> {

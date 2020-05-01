@@ -1,15 +1,11 @@
-use mindbase::{
-    artifact::text,
-    Analogy,
-    MBError,
-    MindBase,
-    Symbol,
-};
-
 use criterion::{
     criterion_group,
     criterion_main,
     Criterion,
+};
+use mindbase::{
+    artifact::text,
+    prelude::*,
 };
 
 fn insert_test_dataset(mb: &MindBase) -> Result<(), MBError> {
