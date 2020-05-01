@@ -299,7 +299,7 @@ impl MindBase {
         for allegation in self.allegation_iter() {
             let allegation = allegation?;
             if f(&allegation.1) {
-                atoms.push(Atom::Up(allegation.0));
+                atoms.push(Atom::up(allegation.0));
             }
         }
 

@@ -32,25 +32,45 @@ pub struct Symbol {
      * # radius: Float */
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub enum Atom {
-    Up(AllegationId),
-    Down(AllegationId),
+#[derive(Serialize, Deserialize, PartialEq, Ord, Eq, PartialOrd, Debug, Clone)]
+pub enum Spin {
+    Up,
+    Down,
+}
+pub enum SpinCompare {
+    Same,
+    Opposite,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Ord, Eq, PartialOrd, Debug, Clone)]
+pub struct Atom {
+    id:   AllegationId,
+    spin: Spin,
 }
 
 impl Atom {
     pub fn id(&self) -> &AllegationId {
-        match self {
-            Atom::Up(a) | Atom::Down(a) => a,
-        }
+        &self.id
+    }
+
+    pub fn up(id: AllegationId) -> Self {
+        Self { id, spin: Spin::Up }
+    }
+
+    pub fn down(id: AllegationId) -> Self {
+        Self { id, spin: Spin::Down }
+    }
+
+    pub fn with_spin(spin: Spin, id: AllegationId) -> Self {
+        Self { id, spin }
     }
 }
 
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Atom::Up(a) => write!(f, "↑{}", a),
-            Atom::Down(a) => write!(f, "↓{}", a),
+        match self.spin {
+            Spin::Up => write!(f, "{}↑", self.id),
+            Spin::Down => write!(f, "{}↓", self.id),
         }
     }
 }
@@ -63,7 +83,24 @@ impl fmt::Display for Symbol {
 }
 
 impl Symbol {
-    pub fn new(atoms: Vec<Atom>) -> Self {
+    pub fn new(mut unsorted_atoms: Vec<Atom>) -> Self {
+        assert!(unsorted_atoms.len() > 0);
+
+        let mut atoms: Vec<Atom> = Vec::new();
+
+        for a in unsorted_atoms.drain(..) {
+            match atoms.binary_search(&a) {
+                Ok(_) => {}, // duplicate
+                Err(i) => atoms.insert(i, a),
+            }
+        }
+
+        Symbol { atoms,
+                 spread_factor: 0.0 }
+    }
+
+    /// User promises that this vec is lexically sorted by id
+    pub fn new_from_sorted_atoms(atoms: Vec<Atom>) -> Self {
         assert!(atoms.len() > 0);
 
         Symbol { atoms,
@@ -92,7 +129,10 @@ impl Symbol {
     }
 
     pub fn extend(&mut self, atom: Atom) {
-        self.atoms.push(atom)
+        match self.atoms.binary_search(&atom) {
+            Ok(_) => {}, // duplicate
+            Err(i) => self.atoms.insert(i, atom),
+        }
     }
 
     /// Create a new symbol which is analagous to this symbol, but consists of only a single allegation
@@ -105,24 +145,82 @@ impl Symbol {
         unimplemented!()
     }
 
-    // TODO 4 - make this return a match score rather than just bool
     pub fn intersects(&self, other: &Symbol) -> bool {
-        // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
+        let mut a_iter = self.atoms.iter();
+        let mut b_iter = other.atoms.iter();
 
-        for member in self.atoms.iter() {
-            if other.atoms.contains(member) {
-                return true;
+        let mut a = match a_iter.next() {
+            Some(v) => v,
+            None => {
+                return false;
+            },
+        };
+
+        let mut b = match b_iter.next() {
+            Some(v) => v,
+            None => {
+                return false;
+            },
+        };
+
+        use std::cmp::Ordering::*;
+        loop {
+            match a.cmp(b) {
+                Less => {
+                    a = match a_iter.next() {
+                        Some(x) => x,
+                        None => return false,
+                    };
+                },
+                Greater => {
+                    b = match b_iter.next() {
+                        Some(x) => x,
+                        None => return false,
+                    };
+                },
+                Equal => return true,
             }
         }
-        false
     }
 
     pub fn intersection(&self, other: &Symbol) -> Vec<Atom> {
-        // TODO 4 - make this a lexicographic comparison rather than a nested loop (requires ordering of .members)
         let mut out: Vec<Atom> = Vec::new();
-        for member in self.atoms.iter() {
-            if other.atoms.contains(member) {
-                out.push(member.clone());
+
+        let mut a_iter = self.atoms.iter();
+        let mut b_iter = other.atoms.iter();
+
+        let mut a = match a_iter.next() {
+            Some(v) => v,
+            None => {
+                return out;
+            },
+        };
+
+        let mut b = match b_iter.next() {
+            Some(v) => v,
+            None => {
+                return out;
+            },
+        };
+
+        use std::cmp::Ordering::*;
+        loop {
+            match a.cmp(b) {
+                Less => {
+                    a = match a_iter.next() {
+                        Some(x) => x,
+                        None => return out,
+                    };
+                },
+                Greater => {
+                    b = match b_iter.next() {
+                        Some(x) => x,
+                        None => return out,
+                    };
+                },
+                Equal => {
+                    out.push(a.clone());
+                },
             }
         }
 
@@ -188,12 +286,12 @@ impl Symbol {
                 None => return Err(MBError::TraversalFailed),
                 Some(a) => {
                     if let Body::Analogy(analogy) = a.body {
-                        match atom {
-                            Atom::Up(_) => {
+                        match atom.spin {
+                            Spin::Up => {
                                 left.extend(analogy.left.atoms);
                                 right.extend(analogy.right.atoms);
                             },
-                            Atom::Down(_) => {
+                            Spin::Down => {
                                 left.extend(analogy.right.atoms);
                                 right.extend(analogy.left.atoms);
                             },

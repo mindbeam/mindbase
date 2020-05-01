@@ -20,7 +20,7 @@ use serde::{
     Serialize,
 };
 use std::fmt;
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Ord, Eq, PartialOrd, PartialEq)]
 pub struct AllegationId(#[serde(serialize_with = "crate::util::serde_helper::as_base64",
                                 deserialize_with = "crate::util::serde_helper::from_base64_16")]
                         pub(crate) [u8; 16]);
@@ -48,7 +48,7 @@ impl AllegationId {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { atoms:         vec![Atom::Up(self.clone())],
+        Symbol { atoms:         vec![Atom::up(self.clone())],
                  spread_factor: 0.0, }
     }
 
@@ -158,7 +158,7 @@ impl Allegation {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { atoms:         vec![Atom::Up(self.id().clone())],
+        Symbol { atoms:         vec![Atom::up(self.id().clone())],
                  spread_factor: 0.0, }
     }
 

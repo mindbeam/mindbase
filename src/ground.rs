@@ -193,7 +193,7 @@ impl<'a> GSContext<'a> {
         }
 
         let atoms: Vec<Atom> = unified.chunks_exact(16)
-                                      .map(|c| Atom::Up(AllegationId::from_bytes(c.try_into().unwrap())))
+                                      .map(|c| Atom::up(AllegationId::from_bytes(c.try_into().unwrap())))
                                       .collect();
         Ok(Symbol::new_option(atoms))
     }
@@ -214,9 +214,9 @@ impl<'a> GSContext<'a> {
                     if self.gs_agents.contains(&allegation.agent_id) {
                         // TODO 2 - This is crazy inefficient
                         if intersect_symbols(left, &analogy.left) && intersect_symbols(right, &analogy.right) {
-                            atoms.push(Atom::Up(allegation_id))
+                            atoms.push(Atom::up(allegation_id))
                         } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
-                            atoms.push(Atom::Down(allegation_id))
+                            atoms.push(Atom::down(allegation_id))
                         }
                     }
                 },
@@ -229,17 +229,42 @@ impl<'a> GSContext<'a> {
     }
 }
 
-fn intersect_symbols(a: &Symbol, b: &Symbol) -> bool {
-    // This is crazy inefficient. At least do a lexicographic presort
-    // can probably eliminate this during rolling inverted index conversion
-    // let mut out: Vec<AllegationId> = Vec::new();
-    for member in a.atoms.iter() {
-        if b.atoms.contains(member) {
-            return true;
+fn intersect_symbols(symbol_a: &Symbol, symbol_b: &Symbol) -> bool {
+    let mut a_iter = symbol_a.atoms.iter();
+    let mut b_iter = symbol_b.atoms.iter();
+
+    let mut a = match a_iter.next() {
+        Some(v) => v,
+        None => {
+            return false;
+        },
+    };
+
+    let mut b = match b_iter.next() {
+        Some(v) => v,
+        None => {
+            return false;
+        },
+    };
+
+    use std::cmp::Ordering::*;
+    loop {
+        match a.cmp(b) {
+            Less => {
+                a = match a_iter.next() {
+                    Some(x) => x,
+                    None => return false,
+                };
+            },
+            Greater => {
+                b = match b_iter.next() {
+                    Some(x) => x,
+                    None => return false,
+                };
+            },
+            Equal => return true,
         }
     }
-
-    false
 }
 
 enum GSNode {
