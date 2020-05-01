@@ -303,4 +303,44 @@ impl Symbol {
 
         Ok(Some((Symbol::new(left), Symbol::new(right))))
     }
+
+    pub fn contents_buf(&self, mb: &MindBase, buf: &mut String, depth: usize) -> Result<(), MBError> {
+        use std::fmt::Write;
+        write!(buf, "[").unwrap();
+
+        let mut seen = false;
+
+        // [ A([]) :  B -> [] ]
+        for atom in self.atoms.iter() {
+            if seen {
+                write!(buf, ",").unwrap();
+            }
+            seen = true;
+
+            match atom.spin {
+                Spin::Up => write!(buf, "{}↑", atom.id).unwrap(),
+                Spin::Down => write!(buf, "{}↓", atom.id).unwrap(),
+            };
+
+            if depth > 0 {
+                use crate::allegation::Body;
+                match mb.get_allegation(atom.id())? {
+                    None => return Err(MBError::TraversalFailed),
+                    Some(a) => {
+                        write!(buf, "( ").unwrap();
+                        if let Body::Analogy(analogy) = a.body {
+                            analogy.left.contents_buf(mb, buf, depth - 1)?;
+                            write!(buf, " : ").unwrap();
+                            analogy.right.contents_buf(mb, buf, depth - 1)?;
+                        }
+                        write!(buf, " )").unwrap();
+                    },
+                }
+            }
+        }
+
+        write!(buf, "]").unwrap();
+
+        Ok(())
+    }
 }

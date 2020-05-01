@@ -12,8 +12,9 @@ symbolstatement = { (symbolvar ~ "=")? ~ ( allege | ground | symbolize ) }
 // @foo : Url("http://...")
 artifactstatement = { artifactvar ~ "=" ~ artifact }
 
-diagstatement = { "Diag(" ~ diag ~ ("," ~ diag)* ~ ")" }
-diag = _{ (symbolvar|artifactvar) }
+diagstatement = { "Diag(" ~ diagelement ~ ("," ~ diagelement)* ~ ")" }
+diagelement = { (symbolvar |artifactvar) ~ ( "~" ~ depth)? }
+depth = @{ number }
 
 // Symbols
 ground = { ( "Ground" ~ bang? ~ "(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | (bang? ~ "{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
@@ -39,6 +40,7 @@ char = {
     | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
+number = @{ ASCII_DIGIT* }
 
 symbolizable = { artifact | symbolvar | ground | symbolize | allege | "(" ~ symbol_pair ~ ")" }
 symbol_pair = { symbolizable ~ ":" ~ symbolizable }

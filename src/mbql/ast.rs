@@ -84,7 +84,7 @@ struct Diag {
 
 enum DiagElement {
     ArtifactVar(ArtifactVar),
-    SymbolVar(SymbolVar),
+    SymbolVar(SymbolVar, usize),
 }
 
 impl DiagStatement {
@@ -93,12 +93,28 @@ impl DiagStatement {
 
         let mut items = pair.into_inner();
         let mut elements = Vec::new();
+
         while let Some(d) = items.next() {
-            let e = match d.as_rule() {
-                Rule::artifactvar => DiagElement::ArtifactVar(ArtifactVar::parse(d, position.clone())?),
-                Rule::symbolvar => DiagElement::SymbolVar(SymbolVar::parse(d, position.clone())?),
+            assert_eq!(d.as_rule(), Rule::diagelement);
+
+            let mut de_inner = d.into_inner();
+            let var = de_inner.next().unwrap();
+            let e = match var.as_rule() {
+                Rule::artifactvar => DiagElement::ArtifactVar(ArtifactVar::parse(var, position.clone())?),
+                Rule::symbolvar => {
+                    let depth = match de_inner.next() {
+                        None => 0,
+                        Some(n) => {
+                            println!("{}", n.as_str());
+                            n.as_str().parse().unwrap()
+                        },
+                    };
+
+                    DiagElement::SymbolVar(SymbolVar::parse(var, position.clone())?, depth)
+                    //
+                },
                 _ => {
-                    println!("{:?}", d);
+                    println!("{:?}", var);
                     unreachable!()
                 },
             };
@@ -126,6 +142,8 @@ impl DiagStatement {
     }
 
     pub fn apply(&self, query: &Query) -> Result<(), MBQLError> {
+        use std::fmt::Write;
+
         let mut out = String::new();
         let mut seen = false;
         for item in self.diag.elements.iter() {
@@ -143,9 +161,10 @@ impl DiagStatement {
                                                kind:     MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() }, });
                     }
                 },
-                DiagElement::SymbolVar(v) => {
+                DiagElement::SymbolVar(v, depth) => {
                     if let Some(symbol) = query.get_symbol_var(&v.var)? {
-                        out.push_str(&format!("{} = {}", v, symbol));
+                        write!(out, "{} = ", v).unwrap();
+                        symbol.contents_buf(query.mb, &mut out, *depth)?;
                     } else {
                         return Err(MBQLError { position: v.position.clone(),
                                                kind:     MBQLErrorKind::SymbolVarNotFound { var: v.var.clone() }, });
@@ -162,7 +181,13 @@ impl DiagElement {
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
         match self {
             DiagElement::ArtifactVar(v) => v.write(writer)?,
-            DiagElement::SymbolVar(v) => v.write(writer)?,
+            DiagElement::SymbolVar(v, depth) => {
+                v.write(writer)?;
+
+                if *depth > 0usize {
+                    write!(writer, "~{}", depth)?;
+                }
+            },
         }
         Ok(())
     }
