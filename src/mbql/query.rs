@@ -4,6 +4,7 @@ use super::{
         MBQLError,
         MBQLErrorKind,
     },
+    Position,
 };
 use crate::{
     ground::GSContext,
@@ -18,12 +19,40 @@ use std::{
     sync::Mutex,
 };
 
+struct ArtifactVarMapItem {
+    offset: usize,
+    id:     Option<ArtifactId>,
+}
+
+struct SymbolVarMapItem {
+    offset:   usize,
+    symbol:   Option<Symbol>,
+    bound_to: Option<Bindable>,
+}
+
+use std::rc::Rc;
+
+#[derive(Debug, Clone)]
+pub enum Bindable {
+    Symbolizable(Rc<ast::Symbolizable>),
+    GSymbolizable(Rc<ast::GSymbolizable>),
+}
+
+impl Bindable {
+    pub fn position(&self) -> &Position {
+        match self {
+            Bindable::Symbolizable(s) => s.position(),
+            Bindable::GSymbolizable(s) => s.position(),
+        }
+    }
+}
+
 pub struct Query<'a> {
-    pub statements:       Vec<ast::Statement>,
-    pub artifact_var_map: Mutex<BTreeMap<String, (usize, Option<ArtifactId>)>>,
-    pub symbol_var_map:   Mutex<BTreeMap<String, (usize, Option<Symbol>)>>,
-    pub gscontext:        Mutex<GSContext<'a>>,
-    pub mb:               &'a MindBase,
+    pub statements:   Vec<ast::Statement>,
+    artifact_var_map: Mutex<BTreeMap<String, ArtifactVarMapItem>>,
+    symbol_var_map:   Mutex<BTreeMap<String, SymbolVarMapItem>>,
+    pub gscontext:    Mutex<GSContext<'a>>,
+    pub mb:           &'a MindBase,
 }
 
 impl<'a> Query<'a> {
@@ -44,15 +73,20 @@ impl<'a> Query<'a> {
     }
 
     pub fn add_statement(&mut self, statement: ast::Statement) {
-        let idx = self.statements.len();
+        let offset = self.statements.len();
 
         match &statement {
             ast::Statement::Artifact(s) => {
-                self.artifact_var_map.lock().unwrap().insert(s.var.var.clone(), (idx, None));
+                let mut avm = self.artifact_var_map.lock().unwrap();
+                avm.insert(s.var.var.clone(), ArtifactVarMapItem { offset, id: None });
             },
             ast::Statement::Symbol(s) => {
                 if let Some(var) = &s.var {
-                    self.symbol_var_map.lock().unwrap().insert(var.to_string(), (idx, None));
+                    let mut svm = self.symbol_var_map.lock().unwrap();
+                    svm.insert(var.to_string(),
+                               SymbolVarMapItem { offset,
+                                                  symbol: None,
+                                                  bound_to: None });
                 }
             },
 
@@ -69,7 +103,7 @@ impl<'a> Query<'a> {
                 return Err(MBQLError { position: var.position.clone(),
                                        kind:     MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() }, })
             },
-            Some(v) => v.1 = Some(artifact_id),
+            Some(v) => v.id = Some(artifact_id),
         }
         Ok(())
     }
@@ -77,8 +111,8 @@ impl<'a> Query<'a> {
     pub fn get_artifact_var(&self, var: &str) -> Result<Option<ArtifactId>, MBError> {
         let offset = match self.artifact_var_map.lock().unwrap().get(var) {
             None => return Ok(None),
-            Some((offset, maybe_artifact_id)) => {
-                if let Some(artifact_id) = maybe_artifact_id {
+            Some(ArtifactVarMapItem { offset, id }) => {
+                if let Some(artifact_id) = id {
                     return Ok(Some(artifact_id.clone()));
                 }
                 offset.clone()
@@ -97,21 +131,46 @@ impl<'a> Query<'a> {
         match self.symbol_var_map.lock().unwrap().get_mut(&var.var) {
             None => {
                 return Err(MBQLError { position: var.position.clone(),
-                                       kind:     MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() }, })
+                                       kind:     MBQLErrorKind::SymbolVarNotFound { var: var.var.clone() }, })
             },
-            Some(v) => v.1 = Some(symbol),
+            Some(v) => v.symbol = Some(symbol),
         }
         Ok(())
     }
 
+    pub fn bind_symbol_var(&self, var: &str, bind_to: &Rc<ast::GSymbolizable>) -> Result<(), MBQLError> {
+        match self.symbol_var_map.lock().unwrap().get_mut(var) {
+            None => {
+                return Err(MBQLError { position: bind_to.position().clone(),
+                                       kind:     MBQLErrorKind::SymbolVarNotFound { var: var.to_string() }, })
+            },
+            Some(SymbolVarMapItem { offset,
+                                    symbol,
+                                    bound_to, }) => {
+                match bound_to {
+                    None => *bound_to = Some(Bindable::GSymbolizable(bind_to.clone())),
+                    Some(xsym) => {
+                        return Err(MBQLError { position: bind_to.position().clone(),
+                                               kind:     MBQLErrorKind::SymbolVarBindingFailed { bound_to: xsym.clone() }, })
+                    },
+                }
+            },
+        }
+
+        Ok(())
+    }
+
     pub fn get_symbol_var(&self, var: &str) -> Result<Option<Symbol>, MBError> {
-        let offset = match self.symbol_var_map.lock().unwrap().get(var) {
+        let (offset, bound) = match self.symbol_var_map.lock().unwrap().get(var) {
             None => return Ok(None),
-            Some((offset, maybe_symbol)) => {
-                if let Some(symbol) = maybe_symbol {
+            Some(SymbolVarMapItem { offset,
+                                    symbol,
+                                    bound_to, }) => {
+                if let Some(symbol) = symbol {
                     return Ok(Some(symbol.clone()));
                 }
-                offset.clone()
+
+                (offset.clone(), bound_to)
             },
         };
 

@@ -72,6 +72,8 @@ use crate::{
 };
 use std::convert::TryInto;
 
+use std::rc::Rc;
+
 pub struct GSContext<'a> {
     scan_min:  [u8; 64],
     scan_max:  [u8; 64],
@@ -121,7 +123,7 @@ impl<'a> GSContext<'a> {
     /// This in theory should allow us to resolve upon a single symbol which is believed to be meaningful to that agent based on
     /// the artifacts they posess. This is our interface between the physical world, and the perpetually-convergent ontological
     /// continuum we hope to create with mindbase.
-    pub fn symbolize(&mut self, symbolizable: &ast::GSymbolizable, vivify: bool, query: &Query) -> Result<Symbol, MBQLError> {
+    pub fn symbolize(&mut self, symbolizable: &Rc<ast::GSymbolizable>, vivify: bool, query: &Query) -> Result<Symbol, MBQLError> {
         // As a temporary measure, we are doing a fairly inefficient process of building a Symbol for each symbolizable artifact
         // with all possible symbolic atoms and THEN narrowing that.
         //
@@ -137,17 +139,20 @@ impl<'a> GSContext<'a> {
         Ok(node.take_symbol())
     }
 
-    fn symbolize_recurse(&mut self, s: &ast::GSymbolizable, vivify: bool, query: &Query) -> Result<GSNode, MBQLError> {
-        let symbol = match s {
+    fn symbolize_recurse(&mut self, s: &Rc<ast::GSymbolizable>, vivify: bool, query: &Query) -> Result<GSNode, MBQLError> {
+        let symbol = match &**s {
             ast::GSymbolizable::Artifact(a) => GSNode::artifact(self, vivify, query, a)?,
             ast::GSymbolizable::GroundPair(a) => GSNode::pair(self, vivify, query, a)?,
             ast::GSymbolizable::SymbolVar(sv) => {
-                if let Some(symbol) = query.get_symbol_var(&sv.var)? {
-                    GSNode::Given(symbol)
-                } else {
-                    return Err(MBQLError { position: sv.position.clone(),
-                                           kind:     MBQLErrorKind::SymbolVarNotFound { var: sv.var.clone() }, }.into());
-                }
+                unimplemented!()
+                // query.bind_symbol_var(&sv.var, s)?;
+
+                // if let Some(symbol) = query.get_symbol_var(&sv.var)? {
+                // GSNode::Given(symbol)
+                // } else {
+                //     return Err(MBQLError { position: sv.position.clone(),
+                //                            kind:     MBQLErrorKind::SymbolVarNotFound { var: sv.var.clone() }, }.into());
+                // }
             },
             ast::GSymbolizable::Ground(_) => {
                 // Shouldn't be able to call this directly with a Ground statement
@@ -213,6 +218,21 @@ impl<'a> GSContext<'a> {
                     //
                     if self.gs_agents.contains(&allegation.agent_id) {
                         // TODO 2 - This is crazy inefficient
+
+                        // BUG - So the issue is that this logic isn't considering Atom directionality when intersecting.
+                        if intersect_symbols(left, &analogy.left) {
+                            println!("L=AL")
+                        }
+                        if intersect_symbols(right, &analogy.right) {
+                            println!("R=AR")
+                        }
+                        if intersect_symbols(left, &analogy.right) {
+                            println!("L=AR")
+                        }
+                        if intersect_symbols(right, &analogy.left) {
+                            println!("R=AL")
+                        }
+
                         if intersect_symbols(left, &analogy.left) && intersect_symbols(right, &analogy.right) {
                             atoms.push(Atom::up(allegation_id))
                         } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
@@ -227,6 +247,46 @@ impl<'a> GSContext<'a> {
         // Create a Symbol which contains the composite symbol atoms of all Analogies made by ground symbol agents
         return Ok(Symbol::new_option(atoms));
     }
+}
+
+fn analogy_compare(analogy: &Analogy, left: &Symbol, right: &Symbol, atoms: &mut Vec<Atom>) {
+    //
+    use crate::symbol::SpinCompare;
+
+    // let l_iter = left.atoms.iter();
+    // let r_iter = right.atoms.iter();
+    // let al_iter = analogy.left.atoms.iter();
+    // let ar_iter = analogy.right.atoms.iter();
+
+    // // compare l/l + r/r
+    // // compare l/r + r/l
+
+    // loop {
+    //     // magic lexicographic sort. poof.
+    //     let l = l_iter.next();
+    //     let r = r_iter.next();
+    //     let al = l_iter.next();
+    //     let ar = r_iter.next();
+
+    //     if l = al && r = ar {
+
+    //     }else{
+
+    //     }
+    // }
+
+    // for member in left.atoms.iter() {}
+
+    // let a =
+
+    //     if intersect_symbols(left, &analogy.left) && intersect_symbols(right, &analogy.right) {
+    //         Some(Spin::Up)
+    //     } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
+    //         Some(Spin::Down)
+    //     }
+
+    //     None
+    unimplemented!()
 }
 
 fn intersect_symbols(symbol_a: &Symbol, symbol_b: &Symbol) -> bool {
@@ -315,17 +375,20 @@ impl GSNode {
         // We want to try reeally hard to find existing symbols
         // And only create a new one if we positively must
 
-        let left = ctx.symbolize_recurse(&*gpair.left, vivify, query)?;
-        let right = ctx.symbolize_recurse(&*gpair.right, vivify, query)?;
+        let left = ctx.symbolize_recurse(&gpair.left, vivify, query)?;
+        let right = ctx.symbolize_recurse(&gpair.right, vivify, query)?;
 
         // find symbols (Analogies) which refer to both of the above
         let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(left.symbol(), right.symbol())? {
+            println!("FOUND MATCH {:?}", symbol);
             GSNode::Pair { symbol,
                            left: Box::new(left),
                            right: Box::new(right) }
         } else if vivify {
             let symbol = ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?;
             // Doesn't matter how we got here
+            println!("VIVIFY {}", symbol);
+
             GSNode::Created(symbol)
         } else {
             return Err(MBQLError { position: gpair.position().clone(),

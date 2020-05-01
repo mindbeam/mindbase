@@ -6,7 +6,10 @@ pub struct MBQLError {
 
 use crate::{
     error::MBError,
-    mbql::Position,
+    mbql::{
+        query,
+        Position,
+    },
 };
 
 #[derive(Debug)]
@@ -36,6 +39,9 @@ pub enum MBQLErrorKind {
     },
     SymbolVarNotFound {
         var: String,
+    },
+    SymbolVarBindingFailed {
+        bound_to: query::Bindable,
     },
 
     // TODO 2 - Move this to MBError
@@ -76,6 +82,13 @@ impl std::fmt::Display for MBQLError {
                 write!(f, "Symbol Variable `{}` not found at row {}", var, self.position.row)
             },
             MBQLErrorKind::GSymNotFound => write!(f, "Ground Symbol not found at row {}", self.position.row),
+
+            MBQLErrorKind::SymbolVarBindingFailed { bound_to } => {
+                write!(f,
+                       "Symbol binding failed at row {}. Already bound to row {}",
+                       self.position.row,
+                       bound_to.position().row)
+            },
         }
     }
 }

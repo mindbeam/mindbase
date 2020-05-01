@@ -21,6 +21,8 @@ use crate::{
 use super::error::MBQLErrorKind;
 use pest::iterators::Pair;
 
+use std::rc::Rc;
+
 pub enum Statement {
     Diag(DiagStatement),
     Symbol(SymbolStatement),
@@ -343,7 +345,7 @@ impl SymbolStatement {
 #[derive(Debug)]
 pub struct Ground {
     vivify:       bool,
-    symbolizable: Box<GSymbolizable>,
+    symbolizable: Rc<GSymbolizable>,
     position:     Position,
 }
 
@@ -362,7 +364,7 @@ impl Ground {
             (next, true)
         };
 
-        Ok(Ground { symbolizable: Box::new(GSymbolizable::parse(next, position.clone())?),
+        Ok(Ground { symbolizable: Rc::new(GSymbolizable::parse(next, position.clone())?),
                     position,
                     vivify })
     }
@@ -393,15 +395,16 @@ impl Ground {
         let symbol = query.gscontext
                           .lock()
                           .unwrap()
-                          .symbolize(&*self.symbolizable, self.vivify, query)?;
+                          .symbolize(&self.symbolizable, self.vivify, query)?;
         Ok(symbol)
     }
 }
 
 #[derive(Debug)]
 pub struct Allege {
-    left:  Box<Symbolizable>,
-    right: Box<Symbolizable>,
+    position: Position,
+    left:     Rc<Symbolizable>,
+    right:    Rc<Symbolizable>,
 }
 
 impl Allege {
@@ -414,8 +417,9 @@ impl Allege {
         let left = Symbolizable::parse(symbol_pair.next().unwrap(), position.clone())?;
         let right = Symbolizable::parse(symbol_pair.next().unwrap(), position.clone())?;
 
-        Ok(Allege { left:  Box::new(left),
-                    right: Box::new(right), })
+        Ok(Allege { left: Rc::new(left),
+                    right: Rc::new(right),
+                    position })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool, nest: bool) -> Result<(), std::io::Error> {
@@ -448,13 +452,13 @@ impl Allege {
 
 #[derive(Debug)]
 pub struct Symbolize {
-    symbolizable: Box<Symbolizable>,
+    symbolizable: Rc<Symbolizable>,
     position:     Position,
 }
 impl Symbolize {
     pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolize);
-        Ok(Symbolize { symbolizable: Box::new(Symbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
+        Ok(Symbolize { symbolizable: Rc::new(Symbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
                        position })
     }
 
@@ -495,8 +499,9 @@ impl Symbolizable {
                 let mut inner = pair.into_inner();
                 let left = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
                 let right = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-                Symbolizable::Allege(Allege { left:  Box::new(left),
-                                              right: Box::new(right), })
+                Symbolizable::Allege(Allege { left: Rc::new(left),
+                                              right: Rc::new(right),
+                                              position })
             },
             Rule::symbolizable => {
                 let element = pair.into_inner().next().unwrap();
@@ -511,8 +516,9 @@ impl Symbolizable {
                         let mut inner = element.into_inner();
                         let left = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
                         let right = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        Symbolizable::Allege(Allege { left:  Box::new(left),
-                                                      right: Box::new(right), })
+                        Symbolizable::Allege(Allege { left: Rc::new(left),
+                                                      right: Rc::new(right),
+                                                      position })
                     },
                     _ => unreachable!(),
                 }
@@ -551,8 +557,19 @@ impl Symbolizable {
 
         Ok(symbol)
     }
+
+    pub fn position(&self) -> &Position {
+        match self {
+            Symbolizable::Artifact(x) => x.position(),
+            Symbolizable::SymbolVar(x) => &x.position,
+            Symbolizable::Ground(x) => &x.position,
+            Symbolizable::Allege(x) => &x.position,
+            Symbolizable::Symbolize(x) => &x.position,
+        }
+    }
 }
 
+// TODO 2 - remove Clone and wrap in an Rc
 #[derive(Debug)]
 pub enum GSymbolizable {
     Artifact(Artifact),
@@ -568,8 +585,8 @@ impl GSymbolizable {
                 let mut inner = pair.into_inner();
                 let left = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
                 let right = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                GSymbolizable::GroundPair(GPair { left: Box::new(left),
-                                                  right: Box::new(right),
+                GSymbolizable::GroundPair(GPair { left: Rc::new(left),
+                                                  right: Rc::new(right),
                                                   position })
             },
             Rule::ground_symbolizable => {
@@ -583,8 +600,8 @@ impl GSymbolizable {
                         let mut inner = element.into_inner();
                         let left = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
                         let right = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        GSymbolizable::GroundPair(GPair { left: Box::new(left),
-                                                          right: Box::new(right),
+                        GSymbolizable::GroundPair(GPair { left: Rc::new(left),
+                                                          right: Rc::new(right),
                                                           position })
                     },
                     _ => unreachable!(),
@@ -594,6 +611,15 @@ impl GSymbolizable {
         };
 
         Ok(s)
+    }
+
+    pub fn position(&self) -> &Position {
+        match self {
+            GSymbolizable::Artifact(x) => x.position(),
+            GSymbolizable::SymbolVar(x) => &x.position,
+            GSymbolizable::Ground(x) => &x.position,
+            GSymbolizable::GroundPair(x) => &x.position,
+        }
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool, nest: bool) -> Result<(), std::io::Error> {
@@ -631,8 +657,8 @@ impl GSymbolizable {
 
 #[derive(Debug)]
 pub struct GPair {
-    pub left:  Box<GSymbolizable>,
-    pub right: Box<GSymbolizable>,
+    pub left:  Rc<GSymbolizable>,
+    pub right: Rc<GSymbolizable>,
     position:  Position,
 }
 
@@ -646,8 +672,8 @@ impl GPair {
         let left = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
         let right = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
 
-        Ok(GPair { left: Box::new(left),
-                   right: Box::new(right),
+        Ok(GPair { left: Rc::new(left),
+                   right: Rc::new(right),
                    position })
     }
 
@@ -828,7 +854,7 @@ impl Text {
 
 #[derive(Debug)]
 pub struct DataNode {
-    pub data_type: Box<Symbolizable>,
+    pub data_type: Rc<Symbolizable>,
     pub data:      Option<Vec<u8>>,
     pub position:  Position,
 }
@@ -849,7 +875,7 @@ impl DataNode {
             None => None,
         };
 
-        Ok(DataNode { data_type: Box::new(data_type),
+        Ok(DataNode { data_type: Rc::new(data_type),
                       data,
                       position })
     }
@@ -872,9 +898,9 @@ impl DataNode {
 
 #[derive(Debug)]
 pub struct DataRelation {
-    pub relation_type: Box<Symbolizable>,
-    pub from:          Box<Symbolizable>,
-    pub to:            Box<Symbolizable>,
+    pub relation_type: Rc<Symbolizable>,
+    pub from:          Rc<Symbolizable>,
+    pub to:            Rc<Symbolizable>,
     pub position:      Position,
 }
 
@@ -886,9 +912,9 @@ impl DataRelation {
         let from = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
         let to = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
 
-        Ok(DataRelation { relation_type: Box::new(relation_type),
-                          from: Box::new(from),
-                          to: Box::new(to),
+        Ok(DataRelation { relation_type: Rc::new(relation_type),
+                          from: Rc::new(from),
+                          to: Rc::new(to),
                           position })
     }
 

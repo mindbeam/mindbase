@@ -1,23 +1,28 @@
-$x = Allege("a" : "b")
-$y = Allege("c" : "d")
+$calliente = Symbolize("Hot")
+$picante   = Symbolize("Hot")
+$temps = Ground("Cold" : $calliente)
+$spice = Ground("Mild" : $picante)
 
-$z = Allege($1 : $2)
-#$z is ↑([↑$x], [↑$y])
+#$hot = $calliente | $picante
 
-$g = Ground( ("a":"b") : ("d":"c") )
-#g is ↑(↑$x, ↓$y)
+#$z = Allege($x : $y)
+#Diag($x, $y)
+#Diag($z~1)
 
-$q = $z | $g
-# $x = ↑(↑$x, ↑$y, ↓$y] # should this cancel out y?
+#$z is ↑([$x↑], [$y↑])
+# $g = Ground( ("a":"b") : ("d":"c") )
+#g is ↑($x↑, $y↓)
 
+# $q = $z | $g
+# $x = ↑($x↑, $y↑, $y↓] # should this cancel out y?
 
-$r = $z & $g
+# $r = $z & $g
 
-#how is     [↑$a, ↓$b]
-#related to [↑$a, ↑$b]
----
+#how is     [$a↑, $b↓]
+#related to [$a↑, $b↑]
+# ---
 # is it     true         ?
-# or is it  [↑$a]        ?
-# or is it  [↑$a, ↓$b]   ?
-# or is it  [↑$a, !$b]   ?
+# or is it  [$a↑]        ?
+# or is it  [$a↑, $b↓]   ?
+# or is it  [$a↑, $b!]   ?
 
