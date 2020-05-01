@@ -485,7 +485,7 @@ mod test {
         query.apply()?;
 
         let a = query.get_symbol_var("a")?.expect("a");
-        let b = query.get_symbol_var("b")?.ex]pect("b");
+        let b = query.get_symbol_var("b")?.expect("b");
         let x = query.get_symbol_var("x")?.expect("x");
 
         let lr = x.left_right(&mb)?.expect("left/right referents");
