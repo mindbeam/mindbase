@@ -79,7 +79,7 @@ impl crate::util::AsBytes for &AllegationId {
 impl fmt::Display for AllegationId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use base64::STANDARD_NO_PAD;
-        write!(f, "{}", base64::encode_config(&self.0, STANDARD_NO_PAD))
+        write!(f, "{}", base64::encode_config(&self.0[12..16], STANDARD_NO_PAD))
     }
 }
 impl fmt::Debug for AllegationId {
