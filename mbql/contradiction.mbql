@@ -1,5 +1,5 @@
-$calliente = Symbolize("Hot")
-$picante   = Symbolize("Hot")
+$calliente = Bind("Hot")
+$picante   = Bind("Hot")
 $temps = Ground("Cold" : $calliente)
 $spice = Ground("Mild" : $picante)
 
