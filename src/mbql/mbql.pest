@@ -8,7 +8,8 @@ artifactvar = ${ "@" ~ literal }
 // Symbolize(..)
 symbolstatement = { (symbolvar ~ "=")? ~ ( allege | ground | symbolize ) }
 
-bindstatement = { (symbolvar ~ "=")? ~ ( bind ) }
+// symbolvar is not optional for a bindstatement
+bindstatement = { symbolvar ~ "=" ~ ( bind ) }
 
 
 // But there's not much point to doing so for an artifact, so the artifactvar is not optional
