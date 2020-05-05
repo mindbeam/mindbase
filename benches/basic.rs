@@ -27,9 +27,10 @@ fn insert_test_dataset(mb: &MindBase) -> Result<(), MBError> {
 }
 
 fn get_ground_symbol(mb: &MindBase) -> Result<(), MBError> {
-    let _symbol1: Symbol = mb.get_ground_symbol(vec!["A", "B", "C", "D"])?;
-    let _symbol2: Symbol = mb.get_ground_symbol(vec!["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"])?;
-    Ok(())
+    unimplemented!()
+    // let _symbol1: Symbol = mb.get_ground_symbol(vec!["A", "B", "C", "D"])?;
+    // let _symbol2: Symbol = mb.get_ground_symbol(vec!["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"])?;
+    // Ok(())
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
