@@ -22,7 +22,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let query = mb.query_str(r#"$isaid = Ground("Things that I said" : "In mbcli")"#)?;
     query.apply()?;
-    let isaid = query.get_symbol_var("isaid")?.unwrap();
+    let isaid = query.get_symbol_for_var("isaid")?.unwrap();
 
     // What situations might have precipitated that would lead me to conjuring a non-narrow symbol?
 

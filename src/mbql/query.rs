@@ -27,14 +27,9 @@ struct ArtifactVarMapItem {
 struct SymbolVarMapItem {
     offset:   usize,
     symbol:   Option<Symbol>,
-    bound_to: Option<Rc<ast::SymbolStatement>>,
+    is_bound: bool,
 }
 
-use ast::{
-    Ground,
-    SymbolStatement,
-    Symbolizable,
-};
 use std::rc::Rc;
 
 // #[derive(Debug, Clone)]
@@ -58,6 +53,11 @@ pub struct Query<'a> {
     symbol_var_map:   Mutex<BTreeMap<String, SymbolVarMapItem>>,
     pub gscontext:    Mutex<GSContext<'a>>,
     pub mb:           &'a MindBase,
+}
+
+pub enum BindResult {
+    Bound(Rc<ast::GSymbolizable>),
+    Symbol(Symbol),
 }
 
 impl<'a> Query<'a> {
@@ -91,7 +91,7 @@ impl<'a> Query<'a> {
                 svm.insert(s.sv.var.to_string(),
                            SymbolVarMapItem { offset,
                                               symbol: None,
-                                              bound_to: None });
+                                              is_bound: false });
             },
             ast::Statement::Symbol(s) => {
                 if let Some(var) = &s.var {
@@ -99,7 +99,7 @@ impl<'a> Query<'a> {
                     svm.insert(var.to_string(),
                                SymbolVarMapItem { offset,
                                                   symbol: None,
-                                                  bound_to: None });
+                                                  is_bound: false });
                 }
             },
 
@@ -157,17 +157,13 @@ impl<'a> Query<'a> {
     }
 
     pub fn get_symbol_for_var(&self, var: &str) -> Result<Option<Symbol>, MBError> {
-        let (offset, bound_to) = match self.symbol_var_map.lock().unwrap().get(var) {
+        match self.symbol_var_map.lock().unwrap().get(var) {
             None => return Ok(None),
-            Some(SymbolVarMapItem { offset,
-                                    symbol,
-                                    bound_to, }) => {
+            Some(SymbolVarMapItem { symbol, .. }) => {
                 if let Some(symbol) = symbol {
-                    // This could be a SymbolStatement or a BindStatement. Either way it was already written
+                    // This could be a SymbolStatement or a BindStatement. Either way it must already be symbolized
                     return Ok(Some(symbol.clone()));
                 }
-
-                (offset.clone(), bound_to.clone())
             },
         };
 
@@ -178,51 +174,41 @@ impl<'a> Query<'a> {
         Err(MBError::SymbolVarNotFound)
     }
 
-    pub fn symbolvar_is_bind(&self, var: &str) -> Result<bool, MBError> {
-        match self.symbol_var_map.lock().unwrap().get_mut(var) {
-            None => Err(MBError::SymbolVarNotFound),
-            Some(SymbolVarMapItem { offset, .. }) => {
-                match self.statements.get(*offset).expect("Sanity error") {
-                    ast::Statement::Bind(_) => Ok(true),
-                    _ => Ok(false),
-                }
-            },
-        }
-    }
-
-    pub fn bind_symbolvar(&self, var: &str, bind_to: &Rc<ast::SymbolStatement>) -> Result<Rc<ast::GSymbolizable>, MBQLError> {
+    // Bind to a `BindStatement` or return the Symbol from a SymbolStatement
+    pub fn bind_symbolvar(&self, var: &str) -> Result<BindResult, MBError> {
         // Look up the symbolvar by string
 
         match self.symbol_var_map.lock().unwrap().get_mut(var) {
             None => {
-                Err(MBQLError { position: bind_to.position().clone(),
-                                kind:     MBQLErrorKind::SymbolVarNotFound { var: var.to_string() }, })
+                // TODO change this to MBError?
+                // Why the distinction?
+                // because it's strange to send in the bind_to only for its position?
+                Err(MBError::SymbolVarNotFound)
             },
             Some(SymbolVarMapItem { offset,
                                     symbol,
-                                    bound_to, }) => {
+                                    is_bound, }) => {
                 // It should be unbound, otherwise throw an error
 
-                match bound_to {
-                    None => {
-                        match self.statements.get(*offset).unwrap() {
-                            ast::Statement::Bind(ast::BindStatement { gsymz , ..} => {
-                                // for now we're only supporting binding to other ground statements
-                                *bound_to = Some(bind_to.clone());
-                                Ok(gsymz.clone())
-                            },
-                            ast::Statement::Symbol(_) => {
-                                // TODO
-                                unimplemented!()
-                            },
-                            _ => {
-                                panic!("Sanity error");
-                            },
+                if *is_bound {
+                    return Err(MBError::SymbolVarAlreadyBound);
+                }
+
+                match self.statements.get(*offset).unwrap() {
+                    ast::Statement::Bind(ast::BindStatement { gsymz, .. }) => {
+                        // for now we're only supporting binding to other ground statements
+                        *is_bound = true;
+                        let foo = gsymz.clone();
+                        Ok(BindResult::Bound(foo))
+                    },
+                    ast::Statement::Symbol(_) => {
+                        match symbol {
+                            Some(symbol) => Ok(BindResult::Symbol(symbol.clone())),
+                            None => Err(MBError::SymbolVarNotFound),
                         }
                     },
-                    Some(xsym) => {
-                        Err(MBQLError { position: bind_to.position().clone(),
-                                        kind:     MBQLErrorKind::SymbolVarBindingFailed { bound_to: xsym.clone() }, })
+                    _ => {
+                        panic!("Sanity error");
                     },
                 }
             },

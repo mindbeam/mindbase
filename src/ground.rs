@@ -59,6 +59,7 @@ use crate::{
             MBQLError,
             MBQLErrorKind,
         },
+        query::BindResult,
         Query,
     },
     symbol::Atom,
@@ -136,14 +137,15 @@ impl<'a> GSContext<'a> {
 
         // TODO - convert the rolling index intersection into a symbol and Return.
 
-        Ok(node.take_symbol()?)
+        Ok(node.take_symbol())
     }
 
     fn symbolize_recurse(&mut self, gsym: &Rc<ast::GSymbolizable>, vivify: bool, query: &Query) -> Result<GSNode, MBQLError> {
         let symbol = match &**gsym {
             ast::GSymbolizable::Artifact(a) => GSNode::artifact(self, vivify, query, a)?,
             ast::GSymbolizable::GroundPair(a) => GSNode::pair(self, vivify, query, a)?,
-            ast::GSymbolizable::SymbolVar(sv) => GSNode::bound(self, vivify, query, sv)?,
+            ast::GSymbolizable::SymbolVar(sv) => GSNode::symbolvar(self, vivify, query, sv)?,
+
             ast::GSymbolizable::Ground(_) => {
                 // Shouldn't be able to call this directly with a Ground statement
                 unreachable!()
@@ -198,8 +200,8 @@ impl<'a> GSContext<'a> {
         // Brute force for now. This whole routine is insanely inefficient
         // TODO 2 - update this to be a sweet indexed query!
 
-        let left = left.symbol(query)?;
-        let right = right.symbol(query)?;
+        let left = left.symbol();
+        let right = right.symbol();
 
         let mut atoms: Vec<Atom> = Vec::new();
 
@@ -226,6 +228,8 @@ impl<'a> GSContext<'a> {
                             println!("R=AL")
                         }
 
+                        // Hah - this is where we need to call query.store_symbol_for_var
+                        // Because the symbol is getting narrowed, not novel'ed
                         if intersect_symbols(&left, &analogy.left) && intersect_symbols(&right, &analogy.right) {
                             atoms.push(Atom::up(allegation_id))
                         } else if intersect_symbols(&left, &analogy.right) && intersect_symbols(&right, &analogy.left) {
@@ -243,8 +247,7 @@ impl<'a> GSContext<'a> {
 }
 
 fn analogy_compare(analogy: &Analogy, left: &Symbol, right: &Symbol, atoms: &mut Vec<Atom>) {
-    //
-    use crate::symbol::SpinCompare;
+    // use crate::symbol::SpinCompare;
 
     // let l_iter = left.atoms.iter();
     // let r_iter = right.atoms.iter();
@@ -334,6 +337,7 @@ enum GSNode {
 
     Bound {
         gsnode: Box<GSNode>,
+        sv:     Rc<ast::SymbolVar>,
     },
 
     // Someone gave us this symbol, and said "use it", so there's nothing to be done
@@ -366,21 +370,24 @@ impl GSNode {
         Ok(node)
     }
 
-    pub fn symbolvar(ctx: &mut GSContext, vivify: bool, query: &Query, sv: &ast::SymbolVar) -> Result<Self, MBError> {
-        match query.symbolvar_is_bind(&sv.var) {
-            Err(MBError::SymbolVarNotFound) => {
-                Err(MBQLError { position: bind_to.position().clone(),
-                                kind:     MBQLErrorKind::SymbolVarNotFound { var: var.to_string() }, })
+    pub fn symbolvar(ctx: &mut GSContext, vivify: bool, query: &Query, sv: &Rc<ast::SymbolVar>) -> Result<Self, MBQLError> {
+        match query.bind_symbolvar(&sv.var) {
+            Err(e) => {
+                return Err(MBQLError { position: sv.position().clone(),
+                                       kind:     MBQLErrorKind::SymbolVarNotFound { var: sv.var.to_string() }, });
             },
+            Ok(BindResult::Bound(gsymz)) => {
+                let gsnode = ctx.symbolize_recurse(&gsymz, vivify, query)?;
 
-            _ => unimplemented!(),
+                println!("Storing symbol for Bound {}", gsnode.symbol());
+                // Store the initial symbol we found
+                query.store_symbol_for_var(&sv, gsnode.symbol().clone())?;
+
+                Ok(GSNode::Bound { gsnode: Box::new(gsnode),
+                                   sv:     sv.clone(), })
+            },
+            Ok(BindResult::Symbol(symbol)) => Ok(GSNode::Given(symbol)),
         }
-
-        let sz = query.bind_symbolvar(&sv.var)?;
-
-        let gsnode = ctx.symbolize_recurse(&sz, vivify, query)?;
-
-        Ok(GSNode::Bound { gsnode: Box::new(gsnode), })
     }
 
     pub fn pair(ctx: &mut GSContext, vivify: bool, query: &Query, gpair: &ast::GPair) -> Result<Self, MBQLError> {
@@ -395,14 +402,15 @@ impl GSNode {
 
         // find symbols (Analogies) which refer to BOTH of the above
         let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(&left, &right, query)? {
-            println!("FOUND MATCH {:?}", symbol);
+            println!("FOUND MATCH {}", symbol);
             GSNode::Pair { symbol,
                            left: Box::new(left),
                            right: Box::new(right) }
         } else if vivify {
             // Didn't find any such analogies, so none of the symbols we found were satisfactory.
             // Lets create a tree of novel symbols which we will now declare as having the ground meaning intended
-            let symbol = ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?;
+            let symbol =
+                ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx, query)?, right.novel_symbol(ctx, query)?))?;
 
             // Doesn't matter how we got here
             println!("VIVIFY {}", symbol);
@@ -416,32 +424,43 @@ impl GSNode {
         Ok(node)
     }
 
-    pub fn symbol(&self, query: &Query) -> Result<&Symbol, MBError> {
-        Ok(match self {
+    pub fn symbol(&self) -> &Symbol {
+        match self {
             GSNode::Artifact { symbol, .. } => symbol,
             GSNode::Pair { symbol, .. } => symbol,
             GSNode::Given(symbol) => symbol,
             GSNode::Created(symbol) => symbol,
-            GSNode::Bound { gsnode } => gsnode.symbol(query)?,
-        })
+            GSNode::Bound { gsnode, .. } => gsnode.symbol(),
+        }
     }
 
-    pub fn take_symbol(self) -> Result<Symbol, MBError> {
-        Ok(match self {
+    pub fn take_symbol(self) -> Symbol {
+        match self {
             GSNode::Artifact { symbol, .. } => symbol,
             GSNode::Pair { symbol, .. } => symbol,
             GSNode::Given(symbol) => symbol,
             GSNode::Created(symbol) => symbol,
-            GSNode::Bound { gsnode } => gsnode.take_symbol()?,
-        })
+            GSNode::Bound { gsnode, .. } => gsnode.take_symbol(),
+        }
     }
 
-    pub fn novel_symbol(self, ctx: &GSContext) -> Result<Symbol, MBError> {
+    pub fn novel_symbol(self, ctx: &GSContext, query: &Query) -> Result<Symbol, MBError> {
         let symbol = match self {
             GSNode::Artifact { artifact_id, .. } => ctx.raw_symbolize(artifact_id)?,
-            GSNode::Bound { gsnode } => gsnode.novel_symbol(ctx)?,
+            GSNode::Bound { gsnode, sv } => {
+                println!("BOUND novel symbol");
+
+                let symbol = gsnode.novel_symbol(ctx, query)?;
+
+                // Looks like we had to make a new symbol. Overwrite the one we stored during the first phase of the ground symbol
+                // search process
+                query.store_symbol_for_var(&sv, symbol.clone())?;
+                println!("BOUND novel symbol 2");
+
+                symbol
+            },
             GSNode::Pair { left, right, .. } => {
-                ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?
+                ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx, query)?, right.novel_symbol(ctx, query)?))?
             },
             GSNode::Created(s) => s,
             GSNode::Given(symbol) => symbol,
@@ -492,11 +511,11 @@ mod test {
         // the ground symbol search
         query.apply()?;
 
-        let bogus = query.get_symbol_var("bogus")?;
+        let bogus = query.get_symbol_for_var("bogus")?;
         assert_eq!(bogus, None);
 
-        let foo = query.get_symbol_var("foo")?.expect("foo");
-        let bar = query.get_symbol_var("bar")?.expect("bar");
+        let foo = query.get_symbol_for_var("foo")?.expect("foo");
+        let bar = query.get_symbol_for_var("bar")?.expect("bar");
 
         assert_eq!(foo, bar);
         assert!(foo.intersects(&bar));
@@ -515,7 +534,7 @@ mod test {
         let query = Query::new(&mb, mbql)?;
         query.apply()?;
 
-        let _gs = query.get_symbol_var("gs")?.expect("gs");
+        let _gs = query.get_symbol_for_var("gs")?.expect("gs");
 
         Ok(())
     }
@@ -537,8 +556,8 @@ mod test {
         let query = Query::new(&mb, mbql)?;
         query.apply()?;
 
-        let foo = query.get_symbol_var("foo")?.expect("foo");
-        let bar = query.get_symbol_var("bar")?.expect("bar");
+        let foo = query.get_symbol_for_var("foo")?.expect("foo");
+        let bar = query.get_symbol_for_var("bar")?.expect("bar");
 
         assert_eq!(foo, bar);
         assert!(foo.intersects(&bar));
@@ -568,9 +587,9 @@ mod test {
 
         query.apply()?;
 
-        let a = query.get_symbol_var("a")?.expect("a");
-        let b = query.get_symbol_var("b")?.expect("b");
-        let x = query.get_symbol_var("x")?.expect("x");
+        let a = query.get_symbol_for_var("a")?.expect("a");
+        let b = query.get_symbol_for_var("b")?.expect("b");
+        let x = query.get_symbol_for_var("x")?.expect("x");
 
         let lr = x.left_right(&mb)?.expect("left/right referents");
 

@@ -21,7 +21,7 @@ diagelement = { (symbolvar |artifactvar) ~ ( "~" ~ depth)? }
 depth = @{ number }
 
 // Symbols
-bind = { ( "Bind" ~ "(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | ("{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
+bind = _{ ( "Bind" ~ "(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | ("{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
 ground = { ( "Ground" ~ bang? ~ "(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | (bang? ~ "{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
 symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
 allege =  { "Allege(" ~ symbol_pair ~ ")" }

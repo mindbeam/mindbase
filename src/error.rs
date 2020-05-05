@@ -14,6 +14,7 @@ pub enum MBError {
     TraversalFailed,
     UnboundSymbol,
     SymbolVarNotFound,
+    SymbolVarAlreadyBound,
     NullSymbol,
 }
 

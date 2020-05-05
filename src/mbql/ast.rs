@@ -31,10 +31,11 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn parse(element: Pair<Rule>, query: &mut crate::mbql::Query, position: Position) -> Result<(), MBQLError> {
+    pub fn parse(element: Pair<Rule>, query: &mut crate::mbql::Query, position: &Position) -> Result<(), MBQLError> {
         let me = match element.as_rule() {
             Rule::EOI => return Ok(()), // Comment or blank line
             Rule::artifactstatement => Statement::Artifact(ArtifactStatement::parse(element, position)?),
+            Rule::bindstatement => Statement::Bind(BindStatement::parse(element, position)?),
             Rule::symbolstatement => Statement::Symbol(SymbolStatement::parse(element, position)?),
             Rule::diagstatement => Statement::Diag(DiagStatement::parse(element, position)?),
             _ => {
@@ -95,7 +96,7 @@ enum DiagElement {
 }
 
 impl DiagStatement {
-    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::diagstatement);
 
         let mut items = pair.into_inner();
@@ -107,7 +108,7 @@ impl DiagStatement {
             let mut de_inner = d.into_inner();
             let var = de_inner.next().unwrap();
             let e = match var.as_rule() {
-                Rule::artifactvar => DiagElement::ArtifactVar(ArtifactVar::parse(var, position.clone())?),
+                Rule::artifactvar => DiagElement::ArtifactVar(ArtifactVar::parse(var, position)?),
                 Rule::symbolvar => {
                     let depth = match de_inner.next() {
                         None => 0,
@@ -117,7 +118,7 @@ impl DiagStatement {
                         },
                     };
 
-                    DiagElement::SymbolVar(SymbolVar::parse(var, position.clone())?, depth)
+                    DiagElement::SymbolVar(SymbolVar::parse(var, position)?, depth)
                     //
                 },
                 _ => {
@@ -129,8 +130,8 @@ impl DiagStatement {
             elements.push(e)
         }
 
-        Ok(DiagStatement { position,
-                           diag: Diag { elements } })
+        Ok(DiagStatement { position: position.clone(),
+                           diag:     Diag { elements }, })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -203,21 +204,23 @@ impl DiagElement {
 pub struct BindStatement {
     position:  Position,
     pub sv:    SymbolVar,
-    pub gsymz: GSymbolizable,
+    pub gsymz: Rc<GSymbolizable>,
 }
 
 impl BindStatement {
-    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::bindstatement);
 
         let mut inner = pair.into_inner();
-        let sv = SymbolVar::parse(inner.next().unwrap(), position.clone())?;
+        let sv = SymbolVar::parse(inner.next().unwrap(), position)?;
 
         let next = inner.next().unwrap();
 
-        let gsymz = GSymbolizable::parse(next, position)?;
+        let gsymz = Rc::new(GSymbolizable::parse(next, position)?);
 
-        Ok(BindStatement { position, sv, gsymz })
+        Ok(BindStatement { position: position.clone(),
+                           sv,
+                           gsymz })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -242,10 +245,10 @@ pub struct ArtifactVar {
 }
 
 impl ArtifactVar {
-    fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifactvar);
-        Ok(Self { var: pair.into_inner().next().unwrap().as_str().to_string(),
-                  position })
+        Ok(Self { var:      pair.into_inner().next().unwrap().as_str().to_string(),
+                  position: position.clone(), })
     }
 
     fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -267,10 +270,10 @@ pub struct SymbolVar {
 }
 
 impl SymbolVar {
-    pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolvar);
-        Ok(Self { var: pair.into_inner().next().unwrap().as_str().to_string(),
-                  position })
+        Ok(Self { var:      pair.into_inner().next().unwrap().as_str().to_string(),
+                  position: position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -290,6 +293,10 @@ impl SymbolVar {
                                    kind:     MBQLErrorKind::SymbolVarNotFound { var: self.var.clone() }, });
         }
     }
+
+    pub fn position(&self) -> &Position {
+        &self.position
+    }
 }
 
 impl std::fmt::Display for SymbolVar {
@@ -305,15 +312,17 @@ pub struct ArtifactStatement {
 }
 
 impl ArtifactStatement {
-    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifactstatement);
 
         let mut pairs = pair.into_inner();
-        let var = ArtifactVar::parse(pairs.next().unwrap(), position.clone())?;
+        let var = ArtifactVar::parse(pairs.next().unwrap(), position)?;
 
-        let artifact = Artifact::parse(pairs.next().unwrap(), position.clone())?;
+        let artifact = Artifact::parse(pairs.next().unwrap(), position)?;
 
-        Ok(ArtifactStatement { var, artifact, position })
+        Ok(ArtifactStatement { var,
+                               artifact,
+                               position: position.clone() })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -339,7 +348,7 @@ pub struct SymbolStatement {
 }
 
 impl SymbolStatement {
-    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolstatement);
 
         let mut pairs = pair.into_inner();
@@ -347,22 +356,22 @@ impl SymbolStatement {
         let next = pairs.next().unwrap();
 
         let (var, next) = if let Rule::symbolvar = next.as_rule() {
-            (Some(SymbolVar::parse(next, position.clone())?), pairs.next().unwrap())
+            (Some(SymbolVar::parse(next, position)?), pairs.next().unwrap())
         } else {
             (None, next)
         };
 
         // based on the grammar, we are guaranteed to have allege | ground | symbolize
         let symbol = match next.as_rule() {
-            Rule::allege => Symbolizable::Allege(Allege::parse(next, position.clone())?),
-            Rule::ground => Symbolizable::Ground(Ground::parse(next, position.clone())?),
-            Rule::symbolize => Symbolizable::Symbolize(Symbolize::parse(next, position.clone())?),
+            Rule::allege => Symbolizable::Allege(Allege::parse(next, position)?),
+            Rule::ground => Symbolizable::Ground(Ground::parse(next, position)?),
+            Rule::symbolize => Symbolizable::Symbolize(Symbolize::parse(next, position)?),
             _ => unreachable!(),
         };
 
         Ok(SymbolStatement { var,
                              symz: symbol,
-                             position })
+                             position: position.clone() })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -398,7 +407,7 @@ pub struct Ground {
 }
 
 impl Ground {
-    fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::ground);
 
         let mut inner = pair.into_inner();
@@ -412,8 +421,8 @@ impl Ground {
             (next, true)
         };
 
-        Ok(Ground { symbolizable: Rc::new(GSymbolizable::parse(next, position.clone())?),
-                    position,
+        Ok(Ground { symbolizable: Rc::new(GSymbolizable::parse(next, position)?),
+                    position: position.clone(),
                     vivify })
     }
 
@@ -456,18 +465,18 @@ pub struct Allege {
 }
 
 impl Allege {
-    pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::allege);
 
         let mut symbol_pair = pair.into_inner().next().unwrap().into_inner();
 
         // According to the grammar, Allege may only contain symbol_pair
-        let left = Symbolizable::parse(symbol_pair.next().unwrap(), position.clone())?;
-        let right = Symbolizable::parse(symbol_pair.next().unwrap(), position.clone())?;
+        let left = Symbolizable::parse(symbol_pair.next().unwrap(), position)?;
+        let right = Symbolizable::parse(symbol_pair.next().unwrap(), position)?;
 
-        Ok(Allege { left: Rc::new(left),
-                    right: Rc::new(right),
-                    position })
+        Ok(Allege { left:     Rc::new(left),
+                    right:    Rc::new(right),
+                    position: position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool, nest: bool) -> Result<(), std::io::Error> {
@@ -504,10 +513,10 @@ pub struct Symbolize {
     position:     Position,
 }
 impl Symbolize {
-    pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::symbolize);
-        Ok(Symbolize { symbolizable: Rc::new(Symbolizable::parse(pair.into_inner().next().unwrap(), position.clone())?),
-                       position })
+        Ok(Symbolize { symbolizable: Rc::new(Symbolizable::parse(pair.into_inner().next().unwrap(), position)?),
+                       position:     position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
@@ -538,18 +547,18 @@ pub enum Symbolizable {
 }
 
 impl Symbolizable {
-    pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         // because of left-recursion issues, we had to construct symbolizable in a slightly odd way
         // which necessitates allege and ground to support symbol_pair AND symbolizable as potential child elements
         // So we are handling symbol_pair if they were symbolizable
         let s = match pair.as_rule() {
             Rule::symbol_pair => {
                 let mut inner = pair.into_inner();
-                let left = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-                let right = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-                Symbolizable::Allege(Allege { left: Rc::new(left),
-                                              right: Rc::new(right),
-                                              position })
+                let left = Symbolizable::parse(inner.next().unwrap(), position)?;
+                let right = Symbolizable::parse(inner.next().unwrap(), position)?;
+                Symbolizable::Allege(Allege { left:     Rc::new(left),
+                                              right:    Rc::new(right),
+                                              position: position.clone(), })
             },
             Rule::symbolizable => {
                 let element = pair.into_inner().next().unwrap();
@@ -562,11 +571,11 @@ impl Symbolizable {
                     Rule::allege => Symbolizable::Allege(Allege::parse(element, position)?),
                     Rule::symbol_pair => {
                         let mut inner = element.into_inner();
-                        let left = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        let right = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        Symbolizable::Allege(Allege { left: Rc::new(left),
-                                                      right: Rc::new(right),
-                                                      position })
+                        let left = Symbolizable::parse(inner.next().unwrap(), position)?;
+                        let right = Symbolizable::parse(inner.next().unwrap(), position)?;
+                        Symbolizable::Allege(Allege { left:     Rc::new(left),
+                                                      right:    Rc::new(right),
+                                                      position: position.clone(), })
                     },
                     _ => unreachable!(),
                 }
@@ -621,41 +630,43 @@ impl Symbolizable {
 #[derive(Debug)]
 pub enum GSymbolizable {
     Artifact(Artifact),
-    SymbolVar(SymbolVar),
+    SymbolVar(Rc<SymbolVar>),
     Ground(Ground),
     GroundPair(GPair),
 }
 
 impl GSymbolizable {
-    pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         let s = match pair.as_rule() {
             Rule::ground_symbol_pair => {
                 let mut inner = pair.into_inner();
-                let left = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                let right = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                GSymbolizable::GroundPair(GPair { left: Rc::new(left),
-                                                  right: Rc::new(right),
-                                                  position })
+                let left = GSymbolizable::parse(inner.next().unwrap(), position)?;
+                let right = GSymbolizable::parse(inner.next().unwrap(), position)?;
+                GSymbolizable::GroundPair(GPair { left:     Rc::new(left),
+                                                  right:    Rc::new(right),
+                                                  position: position.clone(), })
             },
             Rule::ground_symbolizable => {
                 let element = pair.into_inner().next().unwrap();
 
                 match element.as_rule() {
                     Rule::artifact => GSymbolizable::Artifact(Artifact::parse(element, position)?),
-                    Rule::symbolvar => GSymbolizable::SymbolVar(SymbolVar::parse(element, position)?),
+                    Rule::symbolvar => GSymbolizable::SymbolVar(Rc::new(SymbolVar::parse(element, position)?)),
                     Rule::ground => GSymbolizable::Ground(Ground::parse(element, position)?),
                     Rule::ground_symbol_pair => {
                         let mut inner = element.into_inner();
-                        let left = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        let right = GSymbolizable::parse(inner.next().unwrap(), position.clone())?;
-                        GSymbolizable::GroundPair(GPair { left: Rc::new(left),
-                                                          right: Rc::new(right),
-                                                          position })
+                        let left = GSymbolizable::parse(inner.next().unwrap(), position)?;
+                        let right = GSymbolizable::parse(inner.next().unwrap(), position)?;
+                        GSymbolizable::GroundPair(GPair { left:     Rc::new(left),
+                                                          right:    Rc::new(right),
+                                                          position: position.clone(), })
                     },
                     _ => unreachable!(),
                 }
             },
-            _ => unreachable!(),
+            _ => {
+                panic!("Invalid parse element {}", pair);
+            },
         };
 
         Ok(s)
@@ -711,18 +722,18 @@ pub struct GPair {
 }
 
 impl GPair {
-    pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::allege);
 
         let mut ground_symbol_pair = pair.into_inner().next().unwrap().into_inner();
 
         // According to the grammar, Allege may only contain symbol_pair
-        let left = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
-        let right = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position.clone())?;
+        let left = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position)?;
+        let right = GSymbolizable::parse(ground_symbol_pair.next().unwrap(), position)?;
 
-        Ok(GPair { left: Rc::new(left),
-                   right: Rc::new(right),
-                   position })
+        Ok(GPair { left:     Rc::new(left),
+                   right:    Rc::new(right),
+                   position: position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, nest: bool) -> Result<(), std::io::Error> {
@@ -771,7 +782,7 @@ impl Artifact {
         Ok(())
     }
 
-    pub fn parse(pair: Pair<parse::Rule>, position: Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::artifact);
         let child = pair.into_inner().next().unwrap();
 
@@ -833,10 +844,10 @@ pub struct Agent {
 }
 
 impl Agent {
-    fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         assert_eq!(pair.as_rule(), Rule::agent);
-        Ok(Agent { ident: pair.into_inner().next().unwrap().as_str().to_string(),
-                   position })
+        Ok(Agent { ident:    pair.into_inner().next().unwrap().as_str().to_string(),
+                   position: position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, mut writer: T) -> Result<(), std::io::Error> {
@@ -862,10 +873,10 @@ pub struct Url {
 }
 
 impl Url {
-    fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         let pair = pair.into_inner().next().unwrap();
-        Ok(Self { url: pair.as_str().replace("\\\"", "\""),
-                  position })
+        Ok(Self { url:      pair.as_str().replace("\\\"", "\""),
+                  position: position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, _verbose: bool) -> Result<(), std::io::Error> {
@@ -881,12 +892,12 @@ pub struct Text {
 }
 
 impl Text {
-    fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         let qs = pair.into_inner().next().unwrap();
         let s = qs.into_inner().next().unwrap();
 
-        Ok(Text { text: s.as_str().to_string().replace("\\\"", "\""),
-                  position })
+        Ok(Text { text:     s.as_str().to_string().replace("\\\"", "\""),
+                  position: position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T, verbose: bool) -> Result<(), std::io::Error> {
@@ -908,9 +919,9 @@ pub struct DataNode {
 }
 
 impl DataNode {
-    fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         let mut inner = pair.into_inner();
-        let data_type = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
+        let data_type = Symbolizable::parse(inner.next().unwrap(), position)?;
 
         let data = match inner.next() {
             Some(next) => {
@@ -925,7 +936,7 @@ impl DataNode {
 
         Ok(DataNode { data_type: Rc::new(data_type),
                       data,
-                      position })
+                      position: position.clone() })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -953,17 +964,17 @@ pub struct DataRelation {
 }
 
 impl DataRelation {
-    fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
         let mut inner = pair.into_inner();
 
-        let relation_type = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-        let from = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
-        let to = Symbolizable::parse(inner.next().unwrap(), position.clone())?;
+        let relation_type = Symbolizable::parse(inner.next().unwrap(), position)?;
+        let from = Symbolizable::parse(inner.next().unwrap(), position)?;
+        let to = Symbolizable::parse(inner.next().unwrap(), position)?;
 
         Ok(DataRelation { relation_type: Rc::new(relation_type),
-                          from: Rc::new(from),
-                          to: Rc::new(to),
-                          position })
+                          from:          Rc::new(from),
+                          to:            Rc::new(to),
+                          position:      position.clone(), })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {

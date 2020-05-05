@@ -39,7 +39,8 @@ fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), M
         Some(s) => s,
     };
 
-    ast::Statement::parse(inner, query, Position { row })?;
+    let position = Position { row };
+    ast::Statement::parse(inner, query, &position)?;
 
     Ok(())
 }
