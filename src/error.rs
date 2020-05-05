@@ -12,6 +12,8 @@ pub enum MBError {
     AllegationNotFound,
     MBQL(Box<MBQLError>),
     TraversalFailed,
+    UnboundSymbol,
+    SymbolVarNotFound,
     NullSymbol,
 }
 

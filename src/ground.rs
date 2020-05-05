@@ -72,7 +72,6 @@ use crate::{
 };
 use std::convert::TryInto;
 
-use ast::Symbolizable;
 use std::rc::Rc;
 
 pub struct GSContext<'a> {
@@ -137,14 +136,14 @@ impl<'a> GSContext<'a> {
 
         // TODO - convert the rolling index intersection into a symbol and Return.
 
-        Ok(node.take_symbol())
+        Ok(node.take_symbol()?)
     }
 
-    fn symbolize_recurse(&mut self, s: &Rc<ast::GSymbolizable>, vivify: bool, query: &Query) -> Result<GSNode, MBQLError> {
-        let symbol = match &**s {
+    fn symbolize_recurse(&mut self, gsym: &Rc<ast::GSymbolizable>, vivify: bool, query: &Query) -> Result<GSNode, MBQLError> {
+        let symbol = match &**gsym {
             ast::GSymbolizable::Artifact(a) => GSNode::artifact(self, vivify, query, a)?,
             ast::GSymbolizable::GroundPair(a) => GSNode::pair(self, vivify, query, a)?,
-            ast::GSymbolizable::SymbolVar(sv) => GSNode::bound(self, vivify, query, sv, s),
+            ast::GSymbolizable::SymbolVar(sv) => GSNode::bound(self, vivify, query, sv)?,
             ast::GSymbolizable::Ground(_) => {
                 // Shouldn't be able to call this directly with a Ground statement
                 unreachable!()
@@ -195,9 +194,12 @@ impl<'a> GSContext<'a> {
     }
 
     // It's not really just one analogy that we're searching for, but a collection of N analogies which match left and right
-    fn find_matching_analogy_symbol(&self, left: &Symbol, right: &Symbol) -> Result<Option<Symbol>, MBError> {
+    fn find_matching_analogy_symbol(&self, left: &GSNode, right: &GSNode, query: &Query) -> Result<Option<Symbol>, MBError> {
         // Brute force for now. This whole routine is insanely inefficient
         // TODO 2 - update this to be a sweet indexed query!
+
+        let left = left.symbol(query)?;
+        let right = right.symbol(query)?;
 
         let mut atoms: Vec<Atom> = Vec::new();
 
@@ -211,22 +213,22 @@ impl<'a> GSContext<'a> {
                         // TODO 2 - This is crazy inefficient
 
                         // BUG - So the issue is that this logic isn't considering Atom directionality when intersecting.
-                        if intersect_symbols(left, &analogy.left) {
+                        if intersect_symbols(&left, &analogy.left) {
                             println!("L=AL")
                         }
-                        if intersect_symbols(right, &analogy.right) {
+                        if intersect_symbols(&right, &analogy.right) {
                             println!("R=AR")
                         }
-                        if intersect_symbols(left, &analogy.right) {
+                        if intersect_symbols(&left, &analogy.right) {
                             println!("L=AR")
                         }
-                        if intersect_symbols(right, &analogy.left) {
+                        if intersect_symbols(&right, &analogy.left) {
                             println!("R=AL")
                         }
 
-                        if intersect_symbols(left, &analogy.left) && intersect_symbols(right, &analogy.right) {
+                        if intersect_symbols(&left, &analogy.left) && intersect_symbols(&right, &analogy.right) {
                             atoms.push(Atom::up(allegation_id))
-                        } else if intersect_symbols(left, &analogy.right) && intersect_symbols(right, &analogy.left) {
+                        } else if intersect_symbols(&left, &analogy.right) && intersect_symbols(&right, &analogy.left) {
                             atoms.push(Atom::down(allegation_id))
                         }
                     }
@@ -330,7 +332,9 @@ enum GSNode {
         right:  Box<GSNode>,
     },
 
-    Bound(ast::SymbolVar),
+    Bound {
+        gsnode: Box<GSNode>,
+    },
 
     // Someone gave us this symbol, and said "use it", so there's nothing to be done
     Given(Symbol),
@@ -362,6 +366,23 @@ impl GSNode {
         Ok(node)
     }
 
+    pub fn symbolvar(ctx: &mut GSContext, vivify: bool, query: &Query, sv: &ast::SymbolVar) -> Result<Self, MBError> {
+        match query.symbolvar_is_bind(&sv.var) {
+            Err(MBError::SymbolVarNotFound) => {
+                Err(MBQLError { position: bind_to.position().clone(),
+                                kind:     MBQLErrorKind::SymbolVarNotFound { var: var.to_string() }, })
+            },
+
+            _ => unimplemented!(),
+        }
+
+        let sz = query.bind_symbolvar(&sv.var)?;
+
+        let gsnode = ctx.symbolize_recurse(&sz, vivify, query)?;
+
+        Ok(GSNode::Bound { gsnode: Box::new(gsnode), })
+    }
+
     pub fn pair(ctx: &mut GSContext, vivify: bool, query: &Query, gpair: &ast::GPair) -> Result<Self, MBQLError> {
         // Symbol grounding is the crux of the biscuit
         // We don't want to create new symbols if we can possibly help it
@@ -373,7 +394,7 @@ impl GSNode {
         let right = ctx.symbolize_recurse(&gpair.right, vivify, query)?;
 
         // find symbols (Analogies) which refer to BOTH of the above
-        let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(left.symbol(), right.symbol())? {
+        let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(&left, &right, query)? {
             println!("FOUND MATCH {:?}", symbol);
             GSNode::Pair { symbol,
                            left: Box::new(left),
@@ -395,34 +416,30 @@ impl GSNode {
         Ok(node)
     }
 
-    pub fn bound(ctx: &mut GSContext, vivify: bool, query: &Query, sv: ast::SymbolVar, gsym: &Rc<ast::GSymbolizable>)
-                 -> Result<Self, MBError> {
-        query.bind_symbol_var(&sv.var, gsym)?;
-
-        Ok(GSNode::Bound(sv))
-    }
-
-    pub fn take_symbol(self) -> Symbol {
-        match self {
+    pub fn symbol(&self, query: &Query) -> Result<&Symbol, MBError> {
+        Ok(match self {
             GSNode::Artifact { symbol, .. } => symbol,
             GSNode::Pair { symbol, .. } => symbol,
             GSNode::Given(symbol) => symbol,
             GSNode::Created(symbol) => symbol,
-        }
+            GSNode::Bound { gsnode } => gsnode.symbol(query)?,
+        })
     }
 
-    pub fn symbol(&self) -> &Symbol {
-        match self {
+    pub fn take_symbol(self) -> Result<Symbol, MBError> {
+        Ok(match self {
             GSNode::Artifact { symbol, .. } => symbol,
             GSNode::Pair { symbol, .. } => symbol,
             GSNode::Given(symbol) => symbol,
             GSNode::Created(symbol) => symbol,
-        }
+            GSNode::Bound { gsnode } => gsnode.take_symbol()?,
+        })
     }
 
     pub fn novel_symbol(self, ctx: &GSContext) -> Result<Symbol, MBError> {
         let symbol = match self {
             GSNode::Artifact { artifact_id, .. } => ctx.raw_symbolize(artifact_id)?,
+            GSNode::Bound { gsnode } => gsnode.novel_symbol(ctx)?,
             GSNode::Pair { left, right, .. } => {
                 ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?
             },

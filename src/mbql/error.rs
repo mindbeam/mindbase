@@ -7,7 +7,7 @@ pub struct MBQLError {
 use crate::{
     error::MBError,
     mbql::{
-        query,
+        ast,
         Position,
     },
 };
@@ -41,7 +41,7 @@ pub enum MBQLErrorKind {
         var: String,
     },
     SymbolVarBindingFailed {
-        bound_to: query::Bindable,
+        bound_to: std::rc::Rc<ast::SymbolStatement>,
     },
 
     // TODO 2 - Move this to MBError

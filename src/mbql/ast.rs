@@ -24,6 +24,7 @@ use pest::iterators::Pair;
 use std::rc::Rc;
 
 pub enum Statement {
+    Bind(BindStatement),
     Diag(DiagStatement),
     Symbol(SymbolStatement),
     Artifact(ArtifactStatement),
@@ -51,6 +52,7 @@ impl Statement {
             Statement::Artifact(s) => s.write(writer)?,
             Statement::Symbol(s) => s.write(writer)?,
             Statement::Diag(s) => s.write(writer)?,
+            Statement::Bind(s) => s.write(writer)?,
         }
         Ok(())
     }
@@ -69,6 +71,9 @@ impl Statement {
                 s.apply(query)?;
             },
             Statement::Diag(s) => s.apply(query)?,
+            Statement::Bind(_) => {
+                // BindStatements are only used indirectly
+            },
         }
         Ok(())
     }
@@ -164,7 +169,7 @@ impl DiagStatement {
                     }
                 },
                 DiagElement::SymbolVar(v, depth) => {
-                    if let Some(symbol) = query.get_symbol_var(&v.var)? {
+                    if let Some(symbol) = query.get_symbol_for_var(&v.var)? {
                         write!(out, "{} = ", v).unwrap();
                         symbol.contents_buf(query.mb, &mut out, *depth)?;
                     } else {
@@ -194,6 +199,42 @@ impl DiagElement {
         Ok(())
     }
 }
+
+pub struct BindStatement {
+    position:  Position,
+    pub sv:    SymbolVar,
+    pub gsymz: GSymbolizable,
+}
+
+impl BindStatement {
+    pub fn parse(pair: Pair<Rule>, position: Position) -> Result<Self, MBQLError> {
+        assert_eq!(pair.as_rule(), Rule::bindstatement);
+
+        let mut inner = pair.into_inner();
+        let sv = SymbolVar::parse(inner.next().unwrap(), position.clone())?;
+
+        let next = inner.next().unwrap();
+
+        let gsymz = GSymbolizable::parse(next, position)?;
+
+        Ok(BindStatement { position, sv, gsymz })
+    }
+
+    pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
+        self.sv.write(writer)?;
+        writer.write(b" = ")?;
+        self.gsymz.write(writer, true, false)?;
+        writer.write(b"\n")?;
+        Ok(())
+    }
+
+    // You can't apply a BindStatement - Not directly anyway
+
+    pub fn position(&self) -> &Position {
+        &self.position
+    }
+}
+
 #[derive(Debug)]
 pub struct ArtifactVar {
     pub var:      String,
@@ -242,7 +283,7 @@ impl SymbolVar {
     }
 
     pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
-        if let Some(symbol) = query.get_symbol_var(&self.var)? {
+        if let Some(symbol) = query.get_symbol_for_var(&self.var)? {
             Ok(symbol)
         } else {
             return Err(MBQLError { position: self.position.clone(),
@@ -292,8 +333,9 @@ impl ArtifactStatement {
 
 #[derive(Debug)]
 pub struct SymbolStatement {
-    pub var:    Option<SymbolVar>,
-    pub symbol: Symbolizable,
+    pub var:      Option<SymbolVar>,
+    pub position: Position,
+    pub symz:     Symbolizable,
 }
 
 impl SymbolStatement {
@@ -318,7 +360,9 @@ impl SymbolStatement {
             _ => unreachable!(),
         };
 
-        Ok(SymbolStatement { var, symbol })
+        Ok(SymbolStatement { var,
+                             symz: symbol,
+                             position })
     }
 
     pub fn write<T: std::io::Write>(&self, writer: &mut T) -> Result<(), std::io::Error> {
@@ -326,19 +370,23 @@ impl SymbolStatement {
             var.write(writer)?;
             writer.write(b" = ")?;
         }
-        self.symbol.write(writer, true, false)?;
+        self.symz.write(writer, true, false)?;
         writer.write(b"\n")?;
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
-        let symbol = self.symbol.apply(query)?;
+    pub fn apply(&self, query: &Query) -> Result<(), MBQLError> {
+        let symbol = self.symz.apply(query)?;
 
         if let Some(var) = &self.var {
             query.store_symbol_for_var(var, symbol.clone())?;
         }
 
-        Ok(symbol)
+        Ok(())
+    }
+
+    pub fn position(&self) -> &Position {
+        &self.position
     }
 }
 
