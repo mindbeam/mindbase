@@ -1,4 +1,4 @@
-statement = _{ SOI ~ (artifactstatement | symbolstatement | diagstatement)? ~ ( EOI | "#" ) }
+statement = _{ SOI ~ (artifactstatement | symbolstatement | bindstatement | diagstatement)? ~ ( EOI | "#" ) }
 
 symbolvar = ${ "$" ~ literal }
 artifactvar = ${ "@" ~ literal }
@@ -7,6 +7,9 @@ artifactvar = ${ "@" ~ literal }
 // $foo : Symbolize(..)
 // Symbolize(..)
 symbolstatement = { (symbolvar ~ "=")? ~ ( allege | ground | symbolize ) }
+
+bindstatement = { (symbolvar ~ "=")? ~ ( bind ) }
+
 
 // But there's not much point to doing so for an artifact, so the artifactvar is not optional
 // @foo : Url("http://...")
@@ -17,6 +20,7 @@ diagelement = { (symbolvar |artifactvar) ~ ( "~" ~ depth)? }
 depth = @{ number }
 
 // Symbols
+bind = { ( "Bind" ~ "(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | ("{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
 ground = { ( "Ground" ~ bang? ~ "(" ~ (ground_symbol_pair | ground_symbolizable) ~ ")") | (bang? ~ "{" ~ (ground_symbol_pair|ground_symbolizable) ~ "}") }
 symbolize = { "Symbolize(" ~ symbolizable ~ ")" }
 allege =  { "Allege(" ~ symbol_pair ~ ")" }
