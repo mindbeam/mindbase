@@ -1,4 +1,4 @@
-use mindbase::*;
+use mindbase::prelude::*;
 
 #[test]
 fn alice() -> Result<(), MBError> {
@@ -260,7 +260,8 @@ fn fridays() -> Result<(), MBError> {
     mb.alledge(Analogy::declarative(f2, dow))?;
     mb.alledge(Analogy::declarative(f3, per))?;
 
-    let _friday_person = mb.get_ground_symbol(vec!["Friday", "Names for a person"])?;
+    unimplemented!();
+    // let _friday_person = mb.get_ground_symbol(vec!["Friday", "Names for a person"])?;
     // let names = mb.get_ground_symbols_for_artifact(FlatText::new("Names for a person"))?
     //               .expect("Option");
 

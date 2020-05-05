@@ -36,8 +36,9 @@ fn dialog_1() -> Result<(), std::io::Error> {
     // The goal is to explain, categorize, and correlate each of these things from their own perspectives
 
     // They haven't yet bumped into each other. What are they doing?
-    let _a_things_imdoing = mb.get_ground_symbol(vec!["Things I'm doing", "Alice"])?;
-    let _b_things_imdoing = mb.get_ground_symbol(vec!["Things I'm doing", "Bob"])?;
+    unimplemented!();
+    // let _a_things_imdoing = mb.get_ground_symbol(vec!["Things I'm doing", "Alice"])?;
+    // let _b_things_imdoing = mb.get_ground_symbol(vec!["Things I'm doing", "Bob"])?;
 
     // Alice is going to describe an event, and so we need a unique symbol for that. (each Allegation is a universally unique
     // Symbol) We are alledging/creating a symbol for this event against text artifact, but it could easily be an
