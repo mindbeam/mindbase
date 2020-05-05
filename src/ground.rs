@@ -72,6 +72,7 @@ use crate::{
 };
 use std::convert::TryInto;
 
+use ast::Symbolizable;
 use std::rc::Rc;
 
 pub struct GSContext<'a> {
@@ -143,17 +144,7 @@ impl<'a> GSContext<'a> {
         let symbol = match &**s {
             ast::GSymbolizable::Artifact(a) => GSNode::artifact(self, vivify, query, a)?,
             ast::GSymbolizable::GroundPair(a) => GSNode::pair(self, vivify, query, a)?,
-            ast::GSymbolizable::SymbolVar(sv) => {
-                unimplemented!()
-                // query.bind_symbol_var(&sv.var, s)?;
-
-                // if let Some(symbol) = query.get_symbol_var(&sv.var)? {
-                // GSNode::Given(symbol)
-                // } else {
-                //     return Err(MBQLError { position: sv.position.clone(),
-                //                            kind:     MBQLErrorKind::SymbolVarNotFound { var: sv.var.clone() }, }.into());
-                // }
-            },
+            ast::GSymbolizable::SymbolVar(sv) => GSNode::bound(self, vivify, query, sv, s),
             ast::GSymbolizable::Ground(_) => {
                 // Shouldn't be able to call this directly with a Ground statement
                 unreachable!()
@@ -339,6 +330,8 @@ enum GSNode {
         right:  Box<GSNode>,
     },
 
+    Bound(ast::SymbolVar),
+
     // Someone gave us this symbol, and said "use it", so there's nothing to be done
     Given(Symbol),
 
@@ -375,17 +368,21 @@ impl GSNode {
         // We want to try reeally hard to find existing symbols
         // And only create a new one if we positively must
 
+        // Depth first recursion to find possible leaf symbols
         let left = ctx.symbolize_recurse(&gpair.left, vivify, query)?;
         let right = ctx.symbolize_recurse(&gpair.right, vivify, query)?;
 
-        // find symbols (Analogies) which refer to both of the above
+        // find symbols (Analogies) which refer to BOTH of the above
         let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(left.symbol(), right.symbol())? {
             println!("FOUND MATCH {:?}", symbol);
             GSNode::Pair { symbol,
                            left: Box::new(left),
                            right: Box::new(right) }
         } else if vivify {
+            // Didn't find any such analogies, so none of the symbols we found were satisfactory.
+            // Lets create a tree of novel symbols which we will now declare as having the ground meaning intended
             let symbol = ctx.raw_symbolize(Analogy::declarative(left.novel_symbol(ctx)?, right.novel_symbol(ctx)?))?;
+
             // Doesn't matter how we got here
             println!("VIVIFY {}", symbol);
 
@@ -396,6 +393,13 @@ impl GSNode {
         };
 
         Ok(node)
+    }
+
+    pub fn bound(ctx: &mut GSContext, vivify: bool, query: &Query, sv: ast::SymbolVar, gsym: &Rc<ast::GSymbolizable>)
+                 -> Result<Self, MBError> {
+        query.bind_symbol_var(&sv.var, gsym)?;
+
+        Ok(GSNode::Bound(sv))
     }
 
     pub fn take_symbol(self) -> Symbol {
