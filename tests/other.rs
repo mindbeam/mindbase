@@ -131,7 +131,7 @@ fn apple() -> Result<(), MBError> {
     let query = mb.query_str(r#"$a = Ground("Apple")"#)?;
     query.apply()?;
 
-    let apple_ground_symbol = query.get_symbol_var("a")?.unwrap();
+    let apple_ground_symbol = query.get_symbol_for_var("a")?.unwrap();
 
     // It's... all of them. Why? Because meaning is contextual/intersectional.
     // We don't have enough information to narrow it down yet and we should not assume what they meant
@@ -149,7 +149,7 @@ fn apple() -> Result<(), MBError> {
 
     let query = mb.query_str(r#"$a = Ground("Corporation" : "Apple")"#)?;
     query.apply()?;
-    let apple = query.get_symbol_var("a")?.unwrap();
+    let apple = query.get_symbol_for_var("a")?.unwrap();
     assert_eq!(apple.count(), 1);
 
     Ok(())

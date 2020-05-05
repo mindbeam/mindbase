@@ -94,7 +94,7 @@ fn apple() -> Result<(), MBError> {
     )?;
     query.apply()?;
 
-    let apple = query.get_symbol_var("apple")?.unwrap();
+    let apple = query.get_symbol_for_var("apple")?.unwrap();
 
     // I have three apples
     //
