@@ -87,3 +87,8 @@ Each Allegation has a Payload.
 TODO: Explain Prof Barry Smith's qualms with Concepts, and discuss why we are/aren't subject to them due to the Artifact / Allegation dichotomy.
 
 As in the case of Tree / Apple, an "Apple" is not a "Tree", but rather a "Fruit" which is related to the "Tree". The key to making this work is that "Tree" is not one thing. Sure, there exists exactly one Artifact for the text string "Tree", but there are many many many possible Allegations which refer to that artifact in different capacities.  
+
+
+## Graph representation
+
+Essentially what we're dealing with here is a meta-graph in which the nodes and edges (Symbols) within the meta-graph are each comprised of a set of nodes and edges (Atoms) within the lower level graph. Those Symbols are constructed as a set of constitutent allegations (Atoms) documenting ideas of similarity/relatedness by Agents within the system. This allows the expression of relationships between imprecise logical entities (or rather precise-but-nonconverged logical entities) which describe entities within the real world. It is strictly intentional that this *not* be achieved by deferring to canonical or "objective" representations of symbols within the real world. This is because the real world fundamentally lacks such objectivity, and any such logical representation would thus create a fundamental impedence mismatch with the system which is curable only through out-of-band charismatic initiatives, and significant effort (IE convincing the whole world that your ontology is the "right" one).  
