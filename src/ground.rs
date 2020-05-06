@@ -52,7 +52,10 @@
 //   * we have to create new symbols which are just for this
 
 use crate::{
-    allegation::Body,
+    allegation::{
+        Allegation,
+        Body,
+    },
     mbql::{
         ast,
         error::{
@@ -200,49 +203,255 @@ impl<'a> GSContext<'a> {
         // Brute force for now. This whole routine is insanely inefficient
         // TODO 2 - update this to be a sweet indexed query!
 
+        // Three buckets
+        // 1. Matching Analogies
+        // 2. Left matches
+        // 3. Right matches
+
+        // The stupid way that's slightly less horrible than what we're doing now:
+        // * Pre-Index Analogies by all AllegationIds directly referenced (Inverted index of AllegationID -> Vec<AnalogyId>)
+        // * Perform a lexicographic merge of left and right Symbols into compare_list
+        // * iterate over compare_list and query once per each atom (ugh) *
+
+        // The Reeally stupid way:
+        // * lexmerge left and right inputs
+        // * create three empty output lists (target, left, right)
+        // * iterate over all Analogies
+        //   * lexmerge analogy left+right
+        //   * intersect the two lists
+        //   * output must have at least two entries
+        //   * intersect lexmerged analogy again with left (intersection)
+
+        // 1 1
+        // 1 2
+        // 1 9
+        // 2 3
+        // 2 4
+
+        // [(1,2), (2,3), (3,3)]
+
         let left = left.symbol();
         let right = right.symbol();
 
-        let mut atoms: Vec<Atom> = Vec::new();
+        let comp_merged: Vec<SidedMergeItem<Atom>> = SidedMerge::new(left.atoms.iter(), right.atoms.iter()).map(|a| a.to_owned())
+                                                                                                           .collect();
 
-        for allegation in self.mb.allegation_iter() {
-            let (allegation_id, allegation) = allegation?;
+        let output_left: Vec<Atom> = Vec::new();
+        let output_right: Vec<Atom> = Vec::new();
+        let output_analogy: Vec<Atom> = Vec::new();
 
-            match allegation.body {
-                Body::Analogy(analogy) => {
-                    //
-                    if self.gs_agents.contains(&allegation.agent_id) {
-                        // TODO 2 - This is crazy inefficient
+        // TODO 2 - This is crazy inefficient
+        let iter = query.mb.allegation_iter().filter_map(|allegation| {
+                                                 match allegation {
+                                                     Ok((_,
+                                                         Allegation { body: Body::Analogy(analogy),
+                                                                      agent_id,
+                                                                      .. }))
+                                                         if self.gs_agents.contains(&agent_id) =>
+                                                     {
+                                                         Some(Ok(analogy))
+                                                     },
+                                                     Ok(_) => None,
+                                                     Err(e) => Some(Err(e)),
+                                                 }
+                                             });
 
-                        // BUG - So the issue is that this logic isn't considering Atom directionality when intersecting.
-                        if intersect_symbols(&left, &analogy.left) {
-                            println!("L=AL")
-                        }
-                        if intersect_symbols(&right, &analogy.right) {
-                            println!("R=AR")
-                        }
-                        if intersect_symbols(&left, &analogy.right) {
-                            println!("L=AR")
-                        }
-                        if intersect_symbols(&right, &analogy.left) {
-                            println!("R=AL")
-                        }
+        for analogy in iter {
+            let analogy = analogy?;
 
-                        // Hah - this is where we need to call query.store_symbol_for_var
-                        // Because the symbol is getting narrowed, not novel'ed
-                        if intersect_symbols(&left, &analogy.left) && intersect_symbols(&right, &analogy.right) {
-                            atoms.push(Atom::up(allegation_id))
-                        } else if intersect_symbols(&left, &analogy.right) && intersect_symbols(&right, &analogy.left) {
-                            atoms.push(Atom::down(allegation_id))
-                        }
-                    }
-                },
-                _ => {},
+            // TODO 1 - consider storing analogies this way instead of Symbol, Symbol.
+            // EG: vec![ Left(Atom), Right(Atom), Right(Atom) ]
+            // This *Might* also help with Catagorical analogies:
+            // or vec![Categorical(Atom), Categorical(Atom)] meaning that both atoms are in the same category - ((should mixing be
+            // allowed??))
+            let analogy_merged = SidedMerge::new(analogy.left.atoms.iter(), analogy.right.atoms.iter());
+
+            let si = SortedIntersect::new(analogy_merged, comp_merged.iter());
+
+            // This is one Analogy we're dealing with here
+
+            for item in si {
+                // Left off here. This is rough, but it's close in theory
+                // if I get a hit on left/left, what sort of filtering do I have to do for correctness?
+
+                // can any left/left hit I get go straight into the left-handed bucket?
+                // can any right/right hit I get got straight into the right-handed bucket?
+                // what do I do with left/right and right/left hits?
+
+                match (item.left.side, item.right.side) {
+                    // left side of the IntersectItem is itself a SidedMerge item
+                    // This works IF we're not iterating over the mirrored copies, I think
+                    (Left, Left) => ll_hit = true,
+                    (Right, Right) => rr_hit = true,
+                    (Left, Right) => lr_hit = true,
+                    (Right, Left) => rl_hit = true,
+                }
             }
+
+            if (ll_hit && rr_hit) || (lr_hit && rl_hit) {
+                output_analogy.push(analogy.id)
+            }
+
+            // I need:
+            // left1 ⋂ left2 && right1 ⋂ right2
+            // OR
+            // left1 ⋂ right2 && right1 ⋂ left2
+
+            // for analogy_item in analogy_merged {
+
+            // match ((_,_)) {
+            //     (ItemSide::Left,ItemSide::Left) => {
+            //         //
+            //     },
+            //     ItemSide::Right => {
+            //         //
+            //     },
+            // }
+            // }
+            // if intersect_symbols(&left, &analogy.left) && intersect_symbols(&right, &analogy.right) {
+            //     atoms.push(Atom::up(allegation_id))
+            // } else if intersect_symbols(&left, &analogy.right) && intersect_symbols(&right, &analogy.left) {
+            //     atoms.push(Atom::down(allegation_id))
+            // }
         }
 
+        // Hah - this is where we need to call query.store_symbol_for_var
+        // Because the symbol is getting narrowed, not novel'ed
+
         // Create a Symbol which contains the composite symbol atoms of all Analogies made by ground symbol agents
-        return Ok(Symbol::new_option(atoms));
+        return Ok(Symbol::new_option(output_analogy));
+    }
+}
+
+use std::{
+    cmp::Ordering,
+    iter::Peekable,
+};
+
+struct SidedMerge<L, R>
+    where L: Iterator<Item = R::Item>,
+          R: Iterator
+{
+    left:  Peekable<L>,
+    right: Peekable<R>,
+}
+
+impl<L, R> SidedMerge<L, R>
+    where L: Iterator<Item = R::Item>,
+          R: Iterator
+{
+    // TODO 2 - Consider creating a marker trait for attestation that the iterator is pre-sorted? (Ascending)
+
+    fn new(left: L, right: R) -> Self {
+        SidedMerge { left:  left.peekable(),
+                     right: right.peekable(), }
+    }
+}
+
+pub struct SidedMergeItem<T> {
+    pub item: T,
+    side:     ItemSide,
+}
+enum ItemSide {
+    Left,
+    Right,
+}
+
+impl<T: Clone> SidedMergeItem<&T> {
+    pub fn to_owned(self) -> SidedMergeItem<T> {
+        SidedMergeItem { item: self.item.clone(),
+                         side: self.side, }
+    }
+}
+
+impl<L, R> Iterator for SidedMerge<L, R>
+    where L: Iterator<Item = R::Item>,
+          R: Iterator,
+          L::Item: Ord
+{
+    type Item = SidedMergeItem<L::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let which = match (self.left.peek(), self.right.peek()) {
+            (Some(l), Some(r)) => Some(l.cmp(r)),
+            (Some(_), None) => Some(Ordering::Less),
+            (None, Some(_)) => Some(Ordering::Greater),
+            (None, None) => None,
+        };
+
+        match which {
+            Some(Ordering::Less) => {
+                Some(SidedMergeItem { item: self.left.next().unwrap(),
+                                      side: ItemSide::Left, })
+            },
+            Some(Ordering::Equal) => {
+                Some(SidedMergeItem { item: self.left.next().unwrap(),
+                                      side: ItemSide::Left, })
+            },
+            Some(Ordering::Greater) => {
+                Some(SidedMergeItem { item: self.right.next().unwrap(),
+                                      side: ItemSide::Right, })
+            },
+            None => None,
+        }
+    }
+}
+
+struct SortedIntersect<L, R>
+    where L: Iterator<Item = R::Item>,
+          R: Iterator
+{
+    left:  Peekable<L>,
+    right: Peekable<R>,
+}
+
+impl<L, R> SortedIntersect<L, R>
+    where L: Iterator<Item = R::Item>,
+          R: Iterator
+{
+    // TODO 2 - Consider creating a marker trait for attestation that the iterator is pre-sorted (Ascending)
+    fn new(left: L, right: R) -> Self {
+        SortedIntersect { left:  left.peekable(),
+                          right: right.peekable(), }
+    }
+}
+
+impl<L, R> Iterator for SortedIntersect<L, R>
+    where L: Iterator<Item = R::Item>,
+          R: Iterator,
+          L::Item: Ord
+{
+    type Item = L::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut left = match self.left.next() {
+            None => return None,
+            Some(i) => i,
+        };
+
+        let mut right = match self.right.next() {
+            None => return None,
+            Some(i) => i,
+        };
+
+        use std::cmp::Ordering::*;
+        loop {
+            match left.cmp(&right) {
+                Less => {
+                    left = match self.left.next() {
+                        Some(x) => x,
+                        None => return None,
+                    };
+                },
+                Greater => {
+                    right = match self.right.next() {
+                        Some(x) => x,
+                        None => return None,
+                    };
+                },
+                Equal => return Some(left),
+            }
+        }
     }
 }
 
@@ -401,12 +610,20 @@ impl GSNode {
         let right = ctx.symbolize_recurse(&gpair.right, vivify, query)?;
 
         // find symbols (Analogies) which refer to BOTH of the above
-        let node = if let Some(symbol) = ctx.find_matching_analogy_symbol(&left, &right, query)? {
+
+        // I'm searching for Analogies which match both the left and the right
+        // AND I'm also searching for that set of left/right atoms which match said analogies, which I need to call
+        // store_symbol_for_var on if they're GSNode::Bound
+        let opt_symbol = ctx.find_matching_analogy_symbol(&left, &right, query)?;
+
+        if let Some(symbol) = opt_symbol {
             println!("FOUND MATCH {}", symbol);
-            GSNode::Pair { symbol,
-                           left: Box::new(left),
-                           right: Box::new(right) }
-        } else if vivify {
+            return Ok(GSNode::Pair { symbol,
+                                     left: Box::new(left),
+                                     right: Box::new(right) });
+        }
+
+        if vivify {
             // Didn't find any such analogies, so none of the symbols we found were satisfactory.
             // Lets create a tree of novel symbols which we will now declare as having the ground meaning intended
             let symbol =
@@ -415,13 +632,11 @@ impl GSNode {
             // Doesn't matter how we got here
             println!("VIVIFY {}", symbol);
 
-            GSNode::Created(symbol)
+            Ok(GSNode::Created(symbol))
         } else {
-            return Err(MBQLError { position: gpair.position().clone(),
-                                   kind:     MBQLErrorKind::GSymNotFound, });
-        };
-
-        Ok(node)
+            Err(MBQLError { position: gpair.position().clone(),
+                            kind:     MBQLErrorKind::GSymNotFound, })
+        }
     }
 
     pub fn symbol(&self) -> &Symbol {
