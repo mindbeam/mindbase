@@ -7,7 +7,7 @@ use super::{
     Position,
 };
 use crate::{
-    ground::GSContext,
+    search::SearchContext,
     ArtifactId,
     MBError,
     MindBase,
@@ -48,11 +48,11 @@ use std::rc::Rc;
 // }
 
 pub struct Query<'a> {
-    pub statements:   Vec<ast::Statement>,
-    artifact_var_map: Mutex<BTreeMap<String, ArtifactVarMapItem>>,
-    symbol_var_map:   Mutex<BTreeMap<String, SymbolVarMapItem>>,
-    pub gscontext:    Mutex<GSContext<'a>>,
-    pub mb:           &'a MindBase,
+    pub statements:     Vec<ast::Statement>,
+    artifact_var_map:   Mutex<BTreeMap<String, ArtifactVarMapItem>>,
+    symbol_var_map:     Mutex<BTreeMap<String, SymbolVarMapItem>>,
+    pub search_context: Mutex<SearchContext<'a>>,
+    pub mb:             &'a MindBase,
 }
 
 pub enum BindResult {
@@ -65,7 +65,7 @@ impl<'a> Query<'a> {
         let mut query = Query { statements: Vec::new(),
                                 artifact_var_map: Mutex::new(BTreeMap::new()),
                                 symbol_var_map: Mutex::new(BTreeMap::new()),
-                                gscontext: Mutex::new(GSContext::new(mb)),
+                                search_context: Mutex::new(SearchContext::new(mb)),
                                 mb };
         super::parse::parse(reader, &mut query)?;
 
@@ -145,7 +145,7 @@ impl<'a> Query<'a> {
 
     // pub fn get_symbolizable_for_var{}
 
-    pub fn store_symbol_for_var(&self, var: &ast::SymbolVar, symbol: Symbol) -> Result<(), MBQLError> {
+    pub fn stash_symbol_for_var(&self, var: &ast::SymbolVar, symbol: Symbol) -> Result<(), MBQLError> {
         match self.symbol_var_map.lock().unwrap().get_mut(&var.var) {
             None => {
                 return Err(MBQLError { position: var.position.clone(),

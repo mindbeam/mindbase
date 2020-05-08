@@ -8,7 +8,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use std::fmt;
+use std::{
+    convert::TryInto,
+    fmt,
+};
 
 // QUESTION: What is an "uncertainty budget" and how can it help us?
 // TODO 2 - create a Context object that contains a lossy lookup of Symbols on a rolling basis
@@ -48,6 +51,7 @@ pub struct Atom {
     spin: Spin,
 }
 
+// TODO 1 - rename Atom->DirectedAtom, and Allegation->Atom
 impl Atom {
     pub fn id(&self) -> &AllegationId {
         &self.id
@@ -113,6 +117,23 @@ impl Symbol {
         } else {
             Some(Symbol { atoms,
                           spread_factor: 0.0 })
+        }
+    }
+
+    pub fn new_from_vec(vec: Vec<u8>) -> Option<Self> {
+        // TODO 1 - handle Atom vs DirectedAtom. wrongly assuming that these are Spin::Up
+        let atoms: Vec<Atom> = vec.chunks_exact(16)
+                                  .map(|c| Atom::up(AllegationId::from_bytes(c.try_into().unwrap())))
+                                  .collect();
+        Self::new_option(atoms)
+    }
+
+    pub fn as_vec(&self) -> Option<Vec<u8>> {
+        if self.atoms.len() == 0 {
+            None
+        } else {
+            // Some(self.atoms.iter().map(|a| a.id()).concat())
+            unimplemented!()
         }
     }
 

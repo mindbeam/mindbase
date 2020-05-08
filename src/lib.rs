@@ -4,7 +4,7 @@ pub mod analogy;
 pub mod artifact;
 pub mod error;
 mod genesis;
-mod ground;
+pub mod search;
 pub mod symbol;
 
 pub mod mbql;
@@ -255,6 +255,12 @@ impl MindBase {
         where T: crate::allegation::Alledgable
     {
         Ok(thing.alledge(self, &self.default_agent)?.subjective())
+    }
+
+    pub(crate) fn symbolize_atom<T>(&self, thing: T) -> Result<Allegation, MBError>
+        where T: crate::allegation::Alledgable
+    {
+        Ok(thing.alledge(self, &self.default_agent)?)
     }
 
     pub fn alledge<T>(&self, thing: T) -> Result<Allegation, MBError>

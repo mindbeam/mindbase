@@ -56,6 +56,10 @@ impl AllegationId {
         &self.0
     }
 
+    pub fn as_b16(&self) -> &[u8; 16] {
+        &self.0
+    }
+
     pub fn from_bytes(bytes: [u8; 16]) -> Self {
         Self(bytes)
     }

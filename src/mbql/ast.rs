@@ -10,6 +10,7 @@ use crate::{
         Position,
         Query,
     },
+    search::SearchNode,
     AgentId,
     Analogy,
     ArtifactId,
@@ -388,7 +389,7 @@ impl SymbolStatement {
         let symbol = self.symz.apply(query)?;
 
         if let Some(var) = &self.var {
-            query.store_symbol_for_var(var, symbol.clone())?;
+            query.stash_symbol_for_var(var, symbol.clone())?;
         }
 
         Ok(())
@@ -449,11 +450,14 @@ impl Ground {
     }
 
     pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
-        let symbol = query.gscontext
-                          .lock()
-                          .unwrap()
-                          .symbolize(&self.symbolizable, self.vivify, query)?;
-        Ok(symbol)
+        let search_node = SearchNode::search(query, &self.symbolizable)?;
+
+        if self.vivify {
+            unimplemented!()
+            // search_node.assert()
+        }
+
+        Ok(search_node.symbol())
     }
 }
 

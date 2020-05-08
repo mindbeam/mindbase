@@ -16,6 +16,7 @@ pub enum MBError {
     SymbolVarNotFound,
     SymbolVarAlreadyBound,
     NullSymbol,
+    Other,
 }
 
 impl std::fmt::Display for MBError {
