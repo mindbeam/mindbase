@@ -1,15 +1,17 @@
-Symbolize("Hot")
-Symbolize("Hot")
-Symbolize("Hot")
-$calliente = Bind("Hot")
-$picante   = Bind("Hot")
+$foo = Ground("Foo")
+Diag($foo)
+#Symbolize("Hot")
+#Symbolize("Hot")
+#Symbolize("Hot")
+#$calliente = Bind("Hot")
+#$picante   = Bind("Hot")
 
 # Reverse it for fun
-Ground("Hot":"Cold")
-Ground("Mild":"Hot")
+#Ground("Hot":"Cold")
+#Ground("Mild":"Hot")
 
-$temps = Ground!("Cold" : $calliente)
-$spice = Ground!("Mild" : $picante)
+#$temps = Ground!("Cold" : $calliente)
+#$spice = Ground!("Mild" : $picante)
 
-Diag($temps, $spice)
-Diag($calliente, $picante)
+#Diag($temps, $spice)
+#Diag($calliente, $picante)

@@ -450,13 +450,13 @@ impl Ground {
     }
 
     pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
-        let search_node = SearchNode::search(query, &self.symbolizable)?;
+        let mut search_node = SearchNode::search(query, &self.symbolizable)?;
 
         match search_node.symbol() {
             None => {
                 if self.vivify {
-                    unimplemented!()
-                // search_node.assert()
+                    search_node.vivify_symbols(query)?;
+                    Ok(search_node.symbol().unwrap())
                 } else {
                     Err(MBQLError { position: self.position.clone(),
                                     kind:     MBQLErrorKind::GSymNotFound, })

@@ -216,7 +216,6 @@ impl<'a> GSContext<'a> {
             // This is one Analogy we're dealing with here
 
             for item in si {
-                // Left off here. This is rough, but it's close in theory
                 // if I get a hit on left/left, what sort of filtering do I have to do for correctness?
 
                 // can any left/left hit I get go straight into the left-handed bucket?

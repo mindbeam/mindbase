@@ -1,3 +1,5 @@
+TODO 1 - Remove this
+
 # This file contains example (pseudo) data which corresponts to a 
 # rough first pass at a sample schema. There are likely numberous
 # things wrong with this
@@ -73,7 +75,6 @@ Data(D1, type: KSP([U2]), data: "the dog jumped", relations: [
     Data(D3, type: KSP([U3]), data: "jumped" )
 ])
 
-... WIP: Left off here
 
 Allegation{A1: by G1, [
     {KSpacePointer([T2]), 1.0, memberof KSpacePointer([T1]) },

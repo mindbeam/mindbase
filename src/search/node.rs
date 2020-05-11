@@ -153,21 +153,19 @@ impl SearchNode {
         }
     }
 
-    pub fn vivify_symbols(&mut self, ctx: &SearchContext, query: &Query) -> Result<(), MBError> {
-        let symbol = match self {
+    pub fn vivify_symbols(&mut self, query: &Query) -> Result<(), MBError> {
+        match self {
             SearchNode::Artifact { artifact_id, vec } => {
-                let atom = ctx.mb.symbolize_atom(&*artifact_id)?;
+                let atom = query.mb.symbolize_atom(&*artifact_id)?;
                 overwrite_vec(vec, atom.id());
             },
-            SearchNode::Bound { node, sv } => {
-                node.vivify_symbols(ctx, query)?;
-            },
+            SearchNode::Bound { node, sv } => unimplemented!(),
             SearchNode::Pair { left, right, vec } => {
-                left.vivify_symbols(ctx, query)?;
-                right.vivify_symbols(ctx, query)?;
+                left.vivify_symbols(query)?;
+                right.vivify_symbols(query)?;
 
-                let atom = ctx.mb
-                              .symbolize_atom(Analogy::declarative(left.symbol().unwrap(), right.symbol().unwrap()))?;
+                let atom = query.mb
+                                .symbolize_atom(Analogy::declarative(left.symbol().unwrap(), right.symbol().unwrap()))?;
 
                 overwrite_vec(vec, atom.id());
             },
@@ -203,7 +201,7 @@ impl SearchNode {
             (None, Some(b)) => Some(b.clone()),
             (Some(a), Some(b)) => {
                 let mut merged = Vec::with_capacity(a.len() + b.len());
-                merged[0..a.len()].copy_from_slice(a);
+                merged.extend(a.iter().copied());
 
                 use inverted_index_util::entity_list::insert_entity_mut;
                 use typenum::consts::U16;
