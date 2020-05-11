@@ -12,7 +12,10 @@ use crate::{
     MindBase,
 };
 
-use ast::GSymbolizable;
+use ast::{
+    GPair,
+    GSymbolizable,
+};
 
 /// Context object for low level search operations
 pub struct SearchContext<'a> {
@@ -52,7 +55,7 @@ impl<'a> SearchContext<'a> {
             let left = &analogy.left;
             let right = &analogy.right;
 
-            match search_item {
+            match &search_item {
                 GSymbolizable::Artifact(_) => unimplemented!(),
                 GSymbolizable::SymbolVar(_) => unimplemented!(),
                 GSymbolizable::Ground(_) => unimplemented!(),

@@ -452,12 +452,18 @@ impl Ground {
     pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
         let search_node = SearchNode::search(query, &self.symbolizable)?;
 
-        if self.vivify {
-            unimplemented!()
-            // search_node.assert()
+        match search_node.symbol() {
+            None => {
+                if self.vivify {
+                    unimplemented!()
+                // search_node.assert()
+                } else {
+                    Err(MBQLError { position: self.position.clone(),
+                                    kind:     MBQLErrorKind::GSymNotFound, })
+                }
+            },
+            Some(symbol) => Ok(symbol),
         }
-
-        Ok(search_node.symbol())
     }
 }
 

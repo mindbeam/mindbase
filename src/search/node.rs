@@ -62,14 +62,16 @@ impl SearchNode {
         let artifact_id = artifact.apply(query)?;
 
         let vec = {
-            let ctx = query.search_context.lock().unwrap();
-            ctx.artifact_vec(&artifact_id)?
+            let mut ctx = query.search_context.lock().unwrap();
+            ctx.artifact_atom_vec(&artifact_id)?
         };
 
         Ok(SearchNode::Artifact { artifact_id,
                                   vec: Some(vec) })
     }
 
+    /// Search for symbols for a given symbol variable. Said variable is either a given, or a Bound variable, depending on how
+    /// it's defined in the query
     pub fn symbolvar_search(query: &Query, sv: &Rc<ast::SymbolVar>) -> Result<Self, MBQLError> {
         match query.bind_symbolvar(&sv.var) {
             Err(e) => {
@@ -82,7 +84,7 @@ impl SearchNode {
                 Ok(SearchNode::Bound { node: Box::new(node),
                                        sv:   sv.clone(), })
             },
-            Ok(BindResult::Symbol(symbol)) => Ok(SearchNode::Given { vec: symbol }),
+            Ok(BindResult::Symbol(symbol)) => Ok(SearchNode::Given { vec: symbol.as_vec() }),
         }
     }
 
@@ -142,7 +144,10 @@ impl SearchNode {
     pub fn symbol(&self) -> Option<Symbol> {
         match self {
             SearchNode::Artifact { vec, .. } | SearchNode::Pair { vec, .. } | SearchNode::Given { vec, .. } => {
-                vec.and_then(|v| Symbol::new_from_vec(v))
+                match vec {
+                    None => None,
+                    Some(v) => Symbol::new_from_vec(v.clone()),
+                }
             },
             SearchNode::Bound { node, .. } => node.symbol(),
         }
@@ -174,6 +179,13 @@ impl SearchNode {
         Ok(())
     }
 
+    fn vec(&self) -> Option<&Vec<u8>> {
+        match self {
+            SearchNode::Artifact { vec, .. } | SearchNode::Pair { vec, .. } | SearchNode::Given { vec, .. } => vec.as_ref(),
+            SearchNode::Bound { node, .. } => node.vec(),
+        }
+    }
+
     fn vec_mut(&mut self) -> &mut Option<Vec<u8>> {
         match self {
             SearchNode::Artifact { vec, .. } | SearchNode::Pair { vec, .. } | SearchNode::Given { vec, .. } => vec,
@@ -182,15 +194,15 @@ impl SearchNode {
     }
 
     fn union_vec(&self, other: &Self) -> Option<Vec<u8>> {
-        let a = self.vec_mut();
-        let b = other.vec_mut();
+        let a = self.vec();
+        let b = other.vec();
 
         match (a, b) {
             (None, None) => None,
             (Some(a), None) => Some(a.clone()),
             (None, Some(b)) => Some(b.clone()),
             (Some(a), Some(b)) => {
-                let merged = Vec::with_capacity(a.len() + b.len());
+                let mut merged = Vec::with_capacity(a.len() + b.len());
                 merged[0..a.len()].copy_from_slice(a);
 
                 use inverted_index_util::entity_list::insert_entity_mut;
@@ -208,7 +220,7 @@ impl SearchNode {
 fn overwrite_vec(vec: &mut Option<Vec<u8>>, atom: &AllegationId) {
     match vec {
         None => {
-            let v = Vec::new();
+            let mut v = Vec::new();
             v.extend(atom.as_ref());
             *vec = Some(v);
         },
