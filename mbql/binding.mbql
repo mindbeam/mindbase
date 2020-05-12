@@ -1,10 +1,12 @@
-$foo = Ground("Foo")
+$calliente = Bind("Hot")
+$picante   = Bind("Hot")
+$foo = Ground($calliente)
 Diag($foo)
+Diag($calliente)
 #Symbolize("Hot")
 #Symbolize("Hot")
 #Symbolize("Hot")
-#$calliente = Bind("Hot")
-#$picante   = Bind("Hot")
+
 
 # Reverse it for fun
 #Ground("Hot":"Cold")

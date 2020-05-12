@@ -110,7 +110,7 @@ impl<'a> Query<'a> {
     }
 
     // Have to be able to write independently, as Artifact variables may be evaluated recursively
-    pub fn store_artifact_for_var(&self, var: &ast::ArtifactVar, artifact_id: ArtifactId) -> Result<(), MBQLError> {
+    pub fn stash_artifact_for_var(&self, var: &ast::ArtifactVar, artifact_id: ArtifactId) -> Result<(), MBQLError> {
         match self.artifact_var_map.lock().unwrap().get_mut(&var.var) {
             None => {
                 return Err(MBQLError { position: var.position.clone(),

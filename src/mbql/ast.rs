@@ -336,7 +336,7 @@ impl ArtifactStatement {
 
     pub fn apply(&self, query: &Query) -> Result<ArtifactId, MBQLError> {
         let artifact_id = self.artifact.apply(query)?;
-        query.store_artifact_for_var(&self.var, artifact_id.clone())?;
+        query.stash_artifact_for_var(&self.var, artifact_id.clone())?;
         Ok(artifact_id)
     }
 }
@@ -456,13 +456,17 @@ impl Ground {
             None => {
                 if self.vivify {
                     search_node.vivify_symbols(query)?;
+                    search_node.stash_bindings(query)?;
                     Ok(search_node.symbol().unwrap())
                 } else {
                     Err(MBQLError { position: self.position.clone(),
                                     kind:     MBQLErrorKind::GSymNotFound, })
                 }
             },
-            Some(symbol) => Ok(symbol),
+            Some(symbol) => {
+                search_node.stash_bindings(query)?;
+                Ok(symbol)
+            },
         }
     }
 }

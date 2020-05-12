@@ -123,13 +123,13 @@ impl SearchNode {
 
     pub fn stash_bindings(&self, query: &Query) -> Result<(), MBError> {
         match self {
-            SearchNode::Pair { vec, left, right } => {
+            SearchNode::Pair { left, right, .. } => {
                 left.stash_bindings(query)?;
                 right.stash_bindings(query)?;
                 Ok(())
             },
             SearchNode::Bound { node, sv } => {
-                match self.symbol() {
+                match node.symbol() {
                     None => Err(MBError::Other),
                     Some(symbol) => {
                         query.stash_symbol_for_var(&sv, symbol)?;
@@ -159,7 +159,9 @@ impl SearchNode {
                 let atom = query.mb.symbolize_atom(&*artifact_id)?;
                 overwrite_vec(vec, atom.id());
             },
-            SearchNode::Bound { node, sv } => unimplemented!(),
+            SearchNode::Bound { node, .. } => {
+                node.vivify_symbols(query)?;
+            },
             SearchNode::Pair { left, right, vec } => {
                 left.vivify_symbols(query)?;
                 right.vivify_symbols(query)?;
