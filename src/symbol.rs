@@ -40,10 +40,6 @@ pub enum Spin {
     Up,
     Down,
 }
-pub enum SpinCompare {
-    Same,
-    Opposite,
-}
 
 #[derive(Serialize, Deserialize, PartialEq, Ord, Eq, PartialOrd, Debug, Clone)]
 pub struct Atom {
