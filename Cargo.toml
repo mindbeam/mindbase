@@ -43,3 +43,6 @@ criterion = "0.3"
 [[bench]]
 name = "basic"
 harness = false
+
+[workspace]
+members = ["experiments/analogy_compare"]
