@@ -3,13 +3,15 @@ mod atom;
 mod symbol;
 
 use analogy::*;
+use atom::*;
 use symbol::*;
 
 fn main() {
     let a1 = Analogy::new(sym("Hot"), sym("Cold"));
 
-    // Temporarily using Analogy::new to construct a pair
-    let pair = Analogy::new(sym("Cold"), sym("Hot")).0;
+    let mut pair = AtomVec::new();
+    pair.insert(atom("Cold").left());
+    pair.insert(atom("Hot").right());
 
     // println!("{:?}", a1);
     println!("{:?}", pair);
