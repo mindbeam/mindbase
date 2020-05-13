@@ -61,27 +61,6 @@ So which language is "correct"? Obviously this is a ridiculous question, but it'
 
 This is the goal of Mindbase – To serve as a powerful substrate for convergent intersubjectivity. The combination of fragmentary storage and collaboration systems and the naivete of objectivity serves as a critical barrier which we hope to surmount. With it, we may strive to build better personal and professional informatics systems. We may reduce the barriers between open and industrial datasets. We may parse and correlate academic papers. We may even make inroads into explainable AI, and AGI. Of course these are ambitious goals, for any system, but we are at least confident that they cannot be achived with the old techniques.
 
-## Glossary
-
-**Agent** -  A user, or other automated process which is capable of making allegations. Each agent has a cryptographic identity which is used to sign Allegations.  
-**Artifact** - Some blob of data which may be meaningful to the outside world, likely containing `External Meaning`, but is otherwise devoid of `Internal meaning`, at least by its existence.
-    * Content addressable
-**Allegation** - An event or declaration which is being documented by an agent But it's also more than that – It's an instance of some payload. At present, such payload might be any of the following types:
-
-* ArtifactId - Content-addressable ID of a given `Artifact`.  
-* Analogy - Associate one `Symbol` with another `Symbol` (Eg: There exists some Symbol C that represents the connection of Symbol A and Symbol B)
-* AgentId - PubKey of an Agent
-* Unit - Empty payload.  
-
-Though an Allegation may reference one or more `Artifacts`, implying that the allegation is somehow an _instance_ of that `Artifact` it doesn't even need to be an instance of something per se. It could be a `Unit` Allegation, which is just an anonymous enumeration.  
-Each Allegation has a Payload.
-
-**Symbol** - A structure representing a region of semantic space at the intersection of a given set of Allegations. Such a symbol may contain a small number of Allegations by a single, or small number of Agents (in which case it is said to be a `Subjective Symbol`) or it may contain a more diverse array of Allegations inclusive of those of other Agents (in which case it is said to be a an `Intersubjective Symbol). There is no hard delineation between Subjective and Intersubjective Symbols. It is merely a way of comparing/describing symbols which may be more or less well agreed upon.
-
-**Internal/External Meaning** - Mindbase is all about representing meaning, and striving to do so _internally_, such that meaningful computation can be performed (emergently) inside the Mindbase system. Until such time as Mindbase expands to fill the entire observable universe (har har), there will necessarily be some logical boundary between its internal xpression of meaning, and that of the outside world. We cannot blindly subordinate the one to the other. That would put us right back where we started. We must build a bridge between these systems of internal and external meaning. This requires that such a system be cognizant that a lot of meaning is defined by human culture at large, or other external systems like the semantics of a docx file. Because of this necessity to represent `External Meaning` we have `Artifacts` and `Allegations`
-
-**Symbol** - General term which may refer to an `Alligation` / `Subjective Symbol` or `Intersubjective Symbol` – each of which is an epistemic device intent on recording some occurrence, or meaning. The notion that a meaning _is_ an occurrence, or a cluster of occurrences (which is essentially memoized into a new occurrence) is a key idea in Minbase.  
-
 ## The "Concept Problem"
 
 TODO: Explain Prof Barry Smith's qualms with Concepts, and discuss why we are/aren't subject to them due to the Artifact / Allegation dichotomy.
