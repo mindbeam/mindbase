@@ -13,10 +13,10 @@ impl Analogy {
         let mut vec = AtomVec::new();
 
         for atom in left.drain(..) {
-            vec.insert(atom.left())
+            vec.insert(atom.transmute_left())
         }
         for atom in right.drain(..) {
-            vec.insert(atom.right())
+            vec.insert(atom.transmute_right())
         }
 
         Analogy { id, vec }
