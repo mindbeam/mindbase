@@ -8,7 +8,7 @@ impl Symbol {
     pub fn simple(id: &'static str) -> Self {
         let mut atoms = AtomVec::new();
 
-        atoms.insert(Atom { id:     AtomId(id.to_string()),
+        atoms.insert(Atom { id:     AtomId(id),
                             charge: Charge::Left,
                             spin:   Spin::Up, });
 

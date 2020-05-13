@@ -7,17 +7,24 @@ use atom::*;
 use symbol::*;
 
 fn main() {
-    let a1 = Analogy::new(sym("Hot"), sym("Cold"));
+    let a1 = Analogy::new(AtomId("a1"), sym("Hot1"), sym("Cold1"));
+    let a2 = Analogy::new(AtomId("a2"), sym("Cold1"), sym("Hot1"));
 
-    let mut pair = AtomVec::new();
-    pair.insert(atom("Cold").left());
-    pair.insert(atom("Hot").right());
+    let pair = AtomVec::from_left_right("Hot1", "Cold1");
+    // pair.insert(atom("Cold2").left());
+    // pair.insert(atom("Hot2").right());
 
     // println!("{:?}", a1);
     println!("{:?}", pair);
 
     // This compares the analogy to a SymbolPair
-    let a3 = a1.intersect(pair);
-    println!("{:?}", a3);
-    // Hot' Hot' Cold. Cold.
+    let p1 = a1.intersect(pair.clone()).unwrap();
+    // What do we want for output?
+    // true
+    // pair = Hot1< Cold1>
+
+    println!("p1: {:?}", p1.diag_lr());
+
+    let p2 = a2.intersect(pair.clone()).unwrap();
+    println!("p2: {:?}", p2.diag_lr());
 }
