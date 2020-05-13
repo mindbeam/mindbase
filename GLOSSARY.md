@@ -24,6 +24,10 @@ An event or declaration which is being documented by an agent But it's also more
 Though an Allegation may reference one or more `Artifacts`, implying that the allegation is somehow an _instance_ of that `Artifact` it doesn't even need to be an instance of something per se. It could be a `Unit` Allegation, which is just an anonymous enumeration.  
 Each Allegation has a Payload.
 
+## MBQL
+
+Mindbase Query Language
+
 ## Meaning
 
 Mindbase project intends to consider two types of "Meaning" as defined by the following:
