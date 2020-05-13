@@ -11,39 +11,39 @@ pub enum Spin {
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Charge {
+pub enum Side {
     Middle,
     Left,
     Right,
 }
 
 pub fn atom(id: &'static str) -> Atom {
-    Atom { id:     AtomId(id),
-           charge: Charge::Left,
-           spin:   Spin::Up, }
+    Atom { id:   AtomId(id),
+           side: Side::Left,
+           spin: Spin::Up, }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Atom {
-    pub id:     AtomId,
-    pub spin:   Spin,
-    pub charge: Charge,
+    pub id:   AtomId,
+    pub spin: Spin,
+    pub side: Side,
 }
 
 impl Atom {
     pub fn new(id: AtomId) -> Self {
         Atom { id,
-               charge: Charge::Middle,
+               side: Side::Middle,
                spin: Spin::Up }
     }
 
     pub fn transmute_left(mut self) -> Self {
-        self.charge = Charge::Left;
+        self.side = Side::Left;
         self
     }
 
     pub fn transmute_right(mut self) -> Self {
-        self.charge = Charge::Right;
+        self.side = Side::Right;
         self
     }
 
@@ -54,10 +54,6 @@ impl Atom {
         };
         self
     }
-
-    // pub fn id(&self) -> &AtomId {
-    //     &self.id
-    // }
 }
 
 #[derive(Debug, Clone)]
@@ -98,11 +94,11 @@ impl AtomVec {
     }
 
     pub fn left<'a>(&'a self) -> impl Iterator<Item = &Atom> + 'a {
-        self.0.iter().filter(|a| a.charge == Charge::Left)
+        self.0.iter().filter(|a| a.side == Side::Left)
     }
 
     pub fn right<'a>(&'a self) -> impl Iterator<Item = &Atom> + 'a {
-        self.0.iter().filter(|a| a.charge == Charge::Right)
+        self.0.iter().filter(|a| a.side == Side::Right)
     }
 
     pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, Atom> {
@@ -124,12 +120,12 @@ impl AtomVec {
             };
             //˰˯
 
-            let charge = match atom.charge {
-                Charge::Middle => "ᐧ",
-                Charge::Left => "˱",
-                Charge::Right => "˲",
+            let side = match atom.side {
+                Side::Middle => "ᐧ",
+                Side::Left => "˱",
+                Side::Right => "˲",
             };
-            out.push(format!("{}{}", atom.id.0, spin).to_string());
+            out.push(format!("{}{}{}", atom.id.0, side, spin).to_string());
         }
 
         out.join(",")
@@ -144,11 +140,16 @@ impl AtomVec {
                 Spin::Up => "↑",
                 Spin::Down => "↓",
             };
+            let side = match atom.side {
+                Side::Middle => "ᐧ",
+                Side::Left => "˱",
+                Side::Right => "˲",
+            };
 
-            match atom.charge {
-                Charge::Middle => unimplemented!(),
-                Charge::Left => lefts.push(format!("{}{}", atom.id.0, spin).to_string()),
-                Charge::Right => rights.push(format!("{}{}", atom.id.0, spin).to_string()),
+            match atom.side {
+                Side::Middle => unimplemented!(),
+                Side::Left => lefts.push(format!("{}{}{}", atom.id.0, side, spin).to_string()),
+                Side::Right => rights.push(format!("{}{}{}", atom.id.0, side, spin).to_string()),
             }
         }
 
