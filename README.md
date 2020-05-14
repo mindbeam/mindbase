@@ -22,11 +22,11 @@ For starters, we have to agree on an ontology for each of the terms. We also hav
 Contraversial statement:
 **Any Ontology which is fixed is automatically wrong.**
 
-Another way to say this is that any ontology which is declared by parties other than those who are using it is rife with misalignments. A kind of Ontology-realted form of moral hazard.
+Another way to say this is that any ontology which is declared by parties other than those who are using it is rife with misalignments. A kind of Ontology-related form of moral hazard.
 
 Ontologies morph and evolve through cultural processes. This is necessary, because our reality is constantly expanding. Science explains and discovers new phenomena. Cultural memes and tropes shift. New consumer products are introduced. It's not just our _stuff_ that's changing, it's also our ontological system.
 
-So what sort of a narcicistic wingnut would dare plant their flag, declaring that _this_ ontology is correct?
+So what sort of a narcissistic wingnut would dare plant their flag, declaring that _this_ ontology is correct?
 
 Just imagine a hardcore prescriptivist attempting to bonk you on the head with a first edition, 1884 Oxford English dictionary. The english-speaking world speaks a very different language today versus 1884. Sure, the OED has been updated since then, but it'll never be able to keep up with the Urban Dictionary for expressions like "on fleek", "bromance",  or "the rona".
 
@@ -45,7 +45,7 @@ We define new terms all the time. Both those with fleeting meaning, and those wh
 
 ## A world of Analogies
 
-Douglas Hofstadter famously explained that Analogy is the core of Cognition. Simply puy: Analogy is necessary to build connection between any two ideas. There can be no thought, or language, or understanding without it. So what does this have to do with Ontologes? In much the same way that translating between two languages requires analogy, so do ontologies.  
+Douglas Hofstadter famously explained that Analogy is the core of Cognition. Simply puy: Analogy is necessary to build connection between any two ideas. There can be no thought, or language, or understanding without it. So what does this have to do with Ontologies? In much the same way that translating between two languages requires analogy, so do ontologies.  
 
 Some translations are easier than others:
 `Mi Casa`, `My House`, `Chez Moi` are all fairly cleanly _analagous_
@@ -59,7 +59,7 @@ So which language is "correct"? Obviously this is a ridiculous question, but it'
 1. The fragmentary nature of our storage and collaboration systems is reflected in our Ontologies. (See [Conway's Law](https://en.wikipedia.org/wiki/Conway%27s_law))
 2. Even if we had frictionlessly collaborative substrates, our data formats are too fragile. They naively strive for objectivity, but a vastly more potent target would be **convergent intersubjectivity.**  
 
-This is the goal of Mindbase – To serve as a powerful substrate for convergent intersubjectivity. The combination of fragmentary storage and collaboration systems and the naivete of objectivity serves as a critical barrier which we hope to surmount. With it, we may strive to build better personal and professional informatics systems. We may reduce the barriers between open and industrial datasets. We may parse and correlate academic papers. We may even make inroads into explainable AI, and AGI. Of course these are ambitious goals, for any system, but we are at least confident that they cannot be achived with the old techniques.
+This is the goal of Mindbase – To serve as a powerful substrate for convergent intersubjectivity. The combination of fragmentary storage and collaboration systems and the naivete of objectivity serves as a critical barrier which we hope to surmount. With it, we may strive to build better personal and professional informatics systems. We may reduce the barriers between open and industrial datasets. We may parse and correlate academic papers. We may even make inroads into explainable AI, and AGI. Of course these are ambitious goals, for any system, but we are at least confident that they cannot be achieved with the old techniques.
 
 ## The "Concept Problem"
 
