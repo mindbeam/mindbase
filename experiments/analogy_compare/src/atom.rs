@@ -1,8 +1,13 @@
+use mindbase::util::iter::SortedIdentifiable;
+
 // IMPORTANT NOTE: In this experiment, we are using string in lieu of unique identifier.
 // Different allegations which would normally both be associated to the same artifact "Cat" should be differentiated with a number
 // like "Cat1" and "Cat2" to signify that they are different instances of "Cat"
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct AtomId(pub(crate) &'static str);
+#[derive(Debug, Clone)]
+pub struct AtomId {
+    pub id:   String,
+    pub text: &'static str,
+}
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Spin {
@@ -17,8 +22,12 @@ pub enum Side {
     Right,
 }
 
-pub fn atom(id: &'static str) -> Atom {
-    Atom { id:   AtomId(id),
+pub fn atom(text: &'static str) -> Atom {
+    use regex::Regex;
+    let re = Regex::new(r"([^\d]+)\d*").unwrap();
+    let id = re.captures(&text).unwrap().get(1).unwrap();
+
+    Atom { id:   AtomId { id, text },
            side: Side::Left,
            spin: Spin::Up, }
 }
@@ -163,5 +172,13 @@ impl AtomVec {
         }
 
         format!("{} <-> {}", lefts.join(","), rights.join(",")).to_string()
+    }
+}
+
+impl SortedIdentifiable for Atom {
+    type Ident = String;
+
+    fn sort_ident(&self) -> Self::Ident {
+        self.id.id.clone()
     }
 }

@@ -3,6 +3,8 @@ use super::{
     symbol::*,
 };
 
+use mindbase::util::iter::match_pairwise::MatchPairwise;
+
 pub struct Analogy {
     pub id:  AtomId,
     pub vec: AtomVec,
@@ -23,28 +25,15 @@ impl Analogy {
     }
 
     pub fn intersect(&self, other: &AtomVec) -> Option<AtomVec> {
-        let mut a = self.vec.iter();
-        let mut b = other.iter();
-
         let mut got_l = false;
         let mut got_r = false;
 
         let mut out = AtomVec::new();
 
-        for i in 0..2 {
-            let my_atom = a.next().unwrap();
-            let compare_atom = b.next().unwrap();
-            // println!("Compare {:?} vs {:?}", my_atom, compare_atom);
+        let mut iter = MatchPairwise::new(self.vec.iter(), other.iter());
 
-            // For simplicity, use trailing digits to differentiate different allegations of the same "artifact"
-            use regex::Regex;
-            let re = Regex::new(r"([^\d]+)\d*").unwrap();
-            let a = re.captures(my_atom.id.0).unwrap().get(1).unwrap().as_str();
-            let b = re.captures(compare_atom.id.0).unwrap().get(1).unwrap().as_str();
-
-            if a != b {
-                continue;
-            }
+        while let Some((my_atom, compare_atom)) = iter.next() {
+            println!("Compare {:?} vs {:?}", my_atom, compare_atom);
 
             match my_atom.side {
                 Left => got_l = true,

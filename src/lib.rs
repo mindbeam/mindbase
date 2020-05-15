@@ -10,7 +10,7 @@ pub mod symbol;
 pub mod mbql;
 
 mod policy;
-mod util;
+pub mod util;
 pub mod xport;
 
 extern crate pest;

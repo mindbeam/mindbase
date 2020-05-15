@@ -1,3 +1,5 @@
+pub mod iter;
+
 use crate::MBError;
 
 pub(crate) trait AsBytes {
