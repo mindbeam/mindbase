@@ -47,6 +47,15 @@ impl Atom {
         self
     }
 
+    pub fn invert_side(mut self) -> Self {
+        self.side = match self.side {
+            Side::Left => Side::Right,
+            Side::Right => Side::Left,
+            Side::Middle => Side::Middle,
+        };
+        self
+    }
+
     pub fn invert_spin(mut self) -> Self {
         self.spin = match self.spin {
             Spin::Up => Spin::Down,

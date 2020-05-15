@@ -70,8 +70,8 @@ impl Analogy {
             // TODO use spin to invert this logic
             let updated_compare_atom = match (&my_atom.side, &compare_atom.side) {
                 (Left, Left) => my_atom.clone(),
-                (Left, Right) => my_atom.clone().invert_spin(),
-                (Right, Left) => my_atom.clone().invert_spin(),
+                (Left, Right) => my_atom.clone().invert_spin().invert_side(),
+                (Right, Left) => my_atom.clone().invert_spin().invert_side(),
                 (Right, Right) => my_atom.clone(),
                 _ => unimplemented!(),
             };
