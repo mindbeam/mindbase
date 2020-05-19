@@ -113,17 +113,29 @@ impl PartialEq for Atom {
 impl Eq for Atom {}
 
 #[derive(Debug, Clone)]
-pub struct AtomVec(pub Vec<Atom>);
+pub struct AtomVec(Vec<Atom>);
 
 impl AtomVec {
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
-    pub fn from_left_right(left: &'static str, right: &'static str) -> Self {
+    pub fn new_from_array(array: Box<[&'static str]>) -> Self {
+        let mut me = Self::new();
+        for id in array.iter() {
+            me.insert(Atom::new(atomid(id)))
+        }
+        me
+    }
+
+    pub fn from_left_right(left: AtomVec, right: AtomVec) -> Self {
         let mut vec = Self::new();
-        vec.insert(atom(left).transmute_left());
-        vec.insert(atom(right).transmute_right());
+        for atom in left.into_iter() {
+            vec.insert(atom.transmute_left());
+        }
+        for atom in right.into_iter() {
+            vec.insert(atom.transmute_right());
+        }
         vec
     }
 
@@ -159,6 +171,10 @@ impl AtomVec {
 
     pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, Atom> {
         self.0.iter()
+    }
+
+    pub fn into_iter(self) -> std::vec::IntoIter<Atom> {
+        self.0.into_iter()
     }
 
     pub fn drain<'a, T>(&'a mut self, range: T) -> std::vec::Drain<'a, Atom>
@@ -245,4 +261,12 @@ impl SortedIdentifiable for &Atom {
     fn sort_ident<'a>(&'a self) -> &'a Self::Ident {
         &self.id.id
     }
+}
+
+#[macro_export]
+#[warn(unused_macros)]
+macro_rules! atomvec {
+    ($($x:expr),+ $(,)?) => (
+        AtomVec::new_from_array(Box::new([$($x),+]))
+    );
 }

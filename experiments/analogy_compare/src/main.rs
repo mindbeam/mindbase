@@ -22,12 +22,15 @@ fn experiment1() {
     let mut y = Symbol::null();
 
     // For simplicity, lets say these are all the analogies in the system
-    let candidates = [Analogy::new(AtomId("a1"), sym("Hot1"), sym("Cold1")),
-                      Analogy::new(AtomId("a2"), sym("Hot2"), sym("Cold2")),
-                      Analogy::new(AtomId("a3"), sym("Cold3"), sym("Hot3"))];
+    let candidates = [//
+                      Analogy::new(atomid("a1"), sym!["Hot1", "Hot2"], sym!["Mild1", "Mild2"]),
+                      Analogy::new(atomid("a2"), sym!["Hot3"], sym!["Cold1", "Cold2"]),
+                      Analogy::new(atomid("a3"), sym!["Cold3"], sym!["Hot3"])];
 
-    // NOTE - this should have an unassigned Spin, because it's a match pair
-    let search_pair = AtomVec::from_left_right("Hot", "Cold");
+    // Imagine we looked up all AtomIds for all Allegations related to Artifacts "Hot" and "Cold"
+    let hot = atomvec!["Hot1", "Hot2", "Hot3"];
+    let cold = atomvec!["Cold1", "Cold2", "Cold3"];
+    let search_pair = AtomVec::from_left_right(hot, cold);
     println!("Searching for {}", search_pair.diag_lr());
 
     for candidate in &candidates {
@@ -49,11 +52,11 @@ fn experiment1() {
 fn experiment2() {
     // $x = Bind("Hot")
     // $y = Ground(($x : "Cold") : ("Spicy" : "Mild"))
-    let a1 = Analogy::new(AtomId("a1"), sym("Hot1"), sym("Cold1"));
-    let a2 = Analogy::new(AtomId("a2"), sym("Cold1"), sym("Hot1"));
+    let a1 = Analogy::new(atomid("a1"), sym!["Hot1"], sym!["Cold1"]);
+    let a2 = Analogy::new(atomid("a2"), sym!["Cold1"], sym!["Hot1"]);
 
     // NOTE - this should have an unassigned Spin, because it's a match pair
-    let search_pair = AtomVec::from_left_right("Hot1", "Cold1");
+    let search_pair = AtomVec::from_left_right(atomvec!["Hot1"], atomvec!["Cold1"]);
     // pair.insert(atom("Cold2").left());
     // pair.insert(atom("Hot2").right());
 

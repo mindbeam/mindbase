@@ -22,13 +22,15 @@ impl Symbol {
         Symbol { atoms }
     }
 
-    pub fn simple(id: &'static str) -> Self {
+    pub fn new(ids: Box<[&'static str]>) -> Self {
         let mut atoms = AtomVec::new();
 
-        atoms.insert(Atom { id:     atomid(id),
-                            side:   Side::Left,
-                            spin:   Spin::Up,
-                            weight: 1.0, });
+        for id in ids.into_iter() {
+            atoms.insert(Atom { id:     atomid(id),
+                                side:   Side::Left,
+                                spin:   Spin::Up,
+                                weight: 1.0, });
+        }
 
         Symbol { atoms }
     }
@@ -44,6 +46,10 @@ impl Symbol {
     }
 }
 
-pub fn sym(id: &'static str) -> Symbol {
-    Symbol::simple(id)
+#[macro_export]
+#[warn(unused_macros)]
+macro_rules! sym {
+    ($($x:expr),+ $(,)?) => (
+        Symbol::new(Box::new([$($x),+]))
+    );
 }
