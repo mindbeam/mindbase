@@ -239,10 +239,10 @@ impl AtomVec {
     }
 }
 
-impl SortedIdentifiable for Atom {
-    type Ident = String;
+impl SortedIdentifiable for &Atom {
+    type Ident = &'static str;
 
-    fn sort_ident(&self) -> Self::Ident {
-        self.id.id.clone()
+    fn sort_ident<'a>(&'a self) -> &'a Self::Ident {
+        &self.id.id
     }
 }

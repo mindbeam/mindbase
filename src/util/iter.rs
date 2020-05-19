@@ -2,9 +2,9 @@ use std::fmt::Debug;
 
 // pub mod sided_merge;
 // pub mod sorted_intersect;
-pub mod match_pairwise;
+pub mod pairwise_nonrepeating;
 
 pub trait SortedIdentifiable {
     type Ident: Ord + Debug;
-    fn sort_ident(&self) -> Self::Ident;
+    fn sort_ident<'a>(&'a self) -> &'a Self::Ident;
 }

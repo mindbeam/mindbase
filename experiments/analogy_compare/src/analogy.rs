@@ -3,7 +3,7 @@ use super::{
     symbol::*,
 };
 
-use mindbase::util::iter::match_pairwise::MatchPairwise;
+use mindbase::util::iter::pairwise_nonrepeating::PairwiseNonrepeating;
 
 pub struct Analogy {
     pub id:  AtomId,
@@ -30,7 +30,7 @@ impl Analogy {
 
         let mut out = AtomVec::new();
 
-        let mut iter = MatchPairwise::new(self.vec.iter(), other.iter());
+        let mut iter = PairwiseNonrepeating::new(self.vec.iter(), other.iter());
 
         while let Some((my_atom, compare_atom)) = iter.next() {
             println!("Compare {:?} vs {:?}", my_atom, compare_atom);
