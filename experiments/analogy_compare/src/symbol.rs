@@ -13,9 +13,10 @@ impl Symbol {
     pub fn new_from_list(list: &[Analogy]) -> Self {
         let mut atoms = AtomVec::new();
         for item in list.iter() {
-            atoms.insert(Atom { id:   item.id.clone(),
-                                spin: Spin::Up,
-                                side: Side::Middle, })
+            atoms.insert(Atom { id:     item.id.clone(),
+                                spin:   Spin::Up,
+                                side:   Side::Middle,
+                                weight: 1.0, })
         }
 
         Symbol { atoms }
@@ -24,9 +25,10 @@ impl Symbol {
     pub fn simple(id: &'static str) -> Self {
         let mut atoms = AtomVec::new();
 
-        atoms.insert(Atom { id:   AtomId(id),
-                            side: Side::Left,
-                            spin: Spin::Up, });
+        atoms.insert(Atom { id:     atomid(id),
+                            side:   Side::Left,
+                            spin:   Spin::Up,
+                            weight: 1.0, });
 
         Symbol { atoms }
     }

@@ -1,11 +1,17 @@
+use crate::Symbol;
+use colorful::{
+    Color,
+    Colorful,
+};
 use mindbase::util::iter::SortedIdentifiable;
+use std::cmp::Ordering;
 
 // IMPORTANT NOTE: In this experiment, we are using string in lieu of unique identifier.
 // Different allegations which would normally both be associated to the same artifact "Cat" should be differentiated with a number
 // like "Cat1" and "Cat2" to signify that they are different instances of "Cat"
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct AtomId {
-    pub id:   String,
+    pub id:   &'static str,
     pub text: &'static str,
 }
 
@@ -23,27 +29,34 @@ pub enum Side {
 }
 
 pub fn atom(text: &'static str) -> Atom {
-    use regex::Regex;
-    let re = Regex::new(r"([^\d]+)\d*").unwrap();
-    let id = re.captures(&text).unwrap().get(1).unwrap();
-
-    Atom { id:   AtomId { id, text },
-           side: Side::Left,
-           spin: Spin::Up, }
+    Atom { id:     atomid(text),
+           side:   Side::Left,
+           spin:   Spin::Up,
+           weight: 1.0, }
 }
 
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub fn atomid(id: &'static str) -> AtomId {
+    use regex::Regex;
+    let re = Regex::new(r"([^\d]+)\d*").unwrap();
+    let text = re.captures(&id).unwrap().get(1).unwrap().as_str();
+
+    AtomId { id, text }
+}
+
+#[derive(Debug, Clone)]
 pub struct Atom {
-    pub id:   AtomId,
-    pub spin: Spin,
-    pub side: Side,
+    pub id:     AtomId,
+    pub spin:   Spin,
+    pub side:   Side,
+    pub weight: f32,
 }
 
 impl Atom {
     pub fn new(id: AtomId) -> Self {
         Atom { id,
                side: Side::Middle,
-               spin: Spin::Up }
+               spin: Spin::Up,
+               weight: 0.05 }
     }
 
     pub fn transmute_left(mut self) -> Self {
@@ -73,6 +86,31 @@ impl Atom {
         self
     }
 }
+
+impl Ord for Atom {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.id.cmp(&other.id) {
+            Ordering::Equal => {},
+            o @ _ => return o,
+        }
+        match self.side.cmp(&other.side) {
+            Ordering::Equal => {},
+            o @ _ => return o,
+        }
+        self.spin.cmp(&other.spin)
+    }
+}
+impl PartialOrd for Atom {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for Atom {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.side == self.side && self.spin == other.spin
+    }
+}
+impl Eq for Atom {}
 
 #[derive(Debug, Clone)]
 pub struct AtomVec(pub Vec<Atom>);
@@ -143,7 +181,18 @@ impl AtomVec {
                 Side::Left => "˱",
                 Side::Right => "˲",
             };
-            out.push(format!("{}{}{}", atom.id.0, side, spin).to_string());
+
+            assert!(atom.weight <= 1.0, "Invalid atom weight");
+
+            let mut weight = format!("{:.2}", atom.weight);
+            if atom.weight < 1.0 {
+                weight.remove(0);
+            } else {
+                weight.truncate(0);
+            }
+
+            out.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+                                                                        .to_string());
         }
 
         out.join(",")
@@ -164,10 +213,25 @@ impl AtomVec {
                 Side::Right => "˲",
             };
 
+            assert!(atom.weight <= 1.0, "Invalid atom weight");
+
+            let mut weight = format!("{:.2}", atom.weight);
+            if atom.weight < 1.0 {
+                weight.remove(0);
+            } else {
+                weight.truncate(0);
+            }
+
             match atom.side {
                 Side::Middle => unimplemented!(),
-                Side::Left => lefts.push(format!("{}{}{}", atom.id.0, side, spin).to_string()),
-                Side::Right => rights.push(format!("{}{}{}", atom.id.0, side, spin).to_string()),
+                Side::Left => {
+                    lefts.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+                                                                                  .to_string())
+                },
+                Side::Right => {
+                    rights.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+                                                                                   .to_string())
+                },
             }
         }
 

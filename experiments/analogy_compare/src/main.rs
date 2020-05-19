@@ -34,10 +34,12 @@ fn experiment1() {
         let v = candidate.intersect(&search_pair).expect("All of the above should match");
         x.atoms.extend(v.left());
 
-        y.atoms.insert(Atom { id:   candidate.id.clone(),
-                              spin: Spin::Up, /* This is WRONG for a3. It should be Down because the order of the association
-                                               * is reversed. how do we fix this? */
-                              side: Side::Middle, });
+        y.atoms.insert(Atom { id:     candidate.id.clone(),
+                              spin:   Spin::Up, /* This is WRONG for a3. It should be Down because the order of the
+                                                 * association is reversed.
+                                                 * how do we fix this? */
+                              side:   Side::Middle,
+                              weight: 1.0, });
     }
 
     println!("symbol x is: [{}]", x.atoms.diag());
