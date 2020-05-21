@@ -32,6 +32,9 @@ impl Analogy {
 
         let mut out = AtomVec::new();
 
+        // TODO 1 this needs to be a left join rather than an inner join, because the output set needs to be expansive
+        // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
+        // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
         let mut iter = PairwiseNonrepeating::new(self.vec.iter(), other.iter());
 
         // Execution plan:
@@ -72,7 +75,7 @@ impl Analogy {
             // * How does this compose across multiple levels of Associative analogy? Eg ("Smile" : "Mouth") : ("Wink" : "Eye")
             // * How do we represent this partial matching. Presumably via some scoring mechanism
 
-            // TODO use spin to invert this logic
+            // TODO 1 my_atom.side needs to be spin adjusted in order to work correctly
             let updated_compare_atom = match (&my_atom.side, &compare_atom.side) {
                 (Left, Left) => my_atom.clone(),
                 (Left, Right) => my_atom.clone().invert_spin().invert_side(),
