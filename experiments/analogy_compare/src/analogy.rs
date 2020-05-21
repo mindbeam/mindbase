@@ -32,6 +32,14 @@ impl Analogy {
 
         let mut iter = PairwiseNonrepeating::new(self.vec.iter(), other.iter());
 
+        // Execution plan:
+        // * We're comparing all Atoms for both symbols within this analogy to a Two-sided AtomVec containing *Candidate* Atoms
+        // * At least one Left Atom and one Right Atom must match in order for the relationship to have any weight at all
+        // * We're expanding the set of those atoms which are inferred (Spin-adjusted opposite-side Atoms) with a score based on
+        // weighted sum of the matching spin-adjusted same-side matches
+
+        // Question: How do we calculate the scores for Spin-adjusted Same-side matches?
+
         while let Some((my_atom, compare_atom)) = iter.next() {
             println!("Compare {:?} vs {:?}", my_atom, compare_atom);
 
