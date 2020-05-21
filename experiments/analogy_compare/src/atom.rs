@@ -69,6 +69,14 @@ impl Atom {
         self
     }
 
+    pub fn mutate_weight(&mut self, weight_factor: f32) {
+        println!("mutate_weight {} * {} = {}",
+                 self.weight,
+                 weight_factor,
+                 self.weight * weight_factor);
+        self.weight *= weight_factor;
+    }
+
     pub fn invert_side(mut self) -> Self {
         self.side = match self.side {
             Side::Left => Side::Right,
@@ -171,6 +179,10 @@ impl AtomVec {
 
     pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, Atom> {
         self.0.iter()
+    }
+
+    pub fn iter_mut<'a>(&'a mut self) -> std::slice::IterMut<'a, Atom> {
+        self.0.iter_mut()
     }
 
     pub fn into_iter(self) -> std::vec::IntoIter<Atom> {

@@ -25,8 +25,10 @@ impl Analogy {
     }
 
     pub fn intersect(&self, other: &AtomVec) -> Option<AtomVec> {
-        let mut got_l = false;
-        let mut got_r = false;
+        let mut left_count = 0u32;
+        let mut right_count = 0u32;
+        let mut left_weight = 0f32;
+        let mut right_weight = 0f32;
 
         let mut out = AtomVec::new();
 
@@ -41,11 +43,17 @@ impl Analogy {
         // Question: How do we calculate the scores for Spin-adjusted Same-side matches?
 
         while let Some((my_atom, compare_atom)) = iter.next() {
-            println!("Compare {:?} vs {:?}", my_atom, compare_atom);
+            // println!("Compare {:?} vs {:?}", my_atom, compare_atom);
 
             match my_atom.side {
-                Left => got_l = true,
-                Right => got_r = true,
+                Left => {
+                    left_weight += my_atom.weight;
+                    left_count += 1;
+                },
+                Right => {
+                    right_weight += my_atom.weight;
+                    right_count += 1;
+                },
                 Middle => unimplemented!(),
             };
 
@@ -76,7 +84,19 @@ impl Analogy {
             out.insert(updated_compare_atom);
         }
 
-        if got_l && got_r {
+        if left_count > 0 || right_count > 0 {
+            // each factor is the average of the opposite-side weights
+            let left_factor = right_weight / right_count as f32;
+            let right_factor = left_weight / left_count as f32;
+
+            for atom in out.iter_mut() {
+                // Output side should match that of the
+                match atom.side {
+                    Side::Middle => unimplemented!(),
+                    Side::Left => atom.mutate_weight(left_factor),
+                    Side::Right => atom.mutate_weight(right_factor),
+                }
+            }
             Some(out)
         } else {
             None
