@@ -15,7 +15,7 @@ impl Symbol {
         for item in list.iter() {
             atoms.insert(Atom { id:     item.id.clone(),
                                 spin:   Spin::Up,
-                                side:   Side::Middle,
+                                side:   AnalogySide::Middle,
                                 weight: 1.0, })
         }
 
@@ -27,7 +27,7 @@ impl Symbol {
 
         for id in ids.into_iter() {
             atoms.insert(Atom { id:     atomid(id),
-                                side:   Side::Left,
+                                side:   AnalogySide::Left,
                                 spin:   Spin::Up,
                                 weight: 1.0, });
         }

@@ -41,7 +41,7 @@ fn experiment1() {
                               spin:   Spin::Up, /* This is WRONG for a3. It should be Down because the order of the
                                                  * association is reversed.
                                                  * how do we fix this? */
-                              side:   Side::Middle,
+                              side:   AnalogySide::Middle,
                               weight: 1.0, });
     }
 

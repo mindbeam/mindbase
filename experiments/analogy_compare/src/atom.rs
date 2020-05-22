@@ -22,7 +22,7 @@ pub enum Spin {
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Side {
+pub enum AnalogySide {
     Middle,
     Left,
     Right,
@@ -30,7 +30,7 @@ pub enum Side {
 
 pub fn atom(text: &'static str) -> Atom {
     Atom { id:     atomid(text),
-           side:   Side::Left,
+           side:   AnalogySide::Left,
            spin:   Spin::Up,
            weight: 1.0, }
 }
@@ -47,25 +47,54 @@ pub fn atomid(id: &'static str) -> AtomId {
 pub struct Atom {
     pub id:     AtomId,
     pub spin:   Spin,
-    pub side:   Side,
+    pub side:   AnalogySide,
     pub weight: f32,
 }
 
 impl Atom {
     pub fn new(id: AtomId) -> Self {
         Atom { id,
-               side: Side::Middle,
+               side: AnalogySide::Middle,
                spin: Spin::Up,
                weight: 0.05 }
     }
 
+    pub fn cmp(&self, other: &Self) -> Ordering {
+        match self.id.cmp(&other.id) {
+            Ordering::Equal => {},
+            o @ _ => return o,
+        }
+        match self.side.cmp(&other.side) {
+            Ordering::Equal => {},
+            o @ _ => return o,
+        }
+        self.spin.cmp(&other.spin)
+    }
+
+    pub fn match_side(&self, other: &Self) -> Option<AnalogySide> {
+        if self.spin == other.spin {
+            match (&self.side, &other.side) {
+                (AnalogySide::Left, AnalogySide::Left) => Some(AnalogySide::Left),
+                (AnalogySide::Right, AnalogySide::Right) => Some(AnalogySide::Right),
+                _ => None,
+            }
+        } else {
+            // inverse
+            match (&self.side, &other.side) {
+                (AnalogySide::Left, AnalogySide::Right) => Some(AnalogySide::Left),
+                (AnalogySide::Right, AnalogySide::Left) => Some(AnalogySide::Right),
+                _ => None,
+            }
+        }
+    }
+
     pub fn transmute_left(mut self) -> Self {
-        self.side = Side::Left;
+        self.side = AnalogySide::Left;
         self
     }
 
     pub fn transmute_right(mut self) -> Self {
-        self.side = Side::Right;
+        self.side = AnalogySide::Right;
         self
     }
 
@@ -79,9 +108,9 @@ impl Atom {
 
     pub fn invert_side(mut self) -> Self {
         self.side = match self.side {
-            Side::Left => Side::Right,
-            Side::Right => Side::Left,
-            Side::Middle => Side::Middle,
+            AnalogySide::Left => AnalogySide::Right,
+            AnalogySide::Right => AnalogySide::Left,
+            AnalogySide::Middle => AnalogySide::Middle,
         };
         self
     }
@@ -94,31 +123,6 @@ impl Atom {
         self
     }
 }
-
-impl Ord for Atom {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.id.cmp(&other.id) {
-            Ordering::Equal => {},
-            o @ _ => return o,
-        }
-        match self.side.cmp(&other.side) {
-            Ordering::Equal => {},
-            o @ _ => return o,
-        }
-        self.spin.cmp(&other.spin)
-    }
-}
-impl PartialOrd for Atom {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl PartialEq for Atom {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.side == self.side && self.spin == other.spin
-    }
-}
-impl Eq for Atom {}
 
 #[derive(Debug, Clone)]
 pub struct AtomVec(Vec<Atom>);
@@ -156,25 +160,25 @@ impl AtomVec {
     }
 
     pub fn insert(&mut self, atom: Atom) {
-        match self.0.binary_search(&atom) {
+        match self.0.binary_search_by(|probe| probe.cmp(&atom)) {
             Ok(_) => {}, // duplicate
             Err(i) => self.0.insert(i, atom),
         }
     }
 
     pub fn insert_borrowed(&mut self, atom: &Atom) {
-        match self.0.binary_search(atom) {
+        match self.0.binary_search_by(|probe| probe.cmp(atom)) {
             Ok(_) => {}, // duplicate
             Err(i) => self.0.insert(i, atom.clone()),
         }
     }
 
     pub fn left<'a>(&'a self) -> impl Iterator<Item = &Atom> + 'a {
-        self.0.iter().filter(|a| a.side == Side::Left)
+        self.0.iter().filter(|a| a.side == AnalogySide::Left)
     }
 
     pub fn right<'a>(&'a self) -> impl Iterator<Item = &Atom> + 'a {
-        self.0.iter().filter(|a| a.side == Side::Right)
+        self.0.iter().filter(|a| a.side == AnalogySide::Right)
     }
 
     pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, Atom> {
@@ -205,9 +209,9 @@ impl AtomVec {
             //˰˯
 
             let side = match atom.side {
-                Side::Middle => "ᐧ",
-                Side::Left => "˱",
-                Side::Right => "˲",
+                AnalogySide::Middle => "ᐧ",
+                AnalogySide::Left => "˱",
+                AnalogySide::Right => "˲",
             };
 
             assert!(atom.weight <= 1.0, "Invalid atom weight");
@@ -236,9 +240,9 @@ impl AtomVec {
                 Spin::Down => "↓",
             };
             let side = match atom.side {
-                Side::Middle => "ᐧ",
-                Side::Left => "˱",
-                Side::Right => "˲",
+                AnalogySide::Middle => "ᐧ",
+                AnalogySide::Left => "˱",
+                AnalogySide::Right => "˲",
             };
 
             assert!(atom.weight <= 1.0, "Invalid atom weight");
@@ -251,12 +255,12 @@ impl AtomVec {
             }
 
             match atom.side {
-                Side::Middle => unimplemented!(),
-                Side::Left => {
+                AnalogySide::Middle => unimplemented!(),
+                AnalogySide::Left => {
                     lefts.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
                                                                                   .to_string())
                 },
-                Side::Right => {
+                AnalogySide::Right => {
                     rights.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
                                                                                    .to_string())
                 },
