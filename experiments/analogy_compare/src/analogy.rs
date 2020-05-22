@@ -88,9 +88,12 @@ impl Analogy {
                         _ => unimplemented!(),
                     };
 
+                    let mut output_atom = query_atom.clone();
+                    output_atom.mutate_weight(analogy_atom.weight);
+
                     // TODO 1 - Even thought we know the weight, we don't yet know IF this atom is to be included
                     // in the output set. The way the output weight is calculated may change as well
-                    out.insert(query_atom.clone())
+                    out.insert(output_atom);
                 },
                 _ => {},
             };
@@ -109,18 +112,28 @@ impl Analogy {
             // * How do we represent this partial matching. Presumably via some scoring mechanism
         }
 
-        if ll_weight > 0.0 && rr_weight > 0.0 {
-            // regular polarity is possible
-        }
+        let forward_weight = ll_weight * rr_weight;
+        let reverse_weight = lr_weight * rl_weight;
 
-        if lr_weight > 0.0 && rl_weight > 0.0 {
-            // regular polarity is possible
-        }
+        if forward_weight > reverse_weight {
+            // The output factor of the left symbol is a function of how well the right matched, and vice versa
+            let left_factor = rr_weight / rr_count as f32;
+            let right_factor = ll_weight / ll_count as f32;
 
-        if left_weight > 0.0 || right_weight > 0.0 {
-            // each factor is the average of the opposite-side weights
-            let left_factor = right_weight / right_count as f32;
-            let right_factor = left_weight / left_count as f32;
+            for atom in out.iter_mut() {
+                // TODO 1 the query atom weight SHOULD be multiplied by the Analogy atom weight, but we would need two places to
+                // store that before we know what the winning polarity is >_> Output side should match that of the
+                match atom.side {
+                    AnalogySide::Middle => unimplemented!(),
+                    AnalogySide::Left => atom.mutate_weight(left_factor),
+                    AnalogySide::Right => atom.mutate_weight(right_factor),
+                }
+            }
+            Some(out)
+        } else if reverse_weight > 0.0 {
+            // Same as above, except we're using the numbers from the inverse comparisons
+            let left_factor = rl_weight / rl_count as f32;
+            let right_factor = lr_weight / lr_count as f32;
 
             for atom in out.iter_mut() {
                 // Output side should match that of the
@@ -134,5 +147,23 @@ impl Analogy {
         } else {
             None
         }
+
+        // if left_weight > 0.0 || right_weight > 0.0 {
+        //     // each factor is the average of the opposite-side weights
+        //     let left_factor = right_weight / right_count as f32;
+        //     let right_factor = left_weight / left_count as f32;
+
+        //     for atom in out.iter_mut() {
+        //         // Output side should match that of the
+        //         match atom.side {
+        //             AnalogySide::Middle => unimplemented!(),
+        //             AnalogySide::Left => atom.mutate_weight(left_factor),
+        //             AnalogySide::Right => atom.mutate_weight(right_factor),
+        //         }
+        //     }
+        //     Some(out)
+        // } else {
+        //     None
+        // }
     }
 }
