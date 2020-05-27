@@ -2,11 +2,13 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 mod analogy;
-mod atom;
+mod fuzzyset;
+mod simpleid;
 mod symbol;
 
 use analogy::*;
-use atom::*;
+use fuzzyset::FuzzySet;
+use simpleid::*;
 use symbol::*;
 
 fn main() {
@@ -23,14 +25,14 @@ fn experiment1() {
 
     // For simplicity, lets say these are all the analogies in the system
     let candidates = [//
-                      Analogy::new(atomid("a1"), sym!["Hot1", "Hot2"], sym!["Mild1", "Mild2"]),
-                      Analogy::new(atomid("a2"), sym!["Hot3"], sym!["Cold1", "Cold2"]),
-                      Analogy::new(atomid("a3"), sym!["Cold3"], sym!["Hot3"])];
+                      Analogy::new("a1", sym!["Hot1", "Hot2"], sym!["Mild1", "Mild2"]),
+                      Analogy::new("a2", sym!["Hot3"], sym!["Cold1", "Cold2"]),
+                      Analogy::new("a3", sym!["Cold3"], sym!["Hot3"])];
 
     // Imagine we looked up all AtomIds for all Allegations related to Artifacts "Hot" and "Cold"
     let hot = atomvec!["Hot1", "Hot2", "Hot3"];
     let cold = atomvec!["Cold1", "Cold2", "Cold3"];
-    let search_pair = AtomVec::from_left_right(hot, cold);
+    let search_pair = FuzzySet::<AnalogyMember>::from_left_right(hot, cold);
     println!("Searching for {}", search_pair.diag_lr());
 
     for candidate in &candidates {
@@ -52,8 +54,8 @@ fn experiment1() {
 fn experiment2() {
     // $x = Bind("Hot")
     // $y = Ground(($x : "Cold") : ("Spicy" : "Mild"))
-    let a1 = Analogy::new(atomid("a1"), sym!["Hot1"], sym!["Cold1"]);
-    let a2 = Analogy::new(atomid("a2"), sym!["Cold1"], sym!["Hot1"]);
+    let a1 = Analogy::new(simpleid("a1"), sym!["Hot1"], sym!["Cold1"]);
+    let a2 = Analogy::new(simpleid("a2"), sym!["Cold1"], sym!["Hot1"]);
 
     // NOTE - this should have an unassigned Spin, because it's a match pair
     let search_pair = AtomVec::from_left_right(atomvec!["Hot1"], atomvec!["Cold1"]);

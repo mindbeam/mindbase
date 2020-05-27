@@ -1,5 +1,6 @@
 use super::{
-    atom::*,
+    fuzzyset::*,
+    simpleid::*,
     symbol::*,
 };
 
@@ -8,33 +9,131 @@ use itertools::{
     Itertools,
 };
 
+use colorful::{
+    Color,
+    Colorful,
+};
+
+use std::cmp::Ordering;
+
 pub struct Analogy {
-    pub id:  AtomId,
-    pub vec: AtomVec,
+    pub id:  SimpleId,
+    pub set: FuzzySet<AnalogyMember>,
+}
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub enum AnalogySide {
+    Catagorical,
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone)]
+pub struct AnalogyMember {
+    pub id:     SimpleId,
+    pub side:   AnalogySide,
+    pub degree: f32,
+}
+
+impl AnalogyMember {
+    pub fn new(id: SimpleId) -> Self {
+        AnalogyMember { id,
+                        side: AnalogySide::Catagorical,
+                        degree: 1.0 }
+    }
+
+    pub fn match_side(&self, other: &Self) -> Option<AnalogySide> {
+        if self.spin == other.spin {
+            match (&self.side, &other.side) {
+                (AnalogySide::Left, AnalogySide::Left) => Some(AnalogySide::Left),
+                (AnalogySide::Right, AnalogySide::Right) => Some(AnalogySide::Right),
+                _ => None,
+            }
+        } else {
+            // inverse
+            match (&self.side, &other.side) {
+                (AnalogySide::Left, AnalogySide::Right) => Some(AnalogySide::Left),
+                (AnalogySide::Right, AnalogySide::Left) => Some(AnalogySide::Right),
+                _ => None,
+            }
+        }
+    }
+
+    pub fn transmute_left(mut self) -> Self {
+        self.side = AnalogySide::Left;
+        self
+    }
+
+    pub fn transmute_right(mut self) -> Self {
+        self.side = AnalogySide::Right;
+        self
+    }
+
+    pub fn mutate_weight(&mut self, weight_factor: f32) {
+        println!("mutate_weight {} * {} = {}",
+                 self.weight,
+                 weight_factor,
+                 self.weight * weight_factor);
+        self.weight *= weight_factor;
+    }
+
+    pub fn invert_side(mut self) -> Self {
+        self.side = match self.side {
+            AnalogySide::Left => AnalogySide::Right,
+            AnalogySide::Right => AnalogySide::Left,
+            AnalogySide::Middle => AnalogySide::Middle,
+        };
+        self
+    }
+
+    pub fn invert_spin(mut self) -> Self {
+        self.spin = match self.spin {
+            Spin::Up => Spin::Down,
+            Spin::Down => Spin::Up,
+        };
+        self
+    }
+}
+
+impl FuzzySetMember for AnalogyMember {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.id.cmp(&other.id) {
+            Ordering::Equal => {},
+            o @ _ => return o,
+        }
+        match self.side.cmp(&other.side) {
+            Ordering::Equal => {},
+            o @ _ => return o,
+        }
+        self.spin.cmp(&other.spin)
+    }
+}
+
+#[macro_export]
+#[warn(unused_macros)]
+macro_rules! atomvec {
+    ($($x:expr),+ $(,)?) => (
+        AtomVec::new_from_array(Box::new([$($x),+]))
+    );
 }
 
 impl Analogy {
-    pub fn new(id: AtomId, mut left: Symbol, mut right: Symbol) -> Self {
-        let mut vec = AtomVec::new();
-
-        for atom in left.drain(..) {
-            vec.insert(atom.transmute_left())
-        }
-        for atom in right.drain(..) {
-            vec.insert(atom.transmute_right())
-        }
-
-        Analogy { id, vec }
+    pub fn new<I, S>(id: I, left: S, right: S) -> Self
+        where I: Into<SimpleId>,
+              S: Into<Symbol>
+    {
+        let mut set = FuzzySet::from_left_right(left.into(), right.into());
+        Analogy { id: id.into(), set }
     }
 
-    pub fn intersect(&self, other: &AtomVec) -> Option<AtomVec> {
-        let mut out = AtomVec::new();
+    pub fn intersect(&self, other: &Analogy) -> Option<FuzzySet<AnalogyMember>> {
+        let mut out = FuzzySet::new();
 
         // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
         // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
         // TODO 2 - Think about contradictions including the same atom: Eg Atom 123 is on both the left and the right side, or
         // included with opposite Spin on the same side
-        let mut iter = self.vec.iter().merge_join_by(other.iter(), |a, b| a.id.cmp(&b.id));
+        let mut iter = self.set.iter().merge_join_by(other.iter(), |a, b| a.id.cmp(&b.id));
 
         // Execution plan:
         // * We're comparing all Atoms for both symbols within this analogy to a Two-sided AtomVec containing *Candidate* Atoms
@@ -165,5 +264,30 @@ impl Analogy {
         // } else {
         //     None
         // }
+    }
+}
+
+impl FuzzySet<AnalogyMember> {
+    pub fn from_left_right(left: Symbol, right: Symbol) -> Self {
+        let mut set = Self::new();
+        for sm in left.into_iter() {
+            set.insert(AnalogyMember { id:     sm.id,
+                                       side:   AnalogySide::Left,
+                                       degree: sm.degree, });
+        }
+        for sm in right.into_iter() {
+            set.insert(AnalogyMember { id:     sm.id,
+                                       side:   AnalogySide::Left,
+                                       degree: sm.degree, });
+        }
+        set
+    }
+
+    pub fn left<'a>(&'a self) -> impl Iterator<Item = &AnalogyMember> + 'a {
+        self.iter().filter(|a| a.side == AnalogySide::Left)
+    }
+
+    pub fn right<'a>(&'a self) -> impl Iterator<Item = &AnalogyMember> + 'a {
+        self.iter().filter(|a| a.side == AnalogySide::Right)
     }
 }

@@ -1,48 +1,59 @@
-use super::atom::*;
-use crate::analogy::Analogy;
+use super::simpleid::*;
+use crate::fuzzyset::{
+    FuzzySet,
+    FuzzySetMember,
+};
 
+use std::cmp::Ordering;
+
+pub struct SymbolMember {
+    pub id:     SimpleId,
+    pub degree: f32,
+}
 pub struct Symbol {
-    pub atoms: AtomVec,
+    pub set: FuzzySet<SymbolMember>,
+}
+
+impl FuzzySetMember for SymbolMember {
+    fn cmp(&self, other: &Self) -> Ordering {
+        unimplemented!()
+    }
+}
+
+impl<T> From<T> for SymbolMember where T: Into<SimpleId>
+{
+    fn from(item: T) -> Self {
+        SymbolMember { id:     item.into(),
+                       degree: 1.0, }
+    }
 }
 
 impl Symbol {
     pub fn null() -> Self {
-        Symbol { atoms: AtomVec::new() }
+        Symbol { set: FuzzySet::new() }
     }
 
-    pub fn new_from_list(list: &[Analogy]) -> Self {
-        let mut atoms = AtomVec::new();
-        for item in list.iter() {
-            atoms.insert(Atom { id:     item.id.clone(),
-                                spin:   Spin::Up,
-                                side:   AnalogySide::Middle,
-                                weight: 1.0, })
-        }
+    pub fn new<L, T>(list: L) -> Self
+        where L: IntoIterator<Item = T>,
+              T: Into<SymbolMember>
+    {
+        let mut set = FuzzySet::new_from_array(list);
 
-        Symbol { atoms }
+        Symbol { set }
     }
 
-    pub fn new(ids: Box<[&'static str]>) -> Self {
-        let mut atoms = AtomVec::new();
-
-        for id in ids.into_iter() {
-            atoms.insert(Atom { id:     atomid(id),
-                                side:   AnalogySide::Left,
-                                spin:   Spin::Up,
-                                weight: 1.0, });
-        }
-
-        Symbol { atoms }
+    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, SymbolMember> {
+        self.set.iter()
     }
 
-    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, Atom> {
-        self.atoms.iter()
+    pub fn into_iter(self) -> std::vec::IntoIter<SymbolMember> {
+        self.set.into_iter()
     }
 
-    pub fn drain<'a, T>(&'a mut self, range: T) -> std::vec::Drain<'a, Atom>
+    pub fn drain<'a, T>(&'a mut self, range: T) -> std::vec::Drain<'a, SymbolMember>
         where T: std::ops::RangeBounds<usize>
     {
-        self.atoms.drain(range)
+        self.set.drain(range)
     }
 }
 
