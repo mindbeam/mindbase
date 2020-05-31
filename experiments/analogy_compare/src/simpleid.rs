@@ -16,3 +16,12 @@ impl From<&'static str> for SimpleId {
         SimpleId { id, text }
     }
 }
+impl From<&'static &'static str> for SimpleId {
+    fn from(id: &'static &'static str) -> Self {
+        use regex::Regex;
+        let re = Regex::new(r"([^\d]+)\d*").unwrap();
+        let text = re.captures(&id).unwrap().get(1).unwrap().as_str();
+
+        SimpleId { id, text }
+    }
+}

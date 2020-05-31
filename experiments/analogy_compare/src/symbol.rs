@@ -1,30 +1,31 @@
 use super::simpleid::*;
 use crate::fuzzyset::{
+    self as fs,
     FuzzySet,
-    FuzzySetMember,
 };
 
 use std::cmp::Ordering;
 
+#[derive(Clone)]
 pub struct SymbolMember {
-    pub id:     SimpleId,
-    pub degree: f32,
+    pub id: SimpleId,
 }
 pub struct Symbol {
     pub set: FuzzySet<SymbolMember>,
 }
 
-impl FuzzySetMember for SymbolMember {
+impl fs::Member for SymbolMember {
     fn cmp(&self, other: &Self) -> Ordering {
         unimplemented!()
     }
 }
 
-impl<T> From<T> for SymbolMember where T: Into<SimpleId>
+impl<T> From<T> for fs::Item<SymbolMember> where T: Into<SimpleId>
 {
     fn from(item: T) -> Self {
-        SymbolMember { id:     item.into(),
-                       degree: 1.0, }
+        fs::Item { member:  SymbolMember { id: item.into() },
+                   pdegree: 1.0,
+                   ndegree: 0.0, }
     }
 }
 
@@ -35,22 +36,22 @@ impl Symbol {
 
     pub fn new<L, T>(list: L) -> Self
         where L: IntoIterator<Item = T>,
-              T: Into<SymbolMember>
+              T: Into<fs::Item<SymbolMember>>
     {
         let mut set = FuzzySet::new_from_array(list);
 
         Symbol { set }
     }
 
-    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, SymbolMember> {
+    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, fs::Item<SymbolMember>> {
         self.set.iter()
     }
 
-    pub fn into_iter(self) -> std::vec::IntoIter<SymbolMember> {
+    pub fn into_iter(self) -> std::vec::IntoIter<fs::Item<SymbolMember>> {
         self.set.into_iter()
     }
 
-    pub fn drain<'a, T>(&'a mut self, range: T) -> std::vec::Drain<'a, SymbolMember>
+    pub fn drain<'a, T>(&'a mut self, range: T) -> std::vec::Drain<'a, fs::Item<SymbolMember>>
         where T: std::ops::RangeBounds<usize>
     {
         self.set.drain(range)
@@ -61,6 +62,6 @@ impl Symbol {
 #[warn(unused_macros)]
 macro_rules! sym {
     ($($x:expr),+ $(,)?) => (
-        Symbol::new(Box::new([$($x),+]))
+        Symbol::new(&[$($x),+])
     );
 }

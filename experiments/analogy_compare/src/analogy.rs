@@ -265,6 +265,77 @@ impl Analogy {
         //     None
         // }
     }
+
+    pub fn diag(&self) -> String {
+        let mut out: Vec<String> = Vec::new();
+        for atom in self.iter() {
+            let spin = match atom.spin {
+                Spin::Up => "↑",
+                Spin::Down => "↓",
+            };
+            //˰˯
+
+            let side = match atom.side {
+                AnalogySide::Middle => "ᐧ",
+                AnalogySide::Left => "˱",
+                AnalogySide::Right => "˲",
+            };
+
+            assert!(atom.weight <= 1.0, "Invalid atom weight");
+
+            let mut weight = format!("{:.2}", atom.weight);
+            if atom.weight < 1.0 {
+                weight.remove(0);
+            } else {
+                weight.truncate(0);
+            }
+
+            out.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+                                                                        .to_string());
+        }
+
+        out.join(",")
+    }
+
+    pub fn diag_lr(&self) -> String {
+        let mut lefts: Vec<String> = Vec::new();
+        let mut rights: Vec<String> = Vec::new();
+
+        for atom in self.iter() {
+            let spin = match atom.spin {
+                Spin::Up => "↑",
+                Spin::Down => "↓",
+            };
+            let side = match atom.side {
+                AnalogySide::Middle => "ᐧ",
+                AnalogySide::Left => "˱",
+                AnalogySide::Right => "˲",
+            };
+
+            assert!(atom.weight <= 1.0, "Invalid atom weight");
+
+            let mut weight = format!("{:.2}", atom.weight);
+            if atom.weight < 1.0 {
+                weight.remove(0);
+            } else {
+                weight.truncate(0);
+            }
+
+            match atom.side {
+                AnalogySide::Middle => unimplemented!(),
+                AnalogySide::Left => {
+                    lefts.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+                                                                                  .to_string())
+                },
+                AnalogySide::Right => {
+                    rights.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+                                                                                   .to_string())
+                },
+            }
+        }
+
+        format!("{} <-> {}", lefts.join(","), rights.join(",")).to_string()
+    }
 }
 
 impl FuzzySet<AnalogyMember> {
