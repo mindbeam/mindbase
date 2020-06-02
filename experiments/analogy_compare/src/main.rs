@@ -3,13 +3,13 @@
 #![allow(unused_mut)]
 // mod analogy;
 mod fuzzyset;
-mod simpleid;
-mod symbol;
+// mod simpleid;
+// mod symbol;
 
 // use analogy::*;
 use fuzzyset::FuzzySet;
-use simpleid::*;
-use symbol::*;
+// use simpleid::*;
+// use symbol::*;
 
 fn main() {
     // experiment1()
