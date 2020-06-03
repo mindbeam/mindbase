@@ -1,5 +1,6 @@
 use super::{
-    fuzzyset::*,
+    fuzzyset as fs,
+    fuzzyset::FuzzySet,
     simpleid::*,
     symbol::*,
 };
@@ -7,11 +8,6 @@ use super::{
 use itertools::{
     EitherOrBoth,
     Itertools,
-};
-
-use colorful::{
-    Color,
-    Colorful,
 };
 
 use std::cmp::Ordering;
@@ -30,34 +26,32 @@ pub enum AnalogySide {
 
 #[derive(Debug, Clone)]
 pub struct AnalogyMember {
-    pub id:     SimpleId,
-    pub side:   AnalogySide,
-    pub degree: f32,
+    pub id:   SimpleId,
+    pub side: AnalogySide,
 }
 
 impl AnalogyMember {
     pub fn new(id: SimpleId) -> Self {
         AnalogyMember { id,
-                        side: AnalogySide::Catagorical,
-                        degree: 1.0 }
+                        side: AnalogySide::Catagorical }
     }
 
-    pub fn match_side(&self, other: &Self) -> Option<AnalogySide> {
-        if self.spin == other.spin {
-            match (&self.side, &other.side) {
-                (AnalogySide::Left, AnalogySide::Left) => Some(AnalogySide::Left),
-                (AnalogySide::Right, AnalogySide::Right) => Some(AnalogySide::Right),
-                _ => None,
-            }
-        } else {
-            // inverse
-            match (&self.side, &other.side) {
-                (AnalogySide::Left, AnalogySide::Right) => Some(AnalogySide::Left),
-                (AnalogySide::Right, AnalogySide::Left) => Some(AnalogySide::Right),
-                _ => None,
-            }
-        }
-    }
+    // pub fn match_side(&self, other: &Self) -> Option<AnalogySide> {
+    //     if self.spin == other.spin {
+    //         match (&self.side, &other.side) {
+    //             (AnalogySide::Left, AnalogySide::Left) => Some(AnalogySide::Left),
+    //             (AnalogySide::Right, AnalogySide::Right) => Some(AnalogySide::Right),
+    //             _ => None,
+    //         }
+    //     } else {
+    //         // inverse
+    //         match (&self.side, &other.side) {
+    //             (AnalogySide::Left, AnalogySide::Right) => Some(AnalogySide::Left),
+    //             (AnalogySide::Right, AnalogySide::Left) => Some(AnalogySide::Right),
+    //             _ => None,
+    //         }
+    //     }
+    // }
 
     pub fn transmute_left(mut self) -> Self {
         self.side = AnalogySide::Left;
@@ -68,44 +62,23 @@ impl AnalogyMember {
         self.side = AnalogySide::Right;
         self
     }
-
-    pub fn mutate_weight(&mut self, weight_factor: f32) {
-        println!("mutate_weight {} * {} = {}",
-                 self.weight,
-                 weight_factor,
-                 self.weight * weight_factor);
-        self.weight *= weight_factor;
-    }
-
-    pub fn invert_side(mut self) -> Self {
-        self.side = match self.side {
-            AnalogySide::Left => AnalogySide::Right,
-            AnalogySide::Right => AnalogySide::Left,
-            AnalogySide::Middle => AnalogySide::Middle,
-        };
-        self
-    }
-
-    pub fn invert_spin(mut self) -> Self {
-        self.spin = match self.spin {
-            Spin::Up => Spin::Down,
-            Spin::Down => Spin::Up,
-        };
-        self
-    }
 }
 
-impl FuzzySetMember for AnalogyMember {
+impl fs::Member for AnalogyMember {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.id.cmp(&other.id) {
             Ordering::Equal => {},
             o @ _ => return o,
         }
-        match self.side.cmp(&other.side) {
-            Ordering::Equal => {},
-            o @ _ => return o,
-        }
-        self.spin.cmp(&other.spin)
+        self.side.cmp(&other.side)
+    }
+
+    fn invert(&mut self) {
+        self.side = match self.side {
+            AnalogySide::Left => AnalogySide::Right,
+            AnalogySide::Right => AnalogySide::Left,
+            AnalogySide::Catagorical => AnalogySide::Catagorical,
+        };
     }
 }
 
@@ -118,14 +91,6 @@ macro_rules! atomvec {
 }
 
 impl Analogy {
-    pub fn new<I, S>(id: I, left: S, right: S) -> Self
-        where I: Into<SimpleId>,
-              S: Into<Symbol>
-    {
-        let mut set = FuzzySet::from_left_right(left.into(), right.into());
-        Analogy { id: id.into(), set }
-    }
-
     pub fn intersect(&self, other: &Analogy) -> Option<FuzzySet<AnalogyMember>> {
         let mut out = FuzzySet::new();
 
@@ -267,98 +232,106 @@ impl Analogy {
     }
 
     pub fn diag(&self) -> String {
-        let mut out: Vec<String> = Vec::new();
-        for atom in self.iter() {
-            let spin = match atom.spin {
-                Spin::Up => "↑",
-                Spin::Down => "↓",
-            };
-            //˰˯
+        // let mut out: Vec<String> = Vec::new();
+        // for atom in self.iter() {
+        //     let spin = match atom.spin {
+        //         Spin::Up => "↑",
+        //         Spin::Down => "↓",
+        //     };
+        //     //˰˯
 
-            let side = match atom.side {
-                AnalogySide::Middle => "ᐧ",
-                AnalogySide::Left => "˱",
-                AnalogySide::Right => "˲",
-            };
+        //     let side = match atom.side {
+        //         AnalogySide::Middle => "ᐧ",
+        //         AnalogySide::Left => "˱",
+        //         AnalogySide::Right => "˲",
+        //     };
 
-            assert!(atom.weight <= 1.0, "Invalid atom weight");
+        //     assert!(atom.weight <= 1.0, "Invalid atom weight");
 
-            let mut weight = format!("{:.2}", atom.weight);
-            if atom.weight < 1.0 {
-                weight.remove(0);
-            } else {
-                weight.truncate(0);
-            }
+        //     let mut weight = format!("{:.2}", atom.weight);
+        //     if atom.weight < 1.0 {
+        //         weight.remove(0);
+        //     } else {
+        //         weight.truncate(0);
+        //     }
 
-            out.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
-                                                                        .to_string());
-        }
+        //     out.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+        //                                                                 .to_string());
+        // }
 
-        out.join(",")
+        // out.join(",")
+        unimplemented!()
     }
 
     pub fn diag_lr(&self) -> String {
-        let mut lefts: Vec<String> = Vec::new();
-        let mut rights: Vec<String> = Vec::new();
+        // for atom in self.iter() {
+        //     let side = match atom.side {
+        //         AnalogySide::Middle => "ᐧ",
+        //         AnalogySide::Left => "˱",
+        //         AnalogySide::Right => "˲",
+        //     };
 
-        for atom in self.iter() {
-            let spin = match atom.spin {
-                Spin::Up => "↑",
-                Spin::Down => "↓",
-            };
-            let side = match atom.side {
-                AnalogySide::Middle => "ᐧ",
-                AnalogySide::Left => "˱",
-                AnalogySide::Right => "˲",
-            };
+        //     assert!(atom.weight <= 1.0, "Invalid atom weight");
 
-            assert!(atom.weight <= 1.0, "Invalid atom weight");
+        //     let mut weight = format!("{:.2}", atom.weight);
+        //     if atom.weight < 1.0 {
+        //         weight.remove(0);
+        //     } else {
+        //         weight.truncate(0);
+        //     }
 
-            let mut weight = format!("{:.2}", atom.weight);
-            if atom.weight < 1.0 {
-                weight.remove(0);
-            } else {
-                weight.truncate(0);
-            }
+        //     match atom.side {
+        //         AnalogySide::Middle => unimplemented!(),
+        //         AnalogySide::Left => {
+        //             lefts.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+        //                                                                           .to_string())
+        //         },
+        //         AnalogySide::Right => {
+        //             rights.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
+        //                                                                            .to_string())
+        //         },
+        //     }
+        // }
 
-            match atom.side {
-                AnalogySide::Middle => unimplemented!(),
-                AnalogySide::Left => {
-                    lefts.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
-                                                                                  .to_string())
-                },
-                AnalogySide::Right => {
-                    rights.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
-                                                                                   .to_string())
-                },
-            }
+        // format!("{} <-> {}", lefts.join(","), rights.join(",")).to_string()
+        unimplemented!()
+    }
+
+    pub fn from_left_right<I>(id: I, left: Symbol, right: Symbol) -> Self
+        where I: Into<SimpleId>
+    {
+        let mut set = FuzzySet::new();
+
+        for sm in left.into_iter() {
+            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
+                                                           side: AnalogySide::Left, },
+                                  pdegree: sm.pdegree,
+                                  ndegree: sm.ndegree, });
         }
-
-        format!("{} <-> {}", lefts.join(","), rights.join(",")).to_string()
+        for sm in right.into_iter() {
+            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
+                                                           side: AnalogySide::Right, },
+                                  pdegree: sm.pdegree,
+                                  ndegree: sm.ndegree, });
+        }
+        Analogy { id: id.into(), set }
     }
 }
 
 impl FuzzySet<AnalogyMember> {
-    pub fn from_left_right(left: Symbol, right: Symbol) -> Self {
-        let mut set = Self::new();
-        for sm in left.into_iter() {
-            set.insert(AnalogyMember { id:     sm.id,
-                                       side:   AnalogySide::Left,
-                                       degree: sm.degree, });
-        }
-        for sm in right.into_iter() {
-            set.insert(AnalogyMember { id:     sm.id,
-                                       side:   AnalogySide::Left,
-                                       degree: sm.degree, });
-        }
-        set
+    pub fn left<'a>(&'a self) -> impl Iterator<Item = fs::Item<SymbolMember>> + 'a {
+        self.iter().filter(|a| a.member.side == AnalogySide::Left).map(|a| {
+                                                                      fs::Item { member:  SymbolMember { id: a.member.id.clone() },
+                                                                                 pdegree: a.pdegree,
+                                                                                 ndegree: a.ndegree, }
+                                                                  })
     }
 
-    pub fn left<'a>(&'a self) -> impl Iterator<Item = &AnalogyMember> + 'a {
-        self.iter().filter(|a| a.side == AnalogySide::Left)
-    }
-
-    pub fn right<'a>(&'a self) -> impl Iterator<Item = &AnalogyMember> + 'a {
-        self.iter().filter(|a| a.side == AnalogySide::Right)
+    pub fn right<'a>(&'a self) -> impl Iterator<Item = fs::Item<SymbolMember>> + 'a {
+        self.iter().filter(|a| a.member.side == AnalogySide::Right).map(|a| {
+            fs::Item { member:  SymbolMember { id: a.member.id.clone() },
+                       pdegree: a.pdegree,
+                       ndegree: a.ndegree, }
+        })
     }
 }

@@ -3,6 +3,11 @@ use itertools::{
     Itertools,
 };
 
+use colorful::{
+    Color,
+    Colorful,
+};
+
 #[derive(Clone)]
 pub struct Item<M>
     where M: Member
@@ -15,8 +20,9 @@ pub struct Item<M>
     pub member:  M,
 }
 
-pub trait Member: std::fmt::Debug {
+pub trait Member {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering;
+    fn invert(&mut self) {}
 }
 
 // Fuzzy set where membership may be negative or positive
@@ -88,9 +94,11 @@ impl<M> FuzzySet<M> where M: Member + Clone
         self.0.drain(range)
     }
 
-    pub fn union(&mut self, other: &Self) {
-        for item in other.iter() {
-            self.insert_borrowed(item)
+    pub fn union<'a, T>(&'a mut self, other: T)
+        where T: Iterator<Item = Item<M>>
+    {
+        for item in other {
+            self.insert(item)
         }
     }
 

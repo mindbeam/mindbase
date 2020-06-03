@@ -1,15 +1,18 @@
 use super::simpleid::*;
-use crate::fuzzyset::{
-    self as fs,
-    FuzzySet,
+use crate::{
+    analogy::AnalogyMember,
+    fuzzyset as fs,
+    fuzzyset::FuzzySet,
 };
 
 use std::cmp::Ordering;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SymbolMember {
     pub id: SimpleId,
 }
+
+#[derive(Debug, Clone)]
 pub struct Symbol {
     pub set: FuzzySet<SymbolMember>,
 }
@@ -19,7 +22,13 @@ impl fs::Member for SymbolMember {
         unimplemented!()
     }
 }
-
+impl From<fs::Item<AnalogyMember>> for fs::Item<SymbolMember> {
+    fn from(analogy_member: fs::Item<AnalogyMember>) -> Self {
+        fs::Item { member:  SymbolMember { id: analogy_member.member.id, },
+                   pdegree: analogy_member.pdegree,
+                   ndegree: analogy_member.ndegree, }
+    }
+}
 impl<T> From<T> for fs::Item<SymbolMember> where T: Into<SimpleId>
 {
     fn from(item: T) -> Self {
@@ -38,7 +47,7 @@ impl Symbol {
         where L: IntoIterator<Item = T>,
               T: Into<fs::Item<SymbolMember>>
     {
-        let mut set = FuzzySet::new_from_array(list);
+        let mut set = FuzzySet::from_list(list);
 
         Symbol { set }
     }
