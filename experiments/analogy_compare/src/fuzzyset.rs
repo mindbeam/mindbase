@@ -25,6 +25,17 @@ pub trait Member {
     fn invert(&mut self) {}
 }
 
+impl<M> Item<M> where M: Member
+{
+    pub fn invert(&mut self) {
+        // let pd = item.pdegree;
+        // switcheroo
+        // item.pdegree = item.ndegree;
+        // item.ndegree = pd;
+        self.member.invert()
+    }
+}
+
 // Fuzzy set where membership may be negative or positive
 #[derive(Clone)]
 pub struct FuzzySet<M>(Vec<Item<M>>) where M: Member + Clone;
@@ -95,7 +106,7 @@ impl<M> FuzzySet<M> where M: Member + Clone
     }
 
     pub fn union<'a, T>(&'a mut self, other: T)
-        where T: Iterator<Item = Item<M>>
+        where T: IntoIterator<Item = Item<M>>
     {
         for item in other {
             self.insert(item)
@@ -126,12 +137,18 @@ impl<M> FuzzySet<M> where M: Member + Clone
     pub fn invert(&mut self) {
         let new = Self::new();
         for item in self.0.iter_mut() {
-            let pd = item.pdegree;
-
-            // switcheroo
-            item.pdegree = item.ndegree;
-            item.ndegree = pd;
+            item.invert()
         }
+    }
+}
+
+impl<M> IntoIterator for FuzzySet<M> where M: Member + Clone
+{
+    type IntoIter = std::vec::IntoIter<Item<M>>;
+    type Item = Item<M>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_iter()
     }
 }
 
@@ -197,7 +214,7 @@ mod test {
         // In practice, this essentially means that the set is null, but the behaviors may be different under subsequent
         // operations versus a null set. Either way we have to differentiate between non-membership and membership which is made
         // irrelevant through contradiction
-        fs1.union(&fs2);
+        fs1.union(fs2);
         assert_eq!(format!("{:?}", fs1), "{1+1.0-1.0, 2+1.0-1.0, 3+1.0-1.0}");
     }
 }

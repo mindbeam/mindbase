@@ -13,7 +13,7 @@ use simpleid::*;
 use symbol::*;
 
 fn main() {
-    // experiment1()
+    experiment1()
 }
 
 fn experiment1() {
@@ -26,30 +26,25 @@ fn experiment1() {
 
     // For simplicity, lets say these are all the analogies in the system
     let candidates = [//
-                      Analogy::from_left_right("a1", sym!["Hot1", "Hot2"], sym!["Mild1", "Mild2"]),
+                      Analogy::from_left_right("a1", sym!["Hot1", "Hot2"], sym!["Mild1", "Mild2", "Cold3"]),
                       Analogy::from_left_right("a2", sym!["Hot3"], sym!["Cold1", "Cold2"]),
                       Analogy::from_left_right("a3", sym!["Cold3"], sym!["Hot3"])];
 
     // Imagine we looked up all AtomIds for all Allegations related to Artifacts "Hot" and "Cold"
     let hot = sym!["Hot1", "Hot2", "Hot3"];
     let cold = sym!["Cold1", "Cold2", "Cold3"];
-    let search_pair = Analogy::from_left_right("", hot, cold);
+    let search_pair = Analogy::from_left_right("bogus", hot, cold);
     // println!("Searching for {}", search_pair.diag_lr());
 
     for candidate in &candidates {
         let v = candidate.intersect(&search_pair).expect("All of the above should match");
         x.set.union(v.left());
 
-        y.set.union(Atom { id:     candidate.id.clone(),
-                           spin:   Spin::Up, /* This is WRONG for a3. It should be Down because the order of the
-                                              * association is reversed.
-                                              * how do we fix this? */
-                           side:   AnalogySide::Middle,
-                           weight: 1.0, });
+        // y.set.union(v);
     }
 
     println!("symbol x is: [{:?}]", x);
-    println!("symbol y is: [{:?}]", y);
+    // println!("symbol y is: [{:?}]", y);
 }
 
 // fn experiment2() {

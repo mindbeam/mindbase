@@ -19,7 +19,7 @@ pub struct Symbol {
 
 impl fs::Member for SymbolMember {
     fn cmp(&self, other: &Self) -> Ordering {
-        unimplemented!()
+        self.id.cmp(&other.id)
     }
 }
 impl From<fs::Item<AnalogyMember>> for fs::Item<SymbolMember> {
