@@ -4,15 +4,23 @@
 
 A user, or other automated process which is capable of making allegations. Each agent has a cryptographic identity which is used to sign Allegations.  
 
-## Atom
-
-A reference to the unique identity of some specific Allegation.
-
 ## Artifact
 
 Some blob of data which may be meaningful to the outside world, likely containing `External Meaning`, but is otherwise devoid of `Internal meaning`, at least by its existence.
 
+## AllegationID
+
+Renamed to [ClaimID](./GLOSSARY.md#ClaimId) 
+
 ## Allegation
+
+Renamed to [Claim](./GLOSSARY.md#Claim)
+
+## ClaimID
+
+The unique identity of some specific [Claim](./GLOSSARY.md#Claim)
+
+## Claim
 
 An event or declaration which is being documented by an agent But it's also more than that – It's an instance of some payload. At present, such payload might be any of the following types:
 
@@ -23,6 +31,10 @@ An event or declaration which is being documented by an agent But it's also more
 
 Though an Allegation may reference one or more `Artifacts`, implying that the allegation is somehow an _instance_ of that `Artifact` it doesn't even need to be an instance of something per se. It could be a `Unit` Allegation, which is just an anonymous enumeration.  
 Each Allegation has a Payload.
+
+## FuzzySet
+
+TODO
 
 ## MBQL
 
