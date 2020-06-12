@@ -22,7 +22,7 @@ fn experiment1() {
     // $y = Ground($x : "Cold")
 
     let mut x = Symbol::null();
-    let mut y = Symbol::null();
+    let mut y = FuzzySet::new();
 
     // For simplicity, lets say these are all the analogies in the system
     let candidates = [//
@@ -33,18 +33,20 @@ fn experiment1() {
     // Imagine we looked up all AtomIds for all Allegations related to Artifacts "Hot" and "Cold"
     let hot = sym!["Hot1", "Hot2", "Hot3"];
     let cold = sym!["Cold1", "Cold2", "Cold3"];
+
+    // This should be an AnalogyQuery not Analogy
     let search_pair = Analogy::from_left_right("bogus", hot, cold);
     // println!("Searching for {}", search_pair.diag_lr());
 
     for candidate in &candidates {
-        let v = candidate.intersect(&search_pair).expect("All of the above should match");
+        let v = candidate.query(&search_pair).expect("All of the above should match");
         x.set.union(v.left());
 
-        // y.set.union(v);
+        y.union(v);
     }
 
-    println!("symbol x is: [{:?}]", x);
-    // println!("symbol y is: [{:?}]", y);
+    println!("symbol x is: {}", x);
+    println!("symbol y is: {}", y);
 }
 
 // fn experiment2() {

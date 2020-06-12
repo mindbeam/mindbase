@@ -21,6 +21,10 @@ impl fs::Member for SymbolMember {
     fn cmp(&self, other: &Self) -> Ordering {
         self.id.cmp(&other.id)
     }
+
+    fn display_fmt(&self, item: &fs::Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}~{:0.1}", self.id.id, item.pdegree)
+    }
 }
 impl From<fs::Item<AnalogyMember>> for fs::Item<SymbolMember> {
     fn from(analogy_member: fs::Item<AnalogyMember>) -> Self {
@@ -35,6 +39,12 @@ impl<T> From<T> for fs::Item<SymbolMember> where T: Into<SimpleId>
         fs::Item { member:  SymbolMember { id: item.into() },
                    pdegree: 1.0,
                    ndegree: 0.0, }
+    }
+}
+
+impl std::fmt::Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "${}", self.set)
     }
 }
 

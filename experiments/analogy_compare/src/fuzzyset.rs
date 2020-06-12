@@ -8,7 +8,7 @@ use colorful::{
     Colorful,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Item<M>
     where M: Member
 {
@@ -20,9 +20,27 @@ pub struct Item<M>
     pub member:  M,
 }
 
-pub trait Member {
+pub trait Member: Sized + Clone {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering;
     fn invert(&mut self) {}
+    fn display_fmt(&self, item: &Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Member+{:0.1}", item.pdegree)
+    }
+    fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{")?;
+        let mut seen = false;
+        for item in set.iter() {
+            if seen {
+                write!(f, ", ")?;
+                item.member.display_fmt(&item, f)?;
+            } else {
+                seen = true;
+                item.member.display_fmt(&item, f)?;
+            }
+        }
+        write!(f, "}}")?;
+        Ok(())
+    }
 }
 
 impl<M> Item<M> where M: Member
@@ -149,6 +167,13 @@ impl<M> IntoIterator for FuzzySet<M> where M: Member + Clone
 
     fn into_iter(self) -> Self::IntoIter {
         self.into_iter()
+    }
+}
+
+impl<M> std::fmt::Display for FuzzySet<M> where M: Member + Clone
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Member::display_fmt_set(self, f)
     }
 }
 

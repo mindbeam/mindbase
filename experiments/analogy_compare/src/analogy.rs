@@ -73,7 +73,7 @@ macro_rules! atomvec {
 }
 
 impl Analogy {
-    pub fn intersect(&self, other: &Analogy) -> Option<FuzzySet<AnalogyMember>> {
+    pub fn query(&self, other: &Analogy) -> Option<FuzzySet<AnalogyMember>> {
         // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
         // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
 
@@ -114,47 +114,39 @@ impl Analogy {
         let mut lr_count = 0u32;
         let mut rl_count = 0u32;
 
-        enum Polarity {
-            Regular(fs::Item<AnalogyMember>),
-            Goofy(fs::Item<AnalogyMember>),
-        };
-        let mut tmp: Vec<Polarity> = Vec::new();
+        let mut out: Vec<fs::Item<AnalogyMember>> = Vec::new();
 
         for either in iter {
             match either {
                 EitherOrBoth::Both(analogy_item, query_item) => {
                     // So we know we match on ID
 
-                    let regular;
                     let degree;
+                    println!("MATCH {:?} <-> {:?}", analogy_item.member.side, query_item.member.side);
                     match (&analogy_item.member.side, &query_item.member.side) {
                         (AnalogySide::Left, AnalogySide::Left) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
                             ll_pdegree += degree;
                             // ll_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             ll_count += 1;
-                            regular = true;
                         },
                         (AnalogySide::Right, AnalogySide::Right) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
                             rr_pdegree += degree;
                             // rr_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             rr_count += 1;
-                            regular = true;
                         },
                         (AnalogySide::Left, AnalogySide::Right) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
                             lr_pdegree += degree;
                             // lr_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             lr_count += 1;
-                            regular = false;
                         },
                         (AnalogySide::Right, AnalogySide::Left) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
                             rl_pdegree += degree;
                             // rl_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             rl_count += 1;
-                            regular = false
                         },
 
                         _ => unimplemented!(),
@@ -167,11 +159,11 @@ impl Analogy {
                     // assuming we are only inverting the sidedness (conditionally)
                     // then this should be sufficient, as it's based on the analogy_item.
                     // Such inversion would be all-or-none for this analogy
-                    if regular {
-                        tmp.push(Polarity::Regular(output_item));
-                    } else {
-                        tmp.push(Polarity::Goofy(output_item));
-                    }
+                    // if regular {
+                    out.push(output_item);
+                    // } else {
+                    // tmp.push(Polarity::Inverse(output_item));
+                    // }
                 },
                 _ => {},
             };
@@ -195,45 +187,33 @@ impl Analogy {
         let forward_degree = ll_pdegree * rr_pdegree; // + lr_ndegree * rl_ndegree;
         let reverse_degree = lr_pdegree * rl_pdegree; // + ll_ndegree * rr_pdegree;
 
+        println!("FORWARD {:0.1} REVERSE {:0.1}", forward_degree, reverse_degree);
+
         if forward_degree > reverse_degree {
+            println!("Forward");
+
             // The output factor of the left symbol is a function of how well the right matched, and vice versa
             let left_factor = rr_pdegree / rr_count as f32;
             let right_factor = ll_pdegree / ll_count as f32;
 
             let mut f = FuzzySet::new();
-            for item in tmp.drain(..) {
-                match item {
-                    Polarity::Regular(mut i) => {
-                        i.scale_lr(left_factor, right_factor);
-                        f.insert(i);
-                    },
-                    Polarity::Goofy(mut i) => {
-                        i.invert();
-                        i.scale_lr(left_factor, right_factor);
-                        f.insert(i);
-                    },
-                }
+            for mut item in out.drain(..) {
+                item.scale_lr(left_factor, right_factor);
+                f.insert(item);
             }
 
             Some(f)
         } else if reverse_degree > 0.0 {
+            println!("Reverse: {:?}", out);
             // Same as above, except we're using the numbers from the inverse comparisons
             let left_factor = rl_pdegree / rl_count as f32;
             let right_factor = lr_pdegree / lr_count as f32;
-
+            println!("Factors: {:0.1} <-> {:0.1}", left_factor, right_factor);
             let mut f = FuzzySet::new();
-            for item in tmp.drain(..) {
-                match item {
-                    Polarity::Regular(mut i) => {
-                        i.invert();
-                        i.scale_lr(left_factor, right_factor);
-                        f.insert(i);
-                    },
-                    Polarity::Goofy(mut i) => {
-                        i.scale_lr(left_factor, right_factor);
-                        f.insert(i);
-                    },
-                }
+            for mut item in out.drain(..) {
+                item.invert();
+                item.scale_lr(left_factor, right_factor);
+                f.insert(item);
             }
 
             Some(f)
@@ -292,40 +272,6 @@ impl Analogy {
         unimplemented!()
     }
 
-    pub fn diag_lr(&self) -> String {
-        // for atom in self.iter() {
-        //     let side = match atom.side {
-        //         AnalogySide::Middle => "ᐧ",
-        //         AnalogySide::Left => "˱",
-        //         AnalogySide::Right => "˲",
-        //     };
-
-        //     assert!(atom.weight <= 1.0, "Invalid atom weight");
-
-        //     let mut weight = format!("{:.2}", atom.weight);
-        //     if atom.weight < 1.0 {
-        //         weight.remove(0);
-        //     } else {
-        //         weight.truncate(0);
-        //     }
-
-        //     match atom.side {
-        //         AnalogySide::Middle => unimplemented!(),
-        //         AnalogySide::Left => {
-        //             lefts.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
-        //                                                                           .to_string())
-        //         },
-        //         AnalogySide::Right => {
-        //             rights.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
-        //                                                                            .to_string())
-        //         },
-        //     }
-        // }
-
-        // format!("{} <-> {}", lefts.join(","), rights.join(",")).to_string()
-        unimplemented!()
-    }
-
     pub fn from_left_right<I>(id: I, left: Symbol, right: Symbol) -> Self
         where I: Into<SimpleId>
     {
@@ -362,9 +308,48 @@ impl fs::Member for AnalogyMember {
             AnalogySide::Catagorical => AnalogySide::Catagorical,
         };
     }
+
+    fn display_fmt(&self, item: &fs::Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let side = match self.side {
+            AnalogySide::Catagorical => "ᐧ",
+            AnalogySide::Left => "˱",
+            AnalogySide::Right => "˲",
+        };
+        write!(f, "{}{}{:0.1}", self.id.id, side, item.pdegree)
+    }
+
+    fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        let mut seen = false;
+        for item in set.left() {
+            if seen {
+                write!(f, ", ")?;
+                item.member.display_fmt(&item, f)?;
+            } else {
+                seen = true;
+                item.member.display_fmt(&item, f)?;
+            }
+        }
+
+        write!(f, "] <-> [")?;
+
+        let mut seen = false;
+        for item in set.right() {
+            if seen {
+                write!(f, ", ")?;
+                item.member.display_fmt(&item, f)?;
+            } else {
+                seen = true;
+                item.member.display_fmt(&item, f)?;
+            }
+        }
+
+        write!(f, "]")?;
+        Ok(())
+    }
 }
 
-enum AnalogyCompare {
+pub enum AnalogyCompare {
     Different,
     Same,
     Inverse,
