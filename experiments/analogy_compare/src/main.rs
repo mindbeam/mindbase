@@ -7,7 +7,10 @@ mod simpleid;
 mod symbol;
 
 // use analogy::*;
-use analogy::Analogy;
+use analogy::{
+    Analogy,
+    AnalogyQuery,
+};
 use fuzzyset::FuzzySet;
 use simpleid::*;
 use symbol::*;
@@ -35,7 +38,7 @@ fn experiment1() {
     let cold = sym!["Cold1", "Cold2", "Cold3"];
 
     // This should be an AnalogyQuery not Analogy
-    let search_pair = Analogy::from_left_right("bogus", hot, cold);
+    let search_pair = AnalogyQuery::from_left_right(hot, cold);
     // println!("Searching for {}", search_pair.diag_lr());
 
     for candidate in &candidates {

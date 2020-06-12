@@ -73,7 +73,7 @@ macro_rules! atomvec {
 }
 
 impl Analogy {
-    pub fn query(&self, other: &Analogy) -> Option<FuzzySet<AnalogyMember>> {
+    pub fn query(&self, other: &AnalogyQuery) -> Option<FuzzySet<AnalogyMember>> {
         // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
         // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
 
@@ -240,38 +240,6 @@ impl Analogy {
         // }
     }
 
-    pub fn diag(&self) -> String {
-        // let mut out: Vec<String> = Vec::new();
-        // for atom in self.iter() {
-        //     let spin = match atom.spin {
-        //         Spin::Up => "↑",
-        //         Spin::Down => "↓",
-        //     };
-        //     //˰˯
-
-        //     let side = match atom.side {
-        //         AnalogySide::Middle => "ᐧ",
-        //         AnalogySide::Left => "˱",
-        //         AnalogySide::Right => "˲",
-        //     };
-
-        //     assert!(atom.weight <= 1.0, "Invalid atom weight");
-
-        //     let mut weight = format!("{:.2}", atom.weight);
-        //     if atom.weight < 1.0 {
-        //         weight.remove(0);
-        //     } else {
-        //         weight.truncate(0);
-        //     }
-
-        //     out.push(format!("{}{}{}{}", atom.id.id, side, spin, weight).bg_color(Color::Green)
-        //                                                                 .to_string());
-        // }
-
-        // out.join(",")
-        unimplemented!()
-    }
-
     pub fn from_left_right<I>(id: I, left: Symbol, right: Symbol) -> Self
         where I: Into<SimpleId>
     {
@@ -292,6 +260,31 @@ impl Analogy {
         Analogy { id: id.into(), set }
     }
 }
+
+pub struct AnalogyQuery {
+    pub set: FuzzySet<AnalogyMember>,
+}
+
+impl AnalogyQuery {
+    pub fn from_left_right(left: Symbol, right: Symbol) -> Self {
+        let mut set = FuzzySet::new();
+
+        for sm in left.into_iter() {
+            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
+                                                           side: AnalogySide::Left, },
+                                  pdegree: sm.pdegree,
+                                  ndegree: sm.ndegree, });
+        }
+        for sm in right.into_iter() {
+            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
+                                                           side: AnalogySide::Right, },
+                                  pdegree: sm.pdegree,
+                                  ndegree: sm.ndegree, });
+        }
+        AnalogyQuery { set }
+    }
+}
+
 impl fs::Member for AnalogyMember {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.id.cmp(&other.id) {
