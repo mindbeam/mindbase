@@ -16,10 +16,10 @@ use simpleid::*;
 use symbol::*;
 
 fn main() {
-    experiment1()
+    experiment()
 }
 
-fn experiment1() {
+fn experiment() {
     // In this experiment, we are approxmiating the following MBQL
     // $x = Bind("Hot")
     // $y = Ground($x : "Cold")
@@ -29,20 +29,21 @@ fn experiment1() {
 
     // For simplicity, lets say these are all the analogies in the system
     let candidates = [//
-                      Analogy::from_left_right("a1", sym!["Hot1", "Hot2"], sym!["Mild1", "Mild2", "Cold3"]),
+                      Analogy::from_left_right("a1", sym!["Hot1", "Hot2", "Heated1"], sym!["Mild1", "Mild2", "Cold3"]),
                       Analogy::from_left_right("a2", sym!["Hot3"], sym!["Cold1", "Cold2"]),
                       Analogy::from_left_right("a3", sym!["Cold3"], sym!["Hot3"])];
 
     // Imagine we looked up all AtomIds for all Allegations related to Artifacts "Hot" and "Cold"
-    let hot = sym!["Hot1", "Hot2", "Hot3"];
-    let cold = sym!["Cold1", "Cold2", "Cold3"];
-
-    // This should be an AnalogyQuery not Analogy
-    let search_pair = AnalogyQuery::from_left_right(hot, cold);
-    // println!("Searching for {}", search_pair.diag_lr());
+    let query = AnalogyQuery::from_left_right(sym!["Hot1", "Hot2", "Hot3"], sym!["Cold1", "Cold2", "Cold3"]);
+    println!("Query is: {}", query);
 
     for candidate in &candidates {
-        let v = candidate.query(&search_pair).expect("All of the above should match");
+        let v = candidate.interrogate(&query).expect("All of the above should match");
+        println!("v is {}", v);
+
+        // QUESTION: should the union of the resultant query output sets (for each candidate analogy) bear equal weight in the
+        // output set? That seems screwy! Presumably It should be some sort of a weighted union across all candidate
+        // analogies, but how do we do this?
         x.set.union(v.left());
 
         y.union(v);

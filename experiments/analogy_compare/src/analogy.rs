@@ -73,7 +73,7 @@ macro_rules! atomvec {
 }
 
 impl Analogy {
-    pub fn query(&self, other: &AnalogyQuery) -> Option<FuzzySet<AnalogyMember>> {
+    pub fn interrogate(&self, other: &AnalogyQuery) -> Option<FuzzySet<AnalogyMember>> {
         // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
         // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
 
@@ -114,39 +114,84 @@ impl Analogy {
         let mut lr_count = 0u32;
         let mut rl_count = 0u32;
 
+        let mut left_count = 0u32;
+        let mut right_count = 0u32;
+        let mut left_degree = 0f32;
+        let mut right_degree = 0f32;
+
+        let mut normal_count = 0u32;
+        let mut inverse_count = 0u32;
+
         let mut out: Vec<fs::Item<AnalogyMember>> = Vec::new();
 
         for either in iter {
             match either {
+                // EitherOrBoth::Left(analogy_item) => {
+                // // QUESTION: Do we care if the analogy has more members than the query?
+                //     // Present in analogy, not present in query
+                //     match &analogy_item.member.side {
+                //         AnalogySide::Left => {
+                //             left_count += 1;
+                //         },
+                //         AnalogySide::Right => {
+                //             right_count += 1;
+                //         },
+                //         _ => unimplemented!(),
+                //     }
+                // },
+                EitherOrBoth::Right(analogy_item) => {
+                    // Present in query, not present in analogy
+                    match &analogy_item.member.side {
+                        AnalogySide::Left => {
+                            left_count += 1;
+                        },
+                        AnalogySide::Right => {
+                            right_count += 1;
+                        },
+                        _ => unimplemented!(),
+                    }
+                },
                 EitherOrBoth::Both(analogy_item, query_item) => {
                     // So we know we match on ID
 
                     let degree;
-                    println!("MATCH {:?} <-> {:?}", analogy_item.member.side, query_item.member.side);
+                    // println!("MATCH {:?} <-> {:?}", analogy_item.member.side, query_item.member.side);
                     match (&analogy_item.member.side, &query_item.member.side) {
                         (AnalogySide::Left, AnalogySide::Left) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
+                            left_degree += degree;
                             ll_pdegree += degree;
                             // ll_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             ll_count += 1;
+                            left_count += 1;
+                            normal_count += 1;
                         },
                         (AnalogySide::Right, AnalogySide::Right) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
+                            right_degree += degree;
                             rr_pdegree += degree;
                             // rr_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             rr_count += 1;
+                            right_count += 1;
+                            normal_count += 1;
                         },
                         (AnalogySide::Left, AnalogySide::Right) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
+                            left_degree += degree;
                             lr_pdegree += degree;
                             // lr_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             lr_count += 1;
+                            left_count += 1;
+                            inverse_count += 1;
                         },
                         (AnalogySide::Right, AnalogySide::Left) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
+                            right_degree += degree;
                             rl_pdegree += degree;
                             // rl_ndegree += analogy_atom.ndegree * query_atom.ndegree;
                             rl_count += 1;
+                            right_count += 1;
+                            inverse_count += 1;
                         },
 
                         _ => unimplemented!(),
@@ -187,14 +232,21 @@ impl Analogy {
         let forward_degree = ll_pdegree * rr_pdegree; // + lr_ndegree * rl_ndegree;
         let reverse_degree = lr_pdegree * rl_pdegree; // + ll_ndegree * rr_pdegree;
 
-        println!("FORWARD {:0.1} REVERSE {:0.1}", forward_degree, reverse_degree);
+        // println!("Left {}: (LL {:0.1} + LR: {:0.1}), Right: {}: (RR: {:0.1} + RL: {:0.1})",
+        //  left_count, ll_pdegree, lr_pdegree, right_count, rr_pdegree, rl_pdegree);
 
-        if forward_degree > reverse_degree {
-            println!("Forward");
+        if right_count == 0 || left_count == 0 {
+            return None;
+        }
+
+        let left_factor = right_degree / right_count as f32;
+        let right_factor = left_degree / left_count as f32;
+        // println!("FACTOR LEFT {:0.1} RIGHT {:0.1}", left_factor, right_factor);
+
+        if normal_count > inverse_count {
+            // println!("Forward");
 
             // The output factor of the left symbol is a function of how well the right matched, and vice versa
-            let left_factor = rr_pdegree / rr_count as f32;
-            let right_factor = ll_pdegree / ll_count as f32;
 
             let mut f = FuzzySet::new();
             for mut item in out.drain(..) {
@@ -203,12 +255,9 @@ impl Analogy {
             }
 
             Some(f)
-        } else if reverse_degree > 0.0 {
-            println!("Reverse: {:?}", out);
+        } else if inverse_count > 0 {
+            // println!("Reverse: {:?}", out);
             // Same as above, except we're using the numbers from the inverse comparisons
-            let left_factor = rl_pdegree / rl_count as f32;
-            let right_factor = lr_pdegree / lr_count as f32;
-            println!("Factors: {:0.1} <-> {:0.1}", left_factor, right_factor);
             let mut f = FuzzySet::new();
             for mut item in out.drain(..) {
                 item.invert();
@@ -308,7 +357,7 @@ impl fs::Member for AnalogyMember {
             AnalogySide::Left => "˱",
             AnalogySide::Right => "˲",
         };
-        write!(f, "{}{}{:0.1}", self.id.id, side, item.pdegree)
+        write!(f, "{}{}{:0.2}", self.id.id, side, item.pdegree)
     }
 
     fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -324,7 +373,7 @@ impl fs::Member for AnalogyMember {
             }
         }
 
-        write!(f, "] <-> [")?;
+        write!(f, " <-> ")?;
 
         let mut seen = false;
         for item in set.right() {
@@ -385,5 +434,16 @@ impl FuzzySet<AnalogyMember> {
                        pdegree: a.pdegree,
                        ndegree: a.ndegree, }
         })
+    }
+}
+
+impl std::fmt::Display for Analogy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}[{}]", self.id.id, self.set)
+    }
+}
+impl std::fmt::Display for AnalogyQuery {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.set)
     }
 }
