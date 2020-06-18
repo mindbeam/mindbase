@@ -16,6 +16,22 @@ Renamed to [ClaimID](./GLOSSARY.md#ClaimId)
 
 Renamed to [Claim](./GLOSSARY.md#Claim)
 
+## Ontology, Common
+
+Any ontological system which is either non-formal, or trivially formal.
+Such systems are predominantly managed via interpersonal processes such as oral tradition and other social meme propagation dynamics.  
+These systems define the symbols and concepts which you, as a functioning member of the human collective, use every day to communicate with the world at large.
+
+For the purposes of our definition here, the English language itself could be a considered an informal, or trivially formal ontology, and would thus be considered "Common". Although we have elaborate dictionaries and thesauruses, they can't possibly stand on their own. They are necessarily written in such a way that requires substantial contextual information about society which we as children must first learn. [External Meaning](./GLOSSARY.md#External-Meaning) is generally based on such Common Ontologies, thus requiring an agent containing a significant fraction of their massive breadth in order to competently interpret or generate.
+
+## Ontology, Formal
+
+For our purposes here, we consider an Ontological System to be "Formal" when its creation is the result of a deliberative process which seeks to minimize or eliminate self-inconsistency. All such systems are necessarily imperfect, because meaning itself ([External](./GLOSSARY.md#External-Meaning) or otherwise) emerges from interpretation of information. Such interpretation necessarily requires the bridging of domains, in which the symbols of one ontological system must be correlated, or [Grounded](./GLOSSARY.md#Symbolic-Grounding) to those of another. Any system which lacks this capacity to correlate elements within two epistemic domains (however trivial they might be) is necessarily devoid of meaning.
+
+The inexorable misalignment between these domains (the Formal Ongology in question, and the foreign domain which it intends to describe) necessarily results in a sort of impedence mismatch. No matter how excuisite a given Formal Ongology might be, the opportunity for it to be subtly misaligned with some novel or reinterpreted facet of the other domain will always exist.
+
+A Formal ontology could be said to be perpetually "chasing" said foreign domain, rather like a person chasing a rainbow – Always _just- out of reach.
+
 ## ClaimID
 
 The unique identity of some specific [Claim](./GLOSSARY.md#Claim)
@@ -33,6 +49,10 @@ Though an Allegation may reference one or more `Artifacts`, implying that the al
 Each Allegation has a Payload.
 
 ## FuzzySet
+
+TODO
+
+## Symbolic Grounding
 
 TODO
 
