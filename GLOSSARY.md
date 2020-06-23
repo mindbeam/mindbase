@@ -36,7 +36,7 @@ Each Allegation has a Payload.
 
 Noun. A declarative or final state in which elements or subgroups of a given cohort have become "sufficiently" aligned by whatever standard.
 
-We may wish to use the dictionary-synonymous term "Converged" (Noun) to refer to this final state. However, given that it may be readily conflated with the continuous, aggregate process of [Convergence](./GLOSSARY.md#convergence) which is a crucial differentiation for our purposes here.
+We may wish to use the dictionary-synonymous term "Converged" (Noun) to refer to this final state. However, caution should be exercised, given that it may be readily conflated with the continuous, aggregate process of [Convergence](./GLOSSARY.md#convergence).
 
 ## Convergence
 
