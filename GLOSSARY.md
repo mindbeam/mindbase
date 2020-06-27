@@ -2,19 +2,11 @@
 
 ## Agent
 
-A user, or other automated process which is capable of making allegations. Each agent has a cryptographic identity which is used to sign Allegations.  
+A user, or other automated process which is capable of making claims. Each agent has a cryptographic identity which is used to sign Claims.  
 
 ## Artifact
 
 Some blob of data which may be meaningful to the outside world, likely containing `External Meaning`, but is otherwise devoid of `Internal meaning`, at least by its existence.
-
-## AllegationID
-
-Renamed to [ClaimID](./GLOSSARY.md#ClaimId)  
-
-## Allegation
-
-Renamed to [Claim](./GLOSSARY.md#Claim)
 
 ## ClaimID
 
@@ -22,15 +14,15 @@ The unique identity of some specific [Claim](./GLOSSARY.md#Claim)
 
 ## Claim
 
-An event or declaration which is being documented by an agent But it's also more than that – It's an instance of some payload. At present, such payload might be any of the following types:
+An event or declaration which is being documented by an agent. But it's also more than that – It's an instance of some payload. At present, such payload might be any of the following types:
 
 * ArtifactId - Content-addressable ID of a given `Artifact`.  
 * Analogy - Associate one `Symbol` with another `Symbol` (Eg: There exists some Symbol C that represents the connection of Symbol A and Symbol B)
 * AgentId - PubKey of an Agent
 * Unit - Empty payload.  
 
-Though an Allegation may reference one or more `Artifacts`, implying that the allegation is somehow an _instance_ of that `Artifact` it doesn't even need to be an instance of something per se. It could be a `Unit` Allegation, which is just an anonymous enumeration.  
-Each Allegation has a Payload.
+Though an Claim may reference one or more `Artifacts`, implying that the claim is somehow an _instance_ of that `Artifact` it doesn't even need to be an instance of something per se. It could be a `Unit` Claim, which is just an anonymous enumeration.  
+Each Claim has a Payload.
 
 ## Concordance
 
@@ -62,6 +54,9 @@ Convergence may in fact occur in discrete chunks, by way of many incremental or 
 ## FuzzySet
 
 TODO
+
+### Member
+
 
 ## Symbolic Grounding
 
@@ -98,7 +93,7 @@ And so, prescriptivists should rightly tremble in fear from the implications of 
 
 With a problem so daunting, how on earth or the heavens can we ever hope to put even a tiny dent in capturing this universe of meaning?
 
-The goal of Mindbase is to representing meaning in a way that is BOTH programmatically useful, and able to interface with the nuance of the world _internally_, such that meaningful computation can be performed inside the Mindbase system. Until such time as Mindbase expands to fill the entire observable universe (har har), there will necessarily be some logical boundary between its internal expression of meaning, and that of the outside world. We cannot blindly subordinate the one to the other. That would put us right back where we started. We must build a bridge between these systems of internal and external meaning. This requires that such a system be cognizant that a lot of meaning is defined by human culture at large, or other external systems like the semantics of a `docx` file. Because of this necessity to represent `External Meaning` we have `Artifacts` and `Allegations`
+The goal of Mindbase is to representing meaning in a way that is BOTH programmatically useful, and able to interface with the nuance of the world _internally_, such that meaningful computation can be performed inside the Mindbase system. Until such time as Mindbase expands to fill the entire observable universe (har har), there will necessarily be some logical boundary between its internal expression of meaning, and that of the outside world. We cannot blindly subordinate the one to the other. That would put us right back where we started. We must build a bridge between these systems of internal and external meaning. This requires that such a system be cognizant that a lot of meaning is defined by human culture at large, or other external systems like the semantics of a `docx` file. Because of this necessity to represent `External Meaning` we have `Artifacts` and `Claims`
 
 ## Ontology
 
@@ -120,7 +115,7 @@ A Formal ontology could be said to be perpetually "chasing" said foreign domain,
 
 ## Symbol
 
-A Symbol is a set of [Atoms](./GLOSSARY.md#Atom) – The agglomeration of which represents some abstract concept. Each of these Atoms represents some [Allegation](./GLOSSARY.md#Allegation) which documents the instance of something according to a given agent. Individually, each of these Atoms doesn't [mean](./GLOSSARY.md#internal-meaning) much. Collectively, they serve as tent-poles, expanding or limiting the degrees of freedom within some abstract semantic space.  
+A Symbol is a specialized type of [FuzzySet](./GLOSSARY.md#FuzzySet) of [Members](./GLOSSARY.md#Member) which as a whole represents some abstract concept. Each of these Members represents some [Claim](./GLOSSARY.md#Claim) which documents the instance of something according to a given agent. Individually, each of these Member doesn't [mean](./GLOSSARY.md#internal-meaning) much. Collectively, they serve as tent-poles, expanding or limiting the degrees of freedom within some abstract semantic space.  
 
 ## Truth
 
@@ -136,3 +131,18 @@ As opposed to [Declarative Truth](./GLOSSARY.md#declarative-truth)
 
 The assertion by some authority that a symbol, definition, or meaning is the official or canonical one.
 As opposed to [Intersubjective Truth](./GLOSSARY.md#intersubjective-truth)  
+
+
+## Deprecated terms
+
+### AllegationID
+
+Renamed to [ClaimID](./GLOSSARY.md#ClaimId)  
+
+### Allegation
+
+Renamed to [Claim](./GLOSSARY.md#Claim)
+
+### Atom
+
+Renamed to [Member](./GLOSSARY.md#Member)  
