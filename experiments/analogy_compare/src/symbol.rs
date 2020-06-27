@@ -75,6 +75,10 @@ impl Symbol {
     {
         self.set.drain(range)
     }
+
+    pub fn union(&self, other: Self) {
+        self.set.union(other.set);
+    }
 }
 
 #[macro_export]
