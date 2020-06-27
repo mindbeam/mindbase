@@ -53,10 +53,11 @@ Convergence may in fact occur in discrete chunks, by way of many incremental or 
 
 ## FuzzySet
 
-TODO
+A FuzzySet of Members. Each Member is included within the set with a `degree` indicating the level of confidence or the _extent_ to which the member is included in the set.
 
 ### Member
 
+Member of a FuzzySet bearing payload struct (typically containing a ClaimID, and possibly some other data) and a `degree` of inclusion in the set. In the code, Member is generic, such that different types of FuzzySets can be constructed (Eg: AnalogyMember vs SymbolMember)
 
 ## Symbolic Grounding
 
