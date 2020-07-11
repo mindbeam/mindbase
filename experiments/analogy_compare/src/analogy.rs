@@ -19,9 +19,21 @@ pub struct Analogy {
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum AnalogySide {
-    Catagorical,
+    Categorical,
     Left,
     Right,
+}
+
+#[derive(Debug, Clone)]
+pub struct CategoricalAnalogyMember {
+    pub id: SimpleId,
+}
+
+impl Into<AnalogyMember> for CategoricalAnalogyMember {
+    fn into(self) -> AnalogyMember {
+        AnalogyMember { id:   self.id,
+                        side: AnalogySide::Categorical, }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -31,10 +43,10 @@ pub struct AnalogyMember {
 }
 
 impl AnalogyMember {
-    pub fn new(id: SimpleId) -> Self {
-        AnalogyMember { id,
-                        side: AnalogySide::Catagorical }
-    }
+    // pub fn new(id: SimpleId) -> Self {
+    //     AnalogyMember { id,
+    //                     side: AnalogySide::Categorical }
+    // }
 
     // pub fn match_side(&self, other: &Self) -> Option<AnalogySide> {
     //     if self.spin == other.spin {
@@ -72,8 +84,21 @@ macro_rules! atomvec {
     );
 }
 
+impl<'a> Into<&'a FuzzySet<AnalogyMember>> for &'a Analogy {
+    fn into(self) -> &'a FuzzySet<AnalogyMember> {
+        &self.set
+    }
+}
+impl<'a> Into<&'a FuzzySet<AnalogyMember>> for &'a AnalogyQuery {
+    fn into(self) -> &'a FuzzySet<AnalogyMember> {
+        &self.set
+    }
+}
+
 impl Analogy {
-    pub fn interrogate(&self, other: &AnalogyQuery) -> Option<FuzzySet<AnalogyMember>> {
+    pub fn interrogate<'a, T>(&'a self, other: T) -> Option<FuzzySet<AnalogyMember>>
+        where T: Into<&'a FuzzySet<AnalogyMember>>
+    {
         // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
         // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
 
@@ -83,7 +108,7 @@ impl Analogy {
         // included with opposite Spin on the same side
         let mut iter = self.set
                            .iter()
-                           .merge_join_by(other.set.iter(), |a, b| a.member.id.cmp(&b.member.id));
+                           .merge_join_by(other.into().iter(), |a, b| a.member.id.cmp(&b.member.id));
 
         // Execution plan:
         // * We're comparing all Atoms for both symbols within this analogy to a Two-sided AtomVec containing *Candidate* Atoms
@@ -289,7 +314,17 @@ impl Analogy {
         // }
     }
 
-    pub fn from_left_right<I>(id: I, left: Symbol, right: Symbol) -> Self
+    pub fn categorical<I, L, T>(id: I, list: L) -> Self
+        where L: IntoIterator<Item = T>,
+              T: Into<fs::Item<AnalogyMember>>,
+              I: Into<SimpleId>
+    {
+        let mut set = FuzzySet::from_list(list);
+
+        Analogy { id: id.into(), set }
+    }
+
+    pub fn associative<I>(id: I, left: Symbol, right: Symbol) -> Self
         where I: Into<SimpleId>
     {
         let mut set = FuzzySet::new();

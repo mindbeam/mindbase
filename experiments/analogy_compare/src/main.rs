@@ -17,7 +17,8 @@ use symbol::*;
 
 fn main() {
     // experiment1()
-    fuzzy_set_union_signal_to_noise_problem()
+    // fuzzy_set_union_signal_to_noise_problem()
+    lesser_weights_through_imperfect_analogy()
 }
 
 fn experiment1() {
@@ -30,9 +31,9 @@ fn experiment1() {
 
     // For simplicity, lets say these are all the analogies in the system
     let candidates = [//
-                      Analogy::from_left_right("a1", sym!["Hot1", "Hot2", "Heated1"], sym!["Mild1", "Mild2", "Cold3"]),
-                      Analogy::from_left_right("a2", sym!["Hot3"], sym!["Cold1", "Cold2"]),
-                      Analogy::from_left_right("a3", sym!["Cold3"], sym!["Hot3"])];
+                      Analogy::associative("a1", sym!["Hot1", "Hot2", "Heated1"], sym!["Mild1", "Mild2", "Cold3"]),
+                      Analogy::associative("a2", sym!["Hot3"], sym!["Cold1", "Cold2"]),
+                      Analogy::associative("a3", sym!["Cold3"], sym!["Hot3"])];
 
     // Imagine we looked up all AtomIds for all Allegations related to Artifacts "Hot" and "Cold"
     let query = AnalogyQuery::from_left_right(sym!["Hot1", "Hot2", "Hot3"], sym!["Cold1", "Cold2", "Cold3"]);
@@ -134,4 +135,31 @@ fn fuzzy_set_union_signal_to_noise_problem() {
     // TODO - construct a full chain of events (including genesis Claims) by which Symbol members of a degree <1 are constructed,
     // and then Claimed as new Analogies From there we can determine the most prudent implementation of union, such that we
     // optimize the signal-to-noise ratio
+}
+
+fn lesser_weights_through_imperfect_analogy() {
+    let c1 = Analogy::categorical("c1", &["doughnut", "bun", "pastry", "cruller", "sweet roll"]);
+
+    let a1 = Analogy::associative("a1", sym!["A", "B", "C", "D"], sym!["X", "Y", "Z"]);
+    let a2 = Analogy::associative("a2", sym!["A", "B", "Q"], sym!["X", "F"]);
+    println!("{}", a1);
+    println!("{}", a2);
+
+    let mut b = a1.interrogate(&a2).unwrap();
+
+    // So, We've interrogated a1 with a2 and gotten some "naturally" members with < 1 weights.
+    // How do we clean up this scenario to be more realistic?
+    // "interrogation" only makes sense in the context of a query – Not just blindly rubbing two analogies together
+    // How do we formulate a query using a corpus of prior analogies?
+
+    println!("{}", b);
+
+    let a3 = Analogy::associative("a2", sym!["Q", "R"], sym!["F", "G"]);
+    // let c = b.interrogate(&a3).unwrap();
+    // This does not work, because interrogation (rightly) does not return an analogy. Someone would have to claim that analogy on
+    // the basis of some prior query
+
+    let Analogy::from_left_right("a2", sym!["Q", "R"], sym!["F", "G"]);
+
+    // println!("{}", c);
 }
