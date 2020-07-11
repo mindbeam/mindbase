@@ -41,6 +41,16 @@ impl<T> From<T> for fs::Item<SymbolMember> where T: Into<SimpleId>
                    ndegree: 0.0, }
     }
 }
+impl<T> From<&(T, f32)> for fs::Item<SymbolMember>
+    where T: Into<SimpleId>,
+          T: Clone
+{
+    fn from(item: &(T, f32)) -> Self {
+        fs::Item { member:  SymbolMember { id: item.0.clone().into(), },
+                   pdegree: item.1,
+                   ndegree: 0.0, }
+    }
+}
 
 impl std::fmt::Display for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -76,7 +86,7 @@ impl Symbol {
         self.set.drain(range)
     }
 
-    pub fn union(&self, other: Self) {
+    pub fn union(&mut self, other: Self) {
         self.set.union(other.set);
     }
 }
@@ -84,7 +94,7 @@ impl Symbol {
 #[macro_export]
 #[warn(unused_macros)]
 macro_rules! sym {
-    ($($x:expr),+ $(,)?) => (
+    ($($x:expr),+) => (
         Symbol::new(&[$($x),+])
     );
 }

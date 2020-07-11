@@ -97,16 +97,17 @@ fn fuzzy_set_union_signal_to_noise_problem() {
 
     // lets imagine we interrogate three candidate Analogies and we are left with the following Symbols
     // which we are constructing manually here, but would be typically be analogy interrogation outputs created by the query tree.
-    let io1 = sym![Hot1~0.3,Sticky1~0.2];
-    let io2 = sym![Hot1~0.5,Muggy1~0.9];
-    let io3 = sym![Hot1~1, Sticky1~1];
+    let io1 = sym!["Hot1"];
+    let io2 = sym![("Hot1", 0.5), ("Muggy1", 0.9)];
+    let io3 = sym![("Hot1", 1.0), ("Sticky1", 0.5)];
 
     // union the interrogation outputs together
-    let u = Symbol::null();
+    let mut u = Symbol::null();
     u.union(io1);
     u.union(io2);
     u.union(io3);
 
+    println!("{:?}", u);
     // What do we want to have in the end, and why?
 
     // Should include the max of each degree?
