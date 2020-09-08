@@ -1,12 +1,5 @@
-use criterion::{
-    criterion_group,
-    criterion_main,
-    Criterion,
-};
-use mindbase::{
-    artifact::text,
-    prelude::*,
-};
+use criterion::{criterion_group, criterion_main, Criterion};
+use mindbase_core::{artifact::text, prelude::*};
 
 fn insert_test_dataset(mb: &MindBase) -> Result<(), MBError> {
     for _i in 0..50 {
@@ -41,7 +34,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     insert_test_dataset(&mb).unwrap();
 
     // c.bench_function("insert_test_dataset", |b| b.iter(|| insert_test_dataset(&mb).unwrap()));
-    c.bench_function("get_ground_symbol", |b| b.iter(|| get_ground_symbol(&mb).unwrap()));
+    c.bench_function("get_ground_symbol", |b| {
+        b.iter(|| get_ground_symbol(&mb).unwrap())
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);

@@ -3,7 +3,7 @@ use std::{
     io::BufReader,
 };
 
-use mindbase::MindBase;
+use mindbase_core::MindBase;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -52,7 +52,7 @@ fn run(opt: Opt) -> Result<(), std::io::Error> {
         };
 
         let reader = BufReader::new(file);
-        let query = mindbase::mbql::Query::new(&mb, reader)?;
+        let query = mindbase_core::mbql::Query::new(&mb, reader)?;
 
         if opt.echo {
             println!("Echo Output:\n");

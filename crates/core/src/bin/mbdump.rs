@@ -1,4 +1,4 @@
-use mindbase::MindBase;
+use mindbase_core::MindBase;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -28,7 +28,7 @@ fn run(opt: Opt) -> Result<(), std::io::Error> {
     let stdout = std::io::stdout();
     let handle = stdout.lock();
 
-    mindbase::xport::dump_json(&mb, handle).unwrap();
+    mindbase_core::xport::dump_json(&mb, handle).unwrap();
 
     Ok(())
 }

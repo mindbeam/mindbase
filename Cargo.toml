@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "crates/core",
-    "creates/crypto"
+    "crates/crypto",
+    "experiments/analogy_compare"
 ]

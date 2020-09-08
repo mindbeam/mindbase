@@ -1,4 +1,4 @@
-use mindbase::{
+use mindbase_core::{
     analogy::Analogy,
     artifact::{
         text,
