@@ -7,7 +7,6 @@ pub enum MBError {
     IoError(std::io::Error),
     AgentHandleNotFound,
     SignatureError,
-    TryFromSlice,
     Base64Error,
     AllegationNotFound,
     MBQL(Box<MBQLError>),
@@ -17,6 +16,7 @@ pub enum MBError {
     SymbolVarAlreadyBound,
     NullSymbol,
     Other,
+    Util(mindbase_util::Error),
 }
 
 impl std::fmt::Display for MBError {
@@ -28,6 +28,12 @@ impl std::fmt::Display for MBError {
 impl From<MBQLError> for MBError {
     fn from(e: MBQLError) -> Self {
         Self::MBQL(Box::new(e))
+    }
+}
+
+impl From<mindbase_util::Error> for MBError {
+    fn from(e: mindbase_util::Error) -> Self {
+        Self::Util(e)
     }
 }
 

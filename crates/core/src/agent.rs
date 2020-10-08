@@ -1,31 +1,23 @@
 pub mod signature;
 
-use ed25519_dalek::{
-    Keypair,
-    PublicKey,
-};
+use ed25519_dalek::{Keypair, PublicKey};
 
 use crate::{
-    allegation::{
-        Alledgable,
-        Allegation,
-    },
+    allegation::{Alledgable, Allegation},
     error::MBError,
-    Artifact,
-    MindBase,
+    Artifact, MindBase,
 };
 use rand::rngs::OsRng;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use std::fmt;
 
 #[derive(Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub struct AgentId {
-    #[serde(serialize_with = "crate::util::serde_helper::as_base64",
-            deserialize_with = "crate::util::serde_helper::from_base64_32")]
+    #[serde(
+        serialize_with = "crate::util::serde_helper::as_base64",
+        deserialize_with = "crate::util::serde_helper::from_base64_32"
+    )]
     pubkey: [u8; 32],
 }
 
@@ -38,7 +30,7 @@ impl AgentId {
     pub fn from_base64(input: &str) -> Result<Self, MBError> {
         use std::convert::TryInto;
         let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
-        let array: [u8; 32] = decoded[..].try_into().map_err(|_| MBError::TryFromSlice)?;
+        let array: [u8; 32] = decoded[..].try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?;
         Ok(AgentId { pubkey: array.into() })
     }
 }
@@ -79,7 +71,9 @@ impl Agent {
     }
 
     pub fn id(&self) -> AgentId {
-        AgentId { pubkey: self.keypair.public.as_bytes().clone(), }
+        AgentId {
+            pubkey: self.keypair.public.as_bytes().clone(),
+        }
     }
 
     pub fn keypair(&self) -> &Keypair {
@@ -104,9 +98,11 @@ impl Agent {
 impl std::fmt::Display for Agent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use base64::STANDARD_NO_PAD;
-        write!(f,
-               "{}",
-               base64::encode_config(&self.keypair.public.as_bytes()[0..10], STANDARD_NO_PAD))
+        write!(
+            f,
+            "{}",
+            base64::encode_config(&self.keypair.public.as_bytes()[0..10], STANDARD_NO_PAD)
+        )
     }
 }
 

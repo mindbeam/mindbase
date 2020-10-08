@@ -10,7 +10,7 @@ pub mod symbol;
 pub mod mbql;
 
 mod policy;
-pub mod util;
+pub use mindbase_util as util;
 pub mod xport;
 
 extern crate pest;
@@ -19,20 +19,10 @@ extern crate pest_derive;
 
 pub mod prelude {
     pub use super::{
-        agent::{
-            Agent,
-            AgentId,
-        },
-        allegation::{
-            Allegation,
-            AllegationId,
-        },
+        agent::{Agent, AgentId},
+        allegation::{Allegation, AllegationId},
         analogy::Analogy,
-        artifact::{
-            Artifact,
-            ArtifactId,
-            Text,
-        },
+        artifact::{Artifact, ArtifactId, Text},
         error::MBError,
         mbql::query::Query,
         symbol::Symbol,
@@ -41,38 +31,23 @@ pub mod prelude {
 }
 
 use self::{
-    agent::{
-        Agent,
-        AgentId,
-    },
-    allegation::{
-        Allegation,
-        AllegationId,
-    },
+    agent::{Agent, AgentId},
+    allegation::{Allegation, AllegationId},
     analogy::Analogy,
-    artifact::{
-        Artifact,
-        ArtifactId,
-    },
+    artifact::{Artifact, ArtifactId},
     error::MBError,
     symbol::Symbol,
 };
 
 use allegation::ArtifactList;
 use core::marker::PhantomData;
-use mbql::{
-    error::MBQLError,
-    Query,
-};
+use mbql::{error::MBQLError, Query};
 use policy::Policy;
 use serde::de::DeserializeOwned;
 use sled::IVec;
 use std::{
     convert::TryInto,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
 };
 use symbol::Atom;
 
@@ -134,14 +109,16 @@ impl MindBase {
 
         let ground_symbol_agents = Arc::new(Mutex::new(vec![default_agent.id()]));
 
-        let me = MindBase { allegations,
-                            my_agents,
-                            artifacts,
-                            _known_agents,
-                            atoms_by_artifact_agent,
-                            // analogy_rev,
-                            ground_symbol_agents,
-                            default_agent };
+        let me = MindBase {
+            allegations,
+            my_agents,
+            artifacts,
+            _known_agents,
+            atoms_by_artifact_agent,
+            // analogy_rev,
+            ground_symbol_agents,
+            default_agent,
+        };
 
         me.genesis()?;
 
@@ -170,7 +147,7 @@ impl MindBase {
             Some(ivec) => {
                 let allegation: Allegation = bincode::deserialize(&ivec)?;
                 Ok(Some(allegation))
-            },
+            }
             None => Ok(None),
         }
     }
@@ -187,11 +164,11 @@ impl MindBase {
 
         // HACK - with ArtifactList::Many commented out, this is only recording direct ( non-vicarious ) artifacts for this atom
         match atom.referenced_artifacts(self)? {
-            ArtifactList::None => {},
+            ArtifactList::None => {}
             ArtifactList::One(artifact_id) => {
                 key[0..32].copy_from_slice(artifact_id.as_ref());
                 self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
-            },
+            }
             ArtifactList::Many(_artifact_ids) => {
                 // HACK - commenting this out because this is only used for analogies
                 //
@@ -199,7 +176,7 @@ impl MindBase {
                 //     key[0..32].copy_from_slice(artifact_id.as_ref());
                 //     self.atoms_by_artifact_agent.merge(&key[..], id.as_ref())?;
                 // }
-            },
+            }
         }
 
         // use crate::allegation::Body;
@@ -229,7 +206,8 @@ impl MindBase {
     }
 
     pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, MBError>
-        where T: Into<Artifact>
+    where
+        T: Into<Artifact>,
     {
         let artifact: Artifact = artifact.into();
         // TODO 5 - consider whether we want to validate this against an allegation in order to store it,
@@ -242,42 +220,47 @@ impl MindBase {
         match self.artifacts.compare_and_swap(&id, None::<&[u8]>, Some(bytes))? {
             Ok(_) => {
                 // inserted
-            },
+            }
             Err(CompareAndSwapError { .. }) => {
                 // already existed
-            },
+            }
         }
 
         Ok(id)
     }
 
     pub fn symbolize<T>(&self, thing: T) -> Result<Symbol, MBError>
-        where T: crate::allegation::Alledgable
+    where
+        T: crate::allegation::Alledgable,
     {
         Ok(thing.alledge(self, &self.default_agent)?.subjective())
     }
 
     pub(crate) fn symbolize_atom<T>(&self, thing: T) -> Result<Allegation, MBError>
-        where T: crate::allegation::Alledgable
+    where
+        T: crate::allegation::Alledgable,
     {
         Ok(thing.alledge(self, &self.default_agent)?)
     }
 
     pub fn alledge<T>(&self, thing: T) -> Result<Allegation, MBError>
-        where T: crate::allegation::Alledgable
+    where
+        T: crate::allegation::Alledgable,
     {
         thing.alledge(self, &self.default_agent)
     }
 
     // Alledge an Alledgable thing using specified agent
     pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Allegation, MBError>
-        where T: crate::allegation::Alledgable
+    where
+        T: crate::allegation::Alledgable,
     {
         thing.alledge(self, agent)
     }
 
     pub fn alledge_artifact<A>(&self, agent: &Agent, artifact: A) -> Result<AllegationId, MBError>
-        where A: Into<crate::artifact::Artifact>
+    where
+        A: Into<crate::artifact::Artifact>,
     {
         let artifact_id = self.put_artifact(artifact.into())?;
 
@@ -286,19 +269,24 @@ impl MindBase {
     }
 
     pub fn artifact_iter(&self) -> Iter<ArtifactId, Artifact> {
-        Iter { iter:         self.artifacts.iter(),
-               phantomkey:   PhantomData,
-               phantomvalue: PhantomData, }
+        Iter {
+            iter: self.artifacts.iter(),
+            phantomkey: PhantomData,
+            phantomvalue: PhantomData,
+        }
     }
 
     pub fn allegation_iter(&self) -> Iter<AllegationId, Allegation> {
-        Iter { iter:         self.allegations.iter(),
-               phantomkey:   PhantomData,
-               phantomvalue: PhantomData, }
+        Iter {
+            iter: self.allegations.iter(),
+            phantomkey: PhantomData,
+            phantomvalue: PhantomData,
+        }
     }
 
     pub fn symbol_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Option<Symbol>, MBError>
-        where F: Fn(&Allegation) -> bool
+    where
+        F: Fn(&Allegation) -> bool,
     {
         let mut atoms = Vec::new();
 
@@ -317,7 +305,7 @@ impl MindBase {
         let mut gsa = self.ground_symbol_agents.lock().unwrap();
 
         match gsa.binary_search(agent_id) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(i) => gsa.insert(i, agent_id.clone()),
         }
 
@@ -336,13 +324,11 @@ impl MindBase {
 fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
     match my_agents.get(b"latest")? {
         None => _create_agent(my_agents),
-        Some(pubkey) => {
-            match my_agents.get(pubkey)? {
-                None => Err(MBError::AgentHandleNotFound),
-                Some(v) => {
-                    let agenthandle = bincode::deserialize(&v)?;
-                    Ok(agenthandle)
-                },
+        Some(pubkey) => match my_agents.get(pubkey)? {
+            None => Err(MBError::AgentHandleNotFound),
+            Some(v) => {
+                let agenthandle = bincode::deserialize(&v)?;
+                Ok(agenthandle)
             }
         },
     }
@@ -360,14 +346,15 @@ fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
 }
 
 pub struct Iter<K, V> {
-    iter:         sled::Iter,
-    phantomkey:   std::marker::PhantomData<K>,
+    iter: sled::Iter,
+    phantomkey: std::marker::PhantomData<K>,
     phantomvalue: std::marker::PhantomData<V>,
 }
 
 impl<K, V> Iterator for Iter<K, V>
-    where K: std::convert::TryFrom<IVec>,
-          V: DeserializeOwned
+where
+    K: std::convert::TryFrom<IVec>,
+    V: DeserializeOwned,
 {
     type Item = Result<(K, V), crate::MBError>;
 
@@ -378,48 +365,42 @@ impl<K, V> Iterator for Iter<K, V>
             None => None,
 
             // We got one
-            Some(retrieval) => {
-                match retrieval {
-                    Err(e) => Some(Err(e.into())),
-                    Ok((key, value)) => {
-                        let k: K = match key.try_into() {
-                            Ok(k) => k,
-                            Err(_) => return Some(Err(MBError::TryFromSlice)),
-                        };
-                        let v: V = match bincode::deserialize::<V>(&value[..]) {
-                            Ok(v) => v,
-                            Err(e) => return Some(Err(MBError::Bincode(e))),
-                        };
+            Some(retrieval) => match retrieval {
+                Err(e) => Some(Err(e.into())),
+                Ok((key, value)) => {
+                    let k: K = match key.try_into() {
+                        Ok(k) => k,
+                        Err(_) => return Some(Err(mindbase_util::Error::TryFromSlice.into())),
+                    };
+                    let v: V = match bincode::deserialize::<V>(&value[..]) {
+                        Ok(v) => v,
+                        Err(e) => return Some(Err(MBError::Bincode(e))),
+                    };
 
-                        Some(Ok((k, v)))
-                    },
+                    Some(Ok((k, v)))
                 }
             },
         }
     }
 }
 
-fn merge_16byte_list(_key: &[u8],               // the key being merged
-                     last_bytes: Option<&[u8]>, // the previous value, if one existed
-                     op_bytes: &[u8]            /* the new bytes being merged in */)
-                     -> Option<Vec<u8>> {
+fn merge_16byte_list(
+    _key: &[u8],               // the key being merged
+    last_bytes: Option<&[u8]>, // the previous value, if one existed
+    op_bytes: &[u8],           /* the new bytes being merged in */
+) -> Option<Vec<u8>> {
     // set the new value, return None to delete
 
-    use inverted_index_util::entity_list::{
-        insert_entity_immut,
-        ImmutResult,
-    };
+    use inverted_index_util::entity_list::{insert_entity_immut, ImmutResult};
     use typenum::consts::U16;
 
     Some(match last_bytes {
-             Some(prior) => {
-                 match insert_entity_immut::<U16>(prior, op_bytes) {
-                     ImmutResult::Changed(newvec) => newvec,
-                     ImmutResult::Unchanged => prior.to_vec(),
-                 }
-             },
-             None => op_bytes.to_vec(),
-         })
+        Some(prior) => match insert_entity_immut::<U16>(prior, op_bytes) {
+            ImmutResult::Changed(newvec) => newvec,
+            ImmutResult::Unchanged => prior.to_vec(),
+        },
+        None => op_bytes.to_vec(),
+    })
 }
 
 #[cfg(test)]

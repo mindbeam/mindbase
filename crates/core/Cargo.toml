@@ -10,6 +10,7 @@ repository = "https://github.com/mindbeam/mindbase"
 exclude = ["mbql/*"]
 
 [dependencies]
+mindbase-util = { path="../util", version="0.1.0" }
 typenum = "1.12"
 inverted-index-util = "0.0.5"
 base64 = "0.12"

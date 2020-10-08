@@ -1,47 +1,38 @@
 use crate::allegation::AllegationId;
-use serde::{
-    Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer,
-};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
     agent::Agent,
-    allegation::{
-        Alledgable,
-        Allegation,
-    },
+    allegation::{Alledgable, Allegation},
     error::MBError,
     symbol::Symbol,
-    AgentId,
-    MindBase,
+    AgentId, MindBase,
 };
-use sha2::{
-    Digest,
-    Sha512Trunc256,
-};
+use sha2::{Digest, Sha512Trunc256};
 use std::fmt;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct ArtifactId(#[serde(serialize_with = "as_base64", deserialize_with = "from_base64")] pub(crate) [u8; 32]);
 
 pub fn as_base64<T, S>(v: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where T: AsRef<[u8]>,
-          S: Serializer
+where
+    T: AsRef<[u8]>,
+    S: Serializer,
 {
     use base64::STANDARD_NO_PAD;
     serializer.serialize_str(&base64::encode_config(v.as_ref(), STANDARD_NO_PAD))
 }
 
 pub fn from_base64<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
-    where D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     use serde::de::Error;
     use std::convert::TryInto;
-    String::deserialize(deserializer).and_then(|string| base64::decode(&string).map_err(|err| D::Error::custom(err.to_string())))
-                                     .map(|bytes| bytes[..].try_into())
-                                     .and_then(|opt| opt.map_err(|_| D::Error::custom("failed to deserialize")))
+    String::deserialize(deserializer)
+        .and_then(|string| base64::decode(&string).map_err(|err| D::Error::custom(err.to_string())))
+        .map(|bytes| bytes[..].try_into())
+        .and_then(|opt| opt.map_err(|_| D::Error::custom("failed to deserialize")))
 }
 
 impl fmt::Display for ArtifactId {
@@ -77,7 +68,7 @@ impl ArtifactId {
     pub fn from_base64(input: &str) -> Result<Self, MBError> {
         use std::convert::TryInto;
         let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
-        let array: [u8; 32] = decoded[..].try_into().map_err(|_| MBError::TryFromSlice)?;
+        let array: [u8; 32] = decoded[..].try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?;
         Ok(ArtifactId(array.into()))
     }
 }
@@ -87,7 +78,7 @@ impl std::convert::TryFrom<sled::IVec> for ArtifactId {
 
     fn try_from(ivec: sled::IVec) -> Result<Self, MBError> {
         use std::convert::TryInto;
-        Ok(Self((&ivec[..]).try_into().map_err(|_| MBError::TryFromSlice)?))
+        Ok(Self((&ivec[..]).try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?))
     }
 }
 
@@ -193,9 +184,9 @@ impl Into<Artifact> for &str {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataGraph {
     pub graph_type: Symbol,
-    pub bytes:      u32, // Optional
+    pub bytes: u32, // Optional
     /// Must contain all unreachable nodes. Optionally reachable nodes may be present
-    pub nodes:      Vec<AllegationId>,
+    pub nodes: Vec<AllegationId>,
 }
 
 impl Into<Artifact> for DataGraph {
@@ -207,7 +198,7 @@ impl Into<Artifact> for DataGraph {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNode {
     pub data_type: Symbol,
-    pub data:      Option<Vec<u8>>,
+    pub data: Option<Vec<u8>>,
 }
 
 impl Into<Artifact> for DataNode {
@@ -231,7 +222,9 @@ impl Alledgable for ArtifactId {
     }
 }
 
-impl<T> Alledgable for T where T: Into<Artifact> + std::fmt::Debug
+impl<T> Alledgable for T
+where
+    T: Into<Artifact> + std::fmt::Debug,
 {
     fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
         let artifact_id = mb.put_artifact(self)?;
@@ -243,6 +236,6 @@ impl<T> Alledgable for T where T: Into<Artifact> + std::fmt::Debug
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNodeRelation {
-    pub to:            AllegationId,
+    pub to: AllegationId,
     pub relation_type: Symbol,
 }

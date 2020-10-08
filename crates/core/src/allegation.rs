@@ -1,29 +1,23 @@
 use crate::{
-    agent::{
-        signature::Signature,
-        AgentId,
-    },
+    agent::{signature::Signature, AgentId},
     analogy::Analogy,
     artifact::ArtifactId,
     error::MBError,
-    symbol::{
-        Atom,
-        Symbol,
-    },
-    Agent,
-    MindBase,
+    symbol::{Atom, Symbol},
+    Agent, MindBase,
 };
 
 use rusty_ulid::generate_ulid_bytes;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 #[derive(Clone, Serialize, Deserialize, Ord, Eq, PartialOrd, PartialEq)]
-pub struct AllegationId(#[serde(serialize_with = "crate::util::serde_helper::as_base64",
-                                deserialize_with = "crate::util::serde_helper::from_base64_16")]
-                        pub(crate) [u8; 16]);
+pub struct AllegationId(
+    #[serde(
+        serialize_with = "crate::util::serde_helper::as_base64",
+        deserialize_with = "crate::util::serde_helper::from_base64_16"
+    )]
+    pub(crate) [u8; 16],
+);
 
 impl AllegationId {
     pub fn new() -> Self {
@@ -33,7 +27,7 @@ impl AllegationId {
     pub fn from_base64(input: &str) -> Result<Self, MBError> {
         use std::convert::TryInto;
         let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
-        let array: [u8; 16] = decoded[..].try_into().map_err(|_| MBError::TryFromSlice)?;
+        let array: [u8; 16] = decoded[..].try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?;
         Ok(AllegationId(array.into()))
     }
 
@@ -48,8 +42,10 @@ impl AllegationId {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { atoms:         vec![Atom::up(self.clone())],
-                 spread_factor: 0.0, }
+        Symbol {
+            atoms: vec![Atom::up(self.clone())],
+            spread_factor: 0.0,
+        }
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -70,7 +66,7 @@ impl std::convert::TryFrom<sled::IVec> for AllegationId {
 
     fn try_from(ivec: sled::IVec) -> Result<Self, MBError> {
         use std::convert::TryInto;
-        Ok(Self((&ivec[..]).try_into().map_err(|_| MBError::TryFromSlice)?))
+        Ok(Self((&ivec[..]).try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?))
     }
 }
 
@@ -127,10 +123,10 @@ impl fmt::Debug for AllegationId {
 #[derive(Serialize, Deserialize)]
 pub struct Allegation {
     /// TODO 3 - Consider renaming "Allegation*" to "Symbol*"
-    pub id:        AllegationId,
-    pub agent_id:  AgentId,
+    pub id: AllegationId,
+    pub agent_id: AgentId,
     // TODO 3 - Context (Date, time, place, etc)
-    pub body:      Body,
+    pub body: Body,
     pub signature: Signature,
 }
 
@@ -142,7 +138,8 @@ pub enum ArtifactList<'a> {
 
 impl Allegation {
     pub fn new<T>(agent: &Agent, body: T) -> Result<Self, MBError>
-        where T: Into<Body>
+    where
+        T: Into<Body>,
     {
         let body: Body = body.into();
         let id = AllegationId::new();
@@ -150,10 +147,12 @@ impl Allegation {
 
         let signature = Signature::new(agent, (&id, &agent_id, &body))?;
 
-        Ok(Allegation { id,
-                        agent_id,
-                        body,
-                        signature })
+        Ok(Allegation {
+            id,
+            agent_id,
+            body,
+            signature,
+        })
     }
 
     /// Create a "Narrow" Symbol which refers exclusively to this Allegation
@@ -162,8 +161,10 @@ impl Allegation {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol { atoms:         vec![Atom::up(self.id().clone())],
-                 spread_factor: 0.0, }
+        Symbol {
+            atoms: vec![Atom::up(self.id().clone())],
+            spread_factor: 0.0,
+        }
     }
 
     pub fn id(&self) -> &AllegationId {
@@ -192,11 +193,11 @@ impl Allegation {
                             // NOTE: I think we may only need to include those allegations which are authored by ground symbol
                             // agents
                             match allegation.referenced_artifacts(mb)? {
-                                ArtifactList::None => {},
+                                ArtifactList::None => {}
                                 ArtifactList::One(id) => v.push(id.clone()),
                                 ArtifactList::Many(many) => v.extend(many),
                             }
-                        },
+                        }
                         None => return Err(MBError::AllegationNotFound),
                     }
                 }
@@ -204,18 +205,16 @@ impl Allegation {
                 // Backward
                 for atom in analogy.right.atoms.iter() {
                     match mb.get_allegation(atom.id())? {
-                        Some(allegation) => {
-                            match allegation.referenced_artifacts(mb)? {
-                                ArtifactList::None => {},
-                                ArtifactList::One(id) => v.push(id.clone()),
-                                ArtifactList::Many(many) => v.extend(many),
-                            }
+                        Some(allegation) => match allegation.referenced_artifacts(mb)? {
+                            ArtifactList::None => {}
+                            ArtifactList::One(id) => v.push(id.clone()),
+                            ArtifactList::Many(many) => v.extend(many),
                         },
                         None => return Err(MBError::AllegationNotFound),
                     }
                 }
                 Ok(ArtifactList::Many(v))
-            },
+            }
         }
     }
 }

@@ -2,21 +2,18 @@
 use crate::keys::private::AgentKey;
 
 pub struct KeyManager {
-    namespace: &'static str,
     agentkeys: Vec<AgentKey>,
 }
 impl KeyManager {
-    pub fn new(namespace: &'static str) -> Self {
+    pub fn new() -> Self {
         let agentkeys = Vec::new();
-
-        Self {
-            namespace,
-            agentkeys,
-        }
+        Self { agentkeys }
     }
 
-    pub fn get_key(&mut self) {}
-    pub fn set_key(&self) {}
+    pub fn get_key(&self) {}
+    pub fn set_key(&mut self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

@@ -6,3 +6,4 @@ mod keys;
 
 pub use error::Error;
 pub use key_manager::KeyManager;
+pub use keys::{AgentKey, CustodialAgentKey, PassKey};
