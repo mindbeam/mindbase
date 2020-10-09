@@ -101,16 +101,16 @@ pub struct PassKey {
 
 impl PassKey {
     pub fn new(passphrase: &str) -> PassKey {
-        let salt = [0u8; 0];
+        let salt = b"mindbase passkey";
         let params = ScryptParams::recommended();
         let mut dk = [0u8; 32];
-        scrypt(passphrase.as_bytes(), &salt, &params, &mut dk).expect("32 bytes always satisfy output length requirements");
+        scrypt(passphrase.as_bytes(), salt, &params, &mut dk).expect("32 bytes always satisfy output length requirements");
 
         PassKey { c: dk }
     }
     // Use this to authenticate with the server
     pub fn auth(&self) -> CustodialAuthKey {
-        let salt = b"authkey";
+        let salt = b"mindbase authkey";
         let params = ScryptParams::recommended();
 
         let mut auth = [0u8; 32];
