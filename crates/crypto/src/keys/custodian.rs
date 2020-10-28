@@ -1,4 +1,3 @@
-use super::private::AgentKey;
 use serde::{Deserialize, Serialize};
 
 use mindbase_util::serde_helper;
@@ -7,7 +6,7 @@ use mindbase_util::serde_helper;
 /// to ensure that the custodian never directly holds any secrets
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CustodialAuthKey {
+pub struct UserAuthKey {
     #[serde(
         serialize_with = "serde_helper::as_base64",
         deserialize_with = "serde_helper::from_base64_32"
@@ -28,7 +27,6 @@ pub struct CustodialAgentKey {
         deserialize_with = "serde_helper::from_base64_32"
     )]
     pub(crate) check: [u8; 32],
-    pub(crate) auth: CustodialAuthKey,
 }
 
 /// KeyMask is a private key which has been XORed with a passkey

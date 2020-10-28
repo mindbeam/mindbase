@@ -1,4 +1,4 @@
-use super::custodian::{CustodialAgentKey, CustodialAuthKey, KeyMask};
+use super::custodian::{CustodialAgentKey, KeyMask, UserAuthKey};
 use ed25519_dalek::Keypair;
 use hmac::{Hmac, Mac, NewMac};
 use rand::rngs::OsRng;
@@ -7,6 +7,7 @@ use sha2::Sha512Trunc256;
 use zeroize::Zeroize;
 
 // DO NOT ALLOW SERIALIZATION
+// dalek::Keypair already derives Zeroize
 pub struct AgentKey {
     keypair: Keypair,
 }
@@ -16,8 +17,15 @@ pub struct AgentKey {
 // }
 impl PartialEq for AgentKey {
     fn eq(&self, other: &Self) -> bool {
-        self.keypair.secret.as_bytes().eq(other.keypair.secret.as_bytes())
-            && self.keypair.public.as_bytes().eq(other.keypair.public.as_bytes())
+        self.keypair
+            .secret
+            .as_bytes()
+            .eq(other.keypair.secret.as_bytes())
+            && self
+                .keypair
+                .public
+                .as_bytes()
+                .eq(other.keypair.public.as_bytes())
     }
 }
 
@@ -61,10 +69,12 @@ impl AgentKey {
             pubkey: self.keypair.public.as_bytes().clone(),
             mask: self.keymask(&passkey),
             check: self.hmac(),
-            auth: passkey.auth(),
         }
     }
-    pub fn from_custodial_key(custodial_key: CustodialAgentKey, passkey: PassKey) -> Result<Self, crate::Error> {
+    pub fn from_custodial_key(
+        custodial_key: CustodialAgentKey,
+        passkey: PassKey,
+    ) -> Result<Self, crate::Error> {
         // Consume the PassKey to discourage the implementer from storing it
 
         let mut secret = [0u8; 32];
@@ -104,18 +114,20 @@ impl PassKey {
         let salt = b"mindbase passkey";
         let params = ScryptParams::recommended();
         let mut dk = [0u8; 32];
-        scrypt(passphrase.as_bytes(), salt, &params, &mut dk).expect("32 bytes always satisfy output length requirements");
+        scrypt(passphrase.as_bytes(), salt, &params, &mut dk)
+            .expect("32 bytes always satisfy output length requirements");
 
         PassKey { c: dk }
     }
     // Use this to authenticate with the server
-    pub fn auth(&self) -> CustodialAuthKey {
+    pub fn auth(&self) -> UserAuthKey {
         let salt = b"mindbase authkey";
         let params = ScryptParams::recommended();
 
         let mut auth = [0u8; 32];
-        scrypt(&self.c, salt, &params, &mut auth).expect("32 bytes always satisfy output length requirements");
+        scrypt(&self.c, salt, &params, &mut auth)
+            .expect("32 bytes always satisfy output length requirements");
 
-        CustodialAuthKey { auth }
+        UserAuthKey { auth }
     }
 }

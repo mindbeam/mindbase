@@ -1,18 +1,34 @@
 // use web_sys::{window, Storage};
-use crate::keys::private::AgentKey;
+use crate::{keys::private::AgentKey, PassKey};
 
 pub struct KeyManager {
     agentkeys: Vec<AgentKey>,
 }
+
 impl KeyManager {
     pub fn new() -> Self {
         let agentkeys = Vec::new();
         Self { agentkeys }
     }
 
-    pub fn get_key(&self) {}
-    pub fn set_key(&mut self) -> bool {
-        false
+    // pub fn get_key(&self) {}
+    pub fn insert_key(&mut self, agentkey: AgentKey) -> bool {
+        match self
+            .agentkeys
+            .binary_search_by(|x| x.pubkey().cmp(&agentkey.pubkey()))
+        {
+            Ok(_) => false,
+            Err(i) => {
+                self.agentkeys.insert(i, agentkey);
+                true
+            }
+        }
+    }
+}
+
+impl Default for KeyManager {
+    fn default() -> Self {
+        KeyManager::new()
     }
 }
 
