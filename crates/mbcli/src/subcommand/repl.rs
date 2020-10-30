@@ -1,25 +1,12 @@
 use mindbase_core::{
     analogy::Analogy,
-    artifact::{
-        text,
-        Text,
-    },
+    artifact::{text, Text},
     *,
 };
 
-use rustyline::{
-    error::ReadlineError,
-    Editor,
-};
+use rustyline::{error::ReadlineError, Editor};
 
-fn main() -> Result<(), std::io::Error> {
-    let dir = std::env::current_dir().unwrap();
-    println!("Loading database in {}", dir.as_path().display());
-    let mb = MindBase::open(&dir.as_path()).unwrap();
-
-    let agent = mb.default_agent().unwrap();
-    println!("Using Agent {}", agent);
-
+fn repl(mb: Mindbase, agent: Agent) {
     let query = mb.query_str(r#"$isaid = Ground("Things that I said" : "In mbcli")"#)?;
     query.apply()?;
     let isaid = query.get_symbol_for_var("isaid")?.unwrap();
@@ -54,19 +41,19 @@ fn main() -> Result<(), std::io::Error> {
                 // * [A2 ]...and the horse you rode in on (in the category of [things that follow A1])
                 rl.add_history_entry(line.as_str());
                 println!("{}", analogy);
-            },
+            }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
                 break;
-            },
+            }
             Err(ReadlineError::Eof) => {
                 println!("CTRL-D");
                 break;
-            },
+            }
             Err(err) => {
                 println!("Error: {:?}", err);
                 break;
-            },
+            }
         }
     }
     rl.save_history(".mindbasecli_history").unwrap();

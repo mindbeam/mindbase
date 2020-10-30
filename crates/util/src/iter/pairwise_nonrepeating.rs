@@ -1,5 +1,5 @@
 use super::SortedIdentifiable;
-use std::{borrow::Borrow, cmp::Ordering, iter::Peekable};
+use std::{cmp::Ordering, iter::Peekable};
 
 pub struct PairwiseNonrepeating<L, R>
 where
@@ -80,7 +80,8 @@ mod test {
 
         assert_eq!(
             vec![(1i32, 1i32), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7)],
-            iter.map(|(q, r)| (q.to_owned(), r.to_owned())).collect::<Vec<_>>()
+            iter.map(|(q, r)| (q.to_owned(), r.to_owned()))
+                .collect::<Vec<_>>()
         );
 
         // Ok lets skip a few
@@ -90,7 +91,8 @@ mod test {
 
         assert_eq!(
             vec![(1i32, 1i32), (3, 3), (5, 5), (6, 6), (7, 7)],
-            iter.map(|(q, r)| (q.to_owned(), r.to_owned())).collect::<Vec<_>>()
+            iter.map(|(q, r)| (q.to_owned(), r.to_owned()))
+                .collect::<Vec<_>>()
         );
     }
 }

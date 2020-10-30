@@ -1,6 +1,7 @@
 pub mod signature;
 
 use ed25519_dalek::{Keypair, PublicKey};
+use mindbase_crypto::AgentKey;
 
 use crate::{
     allegation::{Alledgable, Allegation},
@@ -58,30 +59,29 @@ impl fmt::Debug for AgentId {
 }
 
 /// Arguably an Agent is also an Artifact, but this probably isn't crucial
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct Agent {
-    keypair: Keypair,
+    agentkey: AgentKey,
 }
 
 impl Agent {
     pub fn new() -> Self {
-        let mut csprng: OsRng = OsRng::new().unwrap();
-        let keypair: Keypair = Keypair::generate::<Sha512, _>(&mut csprng);
-        Self { keypair }
+        let agentkey = AgentKey::create();
+        Self { agentkey }
     }
 
     pub fn id(&self) -> AgentId {
         AgentId {
-            pubkey: self.keypair.public.as_bytes().clone(),
+            pubkey: self.agentkey.pubkey().clone(),
         }
     }
 
     pub fn keypair(&self) -> &Keypair {
-        &self.keypair
+        &self.agentkey
     }
 
     pub fn pubkey(&self) -> &PublicKey {
-        &self.keypair.public
+        &self.agentkey.public
     }
 
     /// Returns a list of AgentIDs to ascribe to for ground symbols
@@ -101,7 +101,7 @@ impl std::fmt::Display for Agent {
         write!(
             f,
             "{}",
-            base64::encode_config(&self.keypair.public.as_bytes()[0..10], STANDARD_NO_PAD)
+            base64::encode_config(&self.agentkey.public.as_bytes()[0..10], STANDARD_NO_PAD)
         )
     }
 }

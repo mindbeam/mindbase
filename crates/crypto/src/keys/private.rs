@@ -1,5 +1,5 @@
 use super::custodian::{CustodialAgentKey, KeyMask, UserAuthKey};
-use ed25519_dalek::Keypair;
+use ed25519_dalek::{Keypair, Sha512};
 use hmac::{Hmac, Mac, NewMac};
 use rand::rngs::OsRng;
 use scrypt::{scrypt, ScryptParams};
@@ -8,6 +8,7 @@ use zeroize::Zeroize;
 
 // DO NOT ALLOW SERIALIZATION
 // dalek::Keypair already derives Zeroize
+#[derive(Debug)]
 pub struct AgentKey {
     keypair: Keypair,
 }
@@ -17,15 +18,8 @@ pub struct AgentKey {
 // }
 impl PartialEq for AgentKey {
     fn eq(&self, other: &Self) -> bool {
-        self.keypair
-            .secret
-            .as_bytes()
-            .eq(other.keypair.secret.as_bytes())
-            && self
-                .keypair
-                .public
-                .as_bytes()
-                .eq(other.keypair.public.as_bytes())
+        self.keypair.secret.as_bytes().eq(other.keypair.secret.as_bytes())
+            && self.keypair.public.as_bytes().eq(other.keypair.public.as_bytes())
     }
 }
 
@@ -33,6 +27,11 @@ impl AgentKey {
     pub fn create() -> AgentKey {
         let mut csprng = OsRng {};
         let keypair = Keypair::generate(&mut csprng);
+
+        // TODO 2 - Reconcile differences between the above
+        // and the old code removed from minbase core (below)
+        // let mut csprng: OsRng = OsRng::new().unwrap();
+        // let keypair: Keypair = Keypair::generate::<Sha512>(&mut csprng);
 
         AgentKey { keypair }
     }
@@ -71,10 +70,7 @@ impl AgentKey {
             check: self.hmac(),
         }
     }
-    pub fn from_custodial_key(
-        custodial_key: CustodialAgentKey,
-        passkey: PassKey,
-    ) -> Result<Self, crate::Error> {
+    pub fn from_custodial_key(custodial_key: CustodialAgentKey, passkey: PassKey) -> Result<Self, crate::Error> {
         // Consume the PassKey to discourage the implementer from storing it
 
         let mut secret = [0u8; 32];
@@ -114,8 +110,7 @@ impl PassKey {
         let salt = b"mindbase passkey";
         let params = ScryptParams::recommended();
         let mut dk = [0u8; 32];
-        scrypt(passphrase.as_bytes(), salt, &params, &mut dk)
-            .expect("32 bytes always satisfy output length requirements");
+        scrypt(passphrase.as_bytes(), salt, &params, &mut dk).expect("32 bytes always satisfy output length requirements");
 
         PassKey { c: dk }
     }
@@ -125,8 +120,7 @@ impl PassKey {
         let params = ScryptParams::recommended();
 
         let mut auth = [0u8; 32];
-        scrypt(&self.c, salt, &params, &mut auth)
-            .expect("32 bytes always satisfy output length requirements");
+        scrypt(&self.c, salt, &params, &mut auth).expect("32 bytes always satisfy output length requirements");
 
         UserAuthKey { auth }
     }
