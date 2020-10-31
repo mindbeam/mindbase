@@ -1,8 +1,9 @@
-use std::path::PathBuf;
+use std::{fs::File, io::BufReader, path::PathBuf};
 
 use mindbase_core::MindBase;
+use mindbase_crypto::KeyManager;
 
-fn run(mb: MindBase, file: PathBuf, echo: bool) {
+pub(crate) fn run(mb: MindBase, keymanager: KeyManager, file: PathBuf, echo: bool) -> Result<(), std::io::Error> {
     let path = file.as_path();
     let display = path.display();
 
@@ -14,7 +15,7 @@ fn run(mb: MindBase, file: PathBuf, echo: bool) {
     let reader = BufReader::new(file);
     let query = mindbase_core::mbql::Query::new(&mb, reader)?;
 
-    if opt.echo {
+    if echo {
         println!("Echo Output:\n");
 
         let stdout = std::io::stdout();
@@ -23,4 +24,6 @@ fn run(mb: MindBase, file: PathBuf, echo: bool) {
     }
 
     query.apply()?;
+
+    Ok(())
 }

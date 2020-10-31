@@ -1,19 +1,11 @@
-use super::{
-    fuzzyset as fs,
-    fuzzyset::FuzzySet,
-    simpleid::*,
-    symbol::*,
-};
+use super::{fuzzyset as fs, fuzzyset::FuzzySet, simpleid::*, symbol::*};
 
-use itertools::{
-    EitherOrBoth,
-    Itertools,
-};
+use itertools::{EitherOrBoth, Itertools};
 
 use std::cmp::Ordering;
 
 pub struct Analogy {
-    pub id:  SimpleId,
+    pub id: SimpleId,
     pub set: FuzzySet<AnalogyMember>,
 }
 
@@ -31,14 +23,16 @@ pub struct CategoricalAnalogyMember {
 
 impl Into<AnalogyMember> for CategoricalAnalogyMember {
     fn into(self) -> AnalogyMember {
-        AnalogyMember { id:   self.id,
-                        side: AnalogySide::Categorical, }
+        AnalogyMember {
+            id: self.id,
+            side: AnalogySide::Categorical,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct AnalogyMember {
-    pub id:   SimpleId,
+    pub id: SimpleId,
     pub side: AnalogySide,
 }
 
@@ -97,7 +91,8 @@ impl<'a> Into<&'a FuzzySet<AnalogyMember>> for &'a AnalogyQuery {
 
 impl Analogy {
     pub fn interrogate<'a, T>(&'a self, other: T) -> Option<FuzzySet<AnalogyMember>>
-        where T: Into<&'a FuzzySet<AnalogyMember>>
+    where
+        T: Into<&'a FuzzySet<AnalogyMember>>,
     {
         // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
         // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
@@ -106,9 +101,10 @@ impl Analogy {
         // The list is sorted by ID and side, which means they are in the correct order.
         // TODO 2 - Think about contradictions including the same atom: Eg Atom 123 is on both the left and the right side, or
         // included with opposite Spin on the same side
-        let mut iter = self.set
-                           .iter()
-                           .merge_join_by(other.into().iter(), |a, b| a.member.id.cmp(&b.member.id));
+        let mut iter = self
+            .set
+            .iter()
+            .merge_join_by(other.into().iter(), |a, b| a.member.id.cmp(&b.member.id));
 
         // Execution plan:
         // * We're comparing all Atoms for both symbols within this analogy to a Two-sided AtomVec containing *Candidate* Atoms
@@ -169,13 +165,13 @@ impl Analogy {
                     match &analogy_item.member.side {
                         AnalogySide::Left => {
                             left_count += 1;
-                        },
+                        }
                         AnalogySide::Right => {
                             right_count += 1;
-                        },
+                        }
                         _ => unimplemented!(),
                     }
-                },
+                }
                 EitherOrBoth::Both(analogy_item, query_item) => {
                     // So we know we match on ID
 
@@ -190,7 +186,7 @@ impl Analogy {
                             ll_count += 1;
                             left_count += 1;
                             normal_count += 1;
-                        },
+                        }
                         (AnalogySide::Right, AnalogySide::Right) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
                             right_degree += degree;
@@ -199,7 +195,7 @@ impl Analogy {
                             rr_count += 1;
                             right_count += 1;
                             normal_count += 1;
-                        },
+                        }
                         (AnalogySide::Left, AnalogySide::Right) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
                             left_degree += degree;
@@ -208,7 +204,7 @@ impl Analogy {
                             lr_count += 1;
                             left_count += 1;
                             inverse_count += 1;
-                        },
+                        }
                         (AnalogySide::Right, AnalogySide::Left) => {
                             degree = analogy_item.pdegree * query_item.pdegree;
                             right_degree += degree;
@@ -217,7 +213,7 @@ impl Analogy {
                             rl_count += 1;
                             right_count += 1;
                             inverse_count += 1;
-                        },
+                        }
 
                         _ => unimplemented!(),
                     };
@@ -234,8 +230,8 @@ impl Analogy {
                     // } else {
                     // tmp.push(Polarity::Inverse(output_item));
                     // }
-                },
-                _ => {},
+                }
+                _ => {}
             };
 
             // The problem is: An associative analogy involves two sets of Atoms, Left and Right, which are associated sets, but
@@ -315,9 +311,10 @@ impl Analogy {
     }
 
     pub fn categorical<I, L, T>(id: I, list: L) -> Self
-        where L: IntoIterator<Item = T>,
-              T: Into<fs::Item<AnalogyMember>>,
-              I: Into<SimpleId>
+    where
+        L: IntoIterator<Item = T>,
+        T: Into<fs::Item<AnalogyMember>>,
+        I: Into<SimpleId>,
     {
         let mut set = FuzzySet::from_list(list);
 
@@ -325,21 +322,30 @@ impl Analogy {
     }
 
     pub fn associative<I>(id: I, left: Symbol, right: Symbol) -> Self
-        where I: Into<SimpleId>
+    where
+        I: Into<SimpleId>,
     {
         let mut set = FuzzySet::new();
 
         for sm in left.into_iter() {
-            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
-                                                           side: AnalogySide::Left, },
-                                  pdegree: sm.pdegree,
-                                  ndegree: sm.ndegree, });
+            set.insert(fs::Item {
+                member: AnalogyMember {
+                    id: sm.member.id,
+                    side: AnalogySide::Left,
+                },
+                pdegree: sm.pdegree,
+                ndegree: sm.ndegree,
+            });
         }
         for sm in right.into_iter() {
-            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
-                                                           side: AnalogySide::Right, },
-                                  pdegree: sm.pdegree,
-                                  ndegree: sm.ndegree, });
+            set.insert(fs::Item {
+                member: AnalogyMember {
+                    id: sm.member.id,
+                    side: AnalogySide::Right,
+                },
+                pdegree: sm.pdegree,
+                ndegree: sm.ndegree,
+            });
         }
         Analogy { id: id.into(), set }
     }
@@ -354,16 +360,24 @@ impl AnalogyQuery {
         let mut set = FuzzySet::new();
 
         for sm in left.into_iter() {
-            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
-                                                           side: AnalogySide::Left, },
-                                  pdegree: sm.pdegree,
-                                  ndegree: sm.ndegree, });
+            set.insert(fs::Item {
+                member: AnalogyMember {
+                    id: sm.member.id,
+                    side: AnalogySide::Left,
+                },
+                pdegree: sm.pdegree,
+                ndegree: sm.ndegree,
+            });
         }
         for sm in right.into_iter() {
-            set.insert(fs::Item { member:  AnalogyMember { id:   sm.member.id,
-                                                           side: AnalogySide::Right, },
-                                  pdegree: sm.pdegree,
-                                  ndegree: sm.ndegree, });
+            set.insert(fs::Item {
+                member: AnalogyMember {
+                    id: sm.member.id,
+                    side: AnalogySide::Right,
+                },
+                pdegree: sm.pdegree,
+                ndegree: sm.ndegree,
+            });
         }
         AnalogyQuery { set }
     }
@@ -372,27 +386,29 @@ impl AnalogyQuery {
 impl fs::Member for AnalogyMember {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.id.cmp(&other.id) {
-            Ordering::Equal => {},
+            Ordering::Equal => {}
             o @ _ => return o,
         }
         self.side.cmp(&other.side)
     }
 
     fn invert(&mut self) {
-        self.side = match self.side {
-            AnalogySide::Left => AnalogySide::Right,
-            AnalogySide::Right => AnalogySide::Left,
-            AnalogySide::Catagorical => AnalogySide::Catagorical,
-        };
+        // self.side = match self.side {
+        //     AnalogySide::Left => AnalogySide::Right,
+        //     AnalogySide::Right => AnalogySide::Left,
+        //     AnalogySide::Catagorical => AnalogySide::Catagorical,
+        // };
+        unimplemented!()
     }
 
     fn display_fmt(&self, item: &fs::Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let side = match self.side {
-            AnalogySide::Catagorical => "ᐧ",
-            AnalogySide::Left => "˱",
-            AnalogySide::Right => "˲",
-        };
-        write!(f, "{}{}{:0.2}", self.id.id, side, item.pdegree)
+        unimplemented!()
+        // let side = match self.side {
+        //     AnalogySide::Catagorical => "ᐧ",
+        //     AnalogySide::Left => "˱",
+        //     AnalogySide::Right => "˲",
+        // };
+        // write!(f, "{}{}{:0.2}", self.id.id, side, item.pdegree)
     }
 
     fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -446,28 +462,29 @@ impl fs::Item<AnalogyMember> {
     }
 
     pub fn scale_lr(&mut self, left_factor: f32, right_factor: f32) {
-        match self.member.side {
-            AnalogySide::Catagorical => unimplemented!(),
-            AnalogySide::Left => self.pdegree = left_factor,
-            AnalogySide::Right => self.pdegree = right_factor,
-        }
+        // match self.member.side {
+        //     AnalogySide::Catagorical => unimplemented!(),
+        //     AnalogySide::Left => self.pdegree = left_factor,
+        //     AnalogySide::Right => self.pdegree = right_factor,
+        // }
+        unimplemented!()
     }
 }
 
 impl FuzzySet<AnalogyMember> {
     pub fn left<'a>(&'a self) -> impl Iterator<Item = fs::Item<SymbolMember>> + 'a {
-        self.iter().filter(|a| a.member.side == AnalogySide::Left).map(|a| {
-                                                                      fs::Item { member:  SymbolMember { id: a.member.id.clone() },
-                                                                                 pdegree: a.pdegree,
-                                                                                 ndegree: a.ndegree, }
-                                                                  })
+        self.iter().filter(|a| a.member.side == AnalogySide::Left).map(|a| fs::Item {
+            member: SymbolMember { id: a.member.id.clone() },
+            pdegree: a.pdegree,
+            ndegree: a.ndegree,
+        })
     }
 
     pub fn right<'a>(&'a self) -> impl Iterator<Item = fs::Item<SymbolMember>> + 'a {
-        self.iter().filter(|a| a.member.side == AnalogySide::Right).map(|a| {
-            fs::Item { member:  SymbolMember { id: a.member.id.clone() },
-                       pdegree: a.pdegree,
-                       ndegree: a.ndegree, }
+        self.iter().filter(|a| a.member.side == AnalogySide::Right).map(|a| fs::Item {
+            member: SymbolMember { id: a.member.id.clone() },
+            pdegree: a.pdegree,
+            ndegree: a.ndegree,
         })
     }
 }

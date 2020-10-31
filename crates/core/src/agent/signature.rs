@@ -20,7 +20,7 @@ impl Signature {
         let mut hasher: Sha512 = Sha512::default();
         content.hash(&mut hasher);
 
-        let sig = agent.agentkey.sign_prehashed(hasher, Some(b"allegation"));
+        let sig = agent.agentkey.keypair.sign_prehashed(hasher, Some(b"allegation")).unwrap();
 
         Ok(Signature(sig.to_bytes()))
     }
@@ -48,7 +48,7 @@ where
     A: AsBytes,
 {
     fn hash(&self, hasher: &mut Sha512) {
-        hasher.input(self.0.as_bytes());
+        hasher.update(self.0.as_bytes());
     }
 }
 impl<A, B> HashHelper for (A, B)
@@ -57,8 +57,8 @@ where
     B: AsBytes,
 {
     fn hash(&self, hasher: &mut Sha512) {
-        hasher.input(self.0.as_bytes());
-        hasher.input(self.1.as_bytes());
+        hasher.update(self.0.as_bytes());
+        hasher.update(self.1.as_bytes());
     }
 }
 impl<A, B, C> HashHelper for (A, B, C)
@@ -68,9 +68,9 @@ where
     C: AsBytes,
 {
     fn hash(&self, hasher: &mut Sha512) {
-        hasher.input(self.0.as_bytes());
-        hasher.input(self.1.as_bytes());
-        hasher.input(self.2.as_bytes());
+        hasher.update(self.0.as_bytes());
+        hasher.update(self.1.as_bytes());
+        hasher.update(self.2.as_bytes());
     }
 }
 impl<A, B, C, D> HashHelper for (A, B, C, D)
@@ -81,9 +81,9 @@ where
     D: AsBytes,
 {
     fn hash(&self, hasher: &mut Sha512) {
-        hasher.input(self.0.as_bytes());
-        hasher.input(self.1.as_bytes());
-        hasher.input(self.2.as_bytes());
-        hasher.input(self.3.as_bytes());
+        hasher.update(self.0.as_bytes());
+        hasher.update(self.1.as_bytes());
+        hasher.update(self.2.as_bytes());
+        hasher.update(self.3.as_bytes());
     }
 }

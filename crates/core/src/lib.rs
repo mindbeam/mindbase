@@ -69,15 +69,14 @@ pub struct MindBase {
     atoms_by_artifact_agent: sled::Tree,
 
     /// Credential storage for all agents we manage
-    my_agents: sled::Tree,
+    // my_agents: sled::Tree,
 
     /// I forget why I would actually need known agents
     _known_agents: sled::Tree,
 
     ground_symbol_agents: Arc<Mutex<Vec<AgentId>>>,
-
     // QUESTION: Should these be two different trees? or one?
-    default_agent: Agent,
+    // default_agent: Agent,
 }
 
 impl MindBase {
@@ -94,7 +93,7 @@ impl MindBase {
 
         let db = sled::open(pathbuf.as_path())?;
 
-        let my_agents = db.open_tree("agents")?;
+        // let my_agents = db.open_tree("agents")?;
         let artifacts = db.open_tree("artifacts")?;
         let allegations = db.open_tree("allegations")?;
         let atoms_by_artifact_agent = db.open_tree("allegation_rev")?;
@@ -104,25 +103,24 @@ impl MindBase {
         atoms_by_artifact_agent.set_merge_operator(merge_16byte_list);
         // analogy_rev.set_merge_operator(merge_16byte_list);
 
-        let default_agent = _default_agent(&my_agents)?;
+        // let default_agent = _default_agent(&my_agents)?;
         let _known_agents = db.open_tree("known_agents")?;
 
-        let ground_symbol_agents = Arc::new(Mutex::new(vec![default_agent.id()]));
+        let ground_symbol_agents = Arc::new(Mutex::new(vec![/*default_agent.id()*/]));
 
         let me = MindBase {
             allegations,
-            my_agents,
+            // my_agents,
             artifacts,
             _known_agents,
             atoms_by_artifact_agent,
             // analogy_rev,
             ground_symbol_agents,
-            default_agent,
+            // default_agent,
         };
 
-        me.genesis()?;
-
-        me.default_agent()?;
+        // me.genesis()?;
+        // me.default_agent()?;
 
         Ok(me)
     }
@@ -138,9 +136,9 @@ impl MindBase {
         Ok(())
     }
 
-    pub fn default_agent(&self) -> Result<Agent, MBError> {
-        _default_agent(&self.my_agents)
-    }
+    // pub fn default_agent(&self) -> Result<Agent, MBError> {
+    //     _default_agent(&self.my_agents)
+    // }
 
     pub fn get_allegation(&self, allegation_id: &AllegationId) -> Result<Option<Allegation>, MBError> {
         match self.allegations.get(allegation_id.as_ref())? {
@@ -192,10 +190,10 @@ impl MindBase {
         Ok(id)
     }
 
-    #[allow(unused)]
-    pub fn create_agent(&self) -> Result<Agent, MBError> {
-        _create_agent(&self.my_agents)
-    }
+    // #[allow(unused)]
+    // pub fn create_agent(&self) -> Result<Agent, MBError> {
+    //     _create_agent(&self.my_agents)
+    // }
 
     pub fn query_str(&self, mbql_str: &str) -> Result<Query, MBQLError> {
         Query::from_str(self, mbql_str)
@@ -233,21 +231,24 @@ impl MindBase {
     where
         T: crate::allegation::Alledgable,
     {
-        Ok(thing.alledge(self, &self.default_agent)?.subjective())
+        // Ok(thing.alledge(self, &self.default_agent)?.subjective())
+        unimplemented!()
     }
 
     pub(crate) fn symbolize_atom<T>(&self, thing: T) -> Result<Allegation, MBError>
     where
         T: crate::allegation::Alledgable,
     {
-        Ok(thing.alledge(self, &self.default_agent)?)
+        // Ok(thing.alledge(self, &self.default_agent)?)
+        unimplemented!()
     }
 
     pub fn alledge<T>(&self, thing: T) -> Result<Allegation, MBError>
     where
         T: crate::allegation::Alledgable,
     {
-        thing.alledge(self, &self.default_agent)
+        // thing.alledge(self, &self.default_agent)
+        unimplemented!()
     }
 
     // Alledge an Alledgable thing using specified agent
@@ -321,29 +322,29 @@ impl MindBase {
     }
 }
 
-fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
-    match my_agents.get(b"latest")? {
-        None => _create_agent(my_agents),
-        Some(pubkey) => match my_agents.get(pubkey)? {
-            None => Err(MBError::AgentHandleNotFound),
-            Some(v) => {
-                let agenthandle = bincode::deserialize(&v)?;
-                Ok(agenthandle)
-            }
-        },
-    }
-}
+// fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
+//     match my_agents.get(b"latest")? {
+//         None => _create_agent(my_agents),
+//         Some(pubkey) => match my_agents.get(pubkey)? {
+//             None => Err(MBError::AgentHandleNotFound),
+//             Some(v) => {
+//                 let agenthandle = bincode::deserialize(&v)?;
+//                 Ok(agenthandle)
+//             }
+//         },
+//     }
+// }
 
-fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
-    let agent = Agent::new();
+// fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
+//     let agent = Agent::new();
 
-    let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
-    my_agents.insert(agent.pubkey().as_bytes(), encoded)?;
-    my_agents.insert(b"latest", agent.pubkey().as_bytes())?;
-    my_agents.flush()?;
+//     let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
+//     my_agents.insert(agent.pubkey().as_bytes(), encoded)?;
+//     my_agents.insert(b"latest", agent.pubkey().as_bytes())?;
+//     my_agents.flush()?;
 
-    Ok(agent)
-}
+//     Ok(agent)
+// }
 
 pub struct Iter<K, V> {
     iter: sled::Iter,

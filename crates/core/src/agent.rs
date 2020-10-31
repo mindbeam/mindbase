@@ -1,6 +1,5 @@
 pub mod signature;
 
-use ed25519_dalek::{Keypair, PublicKey};
 use mindbase_crypto::AgentKey;
 
 use crate::{
@@ -8,9 +7,8 @@ use crate::{
     error::MBError,
     Artifact, MindBase,
 };
-use rand::rngs::OsRng;
+
 use serde::{Deserialize, Serialize};
-use sha2::Sha512;
 use std::fmt;
 
 #[derive(Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord, Clone)]
@@ -76,12 +74,12 @@ impl Agent {
         }
     }
 
-    pub fn keypair(&self) -> &Keypair {
+    pub fn agentkey(&self) -> &AgentKey {
         &self.agentkey
     }
 
-    pub fn pubkey(&self) -> &PublicKey {
-        &self.agentkey.public
+    pub fn pubkey(&self) -> [u8; 32] {
+        self.agentkey.pubkey()
     }
 
     /// Returns a list of AgentIDs to ascribe to for ground symbols
@@ -101,7 +99,7 @@ impl std::fmt::Display for Agent {
         write!(
             f,
             "{}",
-            base64::encode_config(&self.agentkey.public.as_bytes()[0..10], STANDARD_NO_PAD)
+            base64::encode_config(&self.agentkey.pubkey()[0..10], STANDARD_NO_PAD)
         )
     }
 }

@@ -16,15 +16,17 @@ struct Opt {
     mindbase: Option<PathBuf>,
 
     #[structopt(subcommand)]
-    cmd: Option<Command>,
+    cmd: Command,
 }
 
 #[derive(StructOpt, Debug)]
 enum Command {
+    /// Create, login, and manage local agents
     Auth {
         #[structopt(subcommand)]
-        cmd: crate::auth::Command,
+        cmd: crate::subcommand::auth::Command,
     },
+    /// Import a .mbql file
     Import {
         /// Echo the parsed MBQL back to the display
         #[structopt(long)]
@@ -33,6 +35,7 @@ enum Command {
         #[structopt(parse(from_os_str))]
         file: PathBuf,
     },
+    /// Export a .mbql file
     Export {
         #[structopt(parse(from_os_str))]
         file: PathBuf,
@@ -50,19 +53,20 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 fn run(opt: Opt) -> Result<(), std::io::Error> {
+    let cwd = std::env::current_dir().unwrap();
     let path = match &opt.mindbase {
         Some(path) => path,
-        None => std::env::current_dir().unwrap(),
+        None => cwd.as_path(),
     };
 
-    println!("Loading database in {}", path.as_path().display());
+    println!("Loading database in {}", path.display());
 
-    let mb = MindBase::open(path);
+    let mb = MindBase::open(path)?;
     let keymanager = KeyManager::new();
     match opt.cmd {
-        Command::Auth => crate::subcommand::auth::run(mb, keymanager),
-        Command::Import { echo, file } => crate::subcommand::import::run(mb, keymanager, file, echo),
-        Command::Export { file } => crate::subcommand::export::run(mb, keymanager, file),
+        Command::Auth { cmd } => crate::subcommand::auth::run(mb, keymanager, cmd)?,
+        Command::Import { echo, file } => crate::subcommand::import::run(mb, keymanager, file, echo)?,
+        Command::Export { file } => crate::subcommand::export::run(mb, keymanager, file)?,
     }
 
     // let agent = mb.default_agent().unwrap();

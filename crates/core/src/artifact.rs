@@ -98,9 +98,9 @@ impl Artifact {
         // TODO 5 switch to CapnProto or similar. Artifact storage and wire representation should be identical
         // Therefore we should hash that
         let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
-        hasher.input(&encoded);
+        hasher.update(&encoded);
 
-        let result = hasher.result();
+        let result = hasher.finalize();
 
         ArtifactId(result.into())
     }
@@ -110,9 +110,9 @@ impl Artifact {
         let mut hasher = Sha512Trunc256::new();
 
         let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
-        hasher.input(&encoded);
+        hasher.update(&encoded);
 
-        let result = hasher.result();
+        let result = hasher.finalize();
 
         (ArtifactId(result.into()), encoded)
     }

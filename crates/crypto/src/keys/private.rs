@@ -10,7 +10,7 @@ use zeroize::Zeroize;
 // dalek::Keypair already derives Zeroize
 #[derive(Debug)]
 pub struct AgentKey {
-    keypair: Keypair,
+    pub keypair: Keypair,
 }
 
 // impl Eq for AgentKey{

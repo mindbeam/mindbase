@@ -1,12 +1,9 @@
-use crate::{
-    agent::AgentId,
-    error::MBError,
-};
+use crate::{agent::AgentId, error::MBError};
 
 struct PolicyId {}
 
 pub struct Policy {
-    _id:   PolicyId,
+    _id: PolicyId,
     _body: PolicyBody,
 }
 
@@ -26,17 +23,14 @@ pub enum PolicyBody {
     DisclosureRelationship {
         // Symbol referring to an abstract group (the identity of the group itself. Not its members)
         // Allegations of Agent membership to this group can be changed by other Agents, but who?
-        group:          Symbol,
+        group: Symbol,
         administrators: Symbol, //
 
         what: Symbol,
     },
 }
 
-use crate::{
-    symbol::Symbol,
-    util::AsBytes,
-};
+use crate::{symbol::Symbol, util::AsBytes};
 
 impl AsBytes for PolicyId {
     fn as_bytes(&self) -> Vec<u8> {
@@ -46,30 +40,25 @@ impl AsBytes for PolicyId {
 
 #[cfg(test)]
 mod test {
-    use super::{
-        Policy,
-        PolicyBody,
-    };
-    use crate::prelude::{
-        MindBase,
-        Text,
-    };
+    use super::{Policy, PolicyBody};
+    use crate::prelude::{MindBase, Text};
 
     fn _disclosure_relationship() -> Result<(), std::io::Error> {
         let tmpdir = tempfile::tempdir()?;
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;
 
-        let my_agent = &mb.default_agent;
+        unimplemented!()
+        // let my_agent = &mb.default_agent;
 
-        let group = mb.alledge(Text::new("Authorized Members of Project Falcor"))?.subjective();
-        let administrators = mb.alledge(my_agent)?.subjective();
+        // let group = mb.alledge(Text::new("Authorized Members of Project Falcor"))?.subjective();
+        // let administrators = mb.alledge(my_agent)?.subjective();
 
-        let what = mb.alledge(Text::new("Project Falcor Assets"))?.subjective();
+        // let what = mb.alledge(Text::new("Project Falcor Assets"))?.subjective();
 
-        mb.add_policy(Policy::new(PolicyBody::DisclosureRelationship { group,
-                                                                       administrators,
-                                                                       what })?)?;
-        Ok(())
+        // mb.add_policy(Policy::new(PolicyBody::DisclosureRelationship { group,
+        //                                                                administrators,
+        //                                                                what })?)?;
+        // Ok(())
     }
 }

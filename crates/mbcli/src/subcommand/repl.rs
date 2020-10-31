@@ -4,9 +4,10 @@ use mindbase_core::{
     *,
 };
 
+use mindbase_crypto::KeyManager;
 use rustyline::{error::ReadlineError, Editor};
 
-fn repl(mb: Mindbase, agent: Agent) {
+fn repl(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {
     let query = mb.query_str(r#"$isaid = Ground("Things that I said" : "In mbcli")"#)?;
     query.apply()?;
     let isaid = query.get_symbol_for_var("isaid")?.unwrap();
