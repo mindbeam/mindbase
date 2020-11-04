@@ -30,6 +30,19 @@ impl Into<AnalogyMember> for CategoricalAnalogyMember {
     }
 }
 
+impl Into<fs::Item<AnalogyMember>> for &'static &'static str {
+    fn into(self) -> fs::Item<AnalogyMember> {
+        fs::Item {
+            pdegree: 1.0,
+            ndegree: 0.0,
+            member: AnalogyMember {
+                id: self.into(),
+                side: AnalogySide::Categorical,
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AnalogyMember {
     pub id: SimpleId,
@@ -107,7 +120,7 @@ impl Analogy {
             .merge_join_by(other.into().iter(), |a, b| a.member.id.cmp(&b.member.id));
 
         // Execution plan:
-        // * We're comparing all Atoms for both symbols within this analogy to a Two-sided AtomVec containing *Candidate* Atoms
+        // * We're comparing all Members for both symbols within this analogy to a Two-sided AtomVec containing *Candidate* Atoms
         // * At least one Left Atom and one Right Atom must match in order for the relationship to have any weight at all
         // * We're expanding the set of those atoms which are inferred (Spin-adjusted opposite-side Atoms) with a score based on
         // weighted sum of the matching spin-adjusted same-side matches

@@ -3,7 +3,7 @@
 // like "Cat1" and "Cat2" to signify that they are different instances of "Cat"
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct SimpleId {
-    pub id:   &'static str,
+    pub id: &'static str,
     pub text: &'static str,
 }
 

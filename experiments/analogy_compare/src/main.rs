@@ -100,6 +100,7 @@ fn fuzzy_set_union_signal_to_noise_problem() {
     let io1 = sym!["Hot1"];
     let io2 = sym![("Hot1", 0.5), ("Muggy1", 0.9)];
     let io3 = sym![("Hot1", 1.0), ("Sticky1", 0.5)];
+    println!("{:?}", io3);
 
     // union the interrogation outputs together
     let mut u = Symbol::null();
@@ -139,21 +140,22 @@ fn fuzzy_set_union_signal_to_noise_problem() {
 fn lesser_weights_through_imperfect_analogy() {
     // TODO 1 - reconcile this experiment with the core crate
 
-    // let c1 = Analogy::categorical("c1", &["doughnut", "bun", "pastry", "cruller", "sweet roll"]);
+    // There exists some catagory which is descibable with all of the following terms, modulo any potential mistakes
+    let c1 = Analogy::categorical("c1", &["doughnut", "bun", "pastry", "cruller", "sweet roll"]);
 
-    // let a1 = Analogy::associative("a1", sym!["A", "B", "C", "D"], sym!["X", "Y", "Z"]);
-    // let a2 = Analogy::associative("a2", sym!["A", "B", "Q"], sym!["X", "F"]);
-    // println!("{}", a1);
-    // println!("{}", a2);
+    let a1 = Analogy::associative("a1", sym!["A", "B", "C", "D"], sym!["X", "Y", "Z"]);
+    let a2 = Analogy::associative("a2", sym!["A", "B", "Q"], sym!["X", "F"]);
+    println!("{}", a1);
+    println!("{}", a2);
 
-    // let mut b = a1.interrogate(&a2).unwrap();
+    let mut b = a1.interrogate(&a2).unwrap();
 
     // // So, We've interrogated a1 with a2 and gotten some "naturally" members with < 1 weights.
     // // How do we clean up this scenario to be more realistic?
     // // "interrogation" only makes sense in the context of a query – Not just blindly rubbing two analogies together
     // // How do we formulate a query using a corpus of prior analogies?
 
-    // println!("{}", b);
+    println!("{}", b);
 
     // let a3 = Analogy::associative("a2", sym!["Q", "R"], sym!["F", "G"]);
     // // let c = b.interrogate(&a3).unwrap();
