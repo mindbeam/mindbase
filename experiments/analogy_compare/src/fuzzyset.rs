@@ -1,30 +1,26 @@
-use itertools::{
-    EitherOrBoth,
-    Itertools,
-};
+use itertools::{EitherOrBoth, Itertools};
 
-use colorful::{
-    Color,
-    Colorful,
-};
+use colorful::{Color, Colorful};
 
 #[derive(Debug, Clone)]
 pub struct Item<M>
-    where M: Member
+where
+    M: Member,
 {
-    /// The degree to which this is a member of the Fuzzy set
-    pub pdegree: f32,
-    /// The degree to which this is an anti-member of the Fuzzy set
-    pub ndegree: f32,
+    /// The degree to which this member is applicable to the Fuzzy set
+    pub degree: f32,
     /// The Member in question
-    pub member:  M,
+    pub member: M,
 }
 
 pub trait Member: Sized + Clone {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering;
-    fn invert(&mut self) {}
+    fn invert(&mut self) -> bool {
+        // Member did not handle the inversion
+        false
+    }
     fn display_fmt(&self, item: &Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Member+{:0.1}", item.pdegree)
+        write!(f, "Member+{:0.1}", item.degree)
     }
     fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
@@ -43,30 +39,37 @@ pub trait Member: Sized + Clone {
     }
 }
 
-impl<M> Item<M> where M: Member
+impl<M> Item<M>
+where
+    M: Member,
 {
     pub fn invert(&mut self) {
-        // let pd = item.pdegree;
-        // switcheroo
-        // item.pdegree = item.ndegree;
-        // item.ndegree = pd;
-        self.member.invert()
+        //did the member handle the inversion?
+        if !self.member.invert() {
+            // No, therefore we will invert its degree
+            self.degree *= -1.0;
+        }
     }
 }
 
 // Fuzzy set where membership may be negative or positive
 #[derive(Clone)]
-pub struct FuzzySet<M>(Vec<Item<M>>) where M: Member + Clone;
+pub struct FuzzySet<M>(Vec<Item<M>>)
+where
+    M: Member + Clone;
 
-impl<M> FuzzySet<M> where M: Member + Clone
+impl<M> FuzzySet<M>
+where
+    M: Member + Clone,
 {
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
     pub fn from_list<A, I>(list: A) -> Self
-        where A: IntoIterator<Item = I>,
-              I: Into<Item<M>>
+    where
+        A: IntoIterator<Item = I>,
+        I: Into<Item<M>>,
     {
         let mut me = Self::new();
         for item in list {
@@ -76,7 +79,8 @@ impl<M> FuzzySet<M> where M: Member + Clone
     }
 
     pub fn extend<'a, T>(&'a mut self, iter: T)
-        where T: IntoIterator<Item = &'a Item<M>>
+    where
+        T: IntoIterator<Item = &'a Item<M>>,
     {
         for item in iter {
             self.insert_borrowed(item)
@@ -87,9 +91,8 @@ impl<M> FuzzySet<M> where M: Member + Clone
         match self.0.binary_search_by(|probe| probe.member.cmp(&item.member)) {
             Ok(i) => {
                 let existing = &mut self.0.get_mut(i).unwrap();
-                existing.pdegree = existing.pdegree.max(item.pdegree);
-                existing.ndegree = existing.ndegree.max(item.ndegree);
-            },
+                existing.degree = existing.degree.max(item.degree);
+            }
             Err(i) => self.0.insert(i, item),
         }
     }
@@ -98,9 +101,8 @@ impl<M> FuzzySet<M> where M: Member + Clone
         match self.0.binary_search_by(|probe| probe.member.cmp(&item.member)) {
             Ok(i) => {
                 let existing = &mut self.0.get_mut(i).unwrap();
-                existing.pdegree = existing.pdegree.max(item.pdegree);
-                existing.ndegree = existing.ndegree.max(item.ndegree);
-            },
+                existing.degree = existing.degree.max(item.degree);
+            }
             Err(i) => self.0.insert(i, item.clone()),
         }
     }
@@ -118,13 +120,15 @@ impl<M> FuzzySet<M> where M: Member + Clone
     }
 
     pub fn drain<'a, T>(&'a mut self, range: T) -> std::vec::Drain<'a, Item<M>>
-        where T: std::ops::RangeBounds<usize>
+    where
+        T: std::ops::RangeBounds<usize>,
     {
         self.0.drain(range)
     }
 
     pub fn union<'a, T>(&'a mut self, other: T)
-        where T: IntoIterator<Item = Item<M>>
+    where
+        T: IntoIterator<Item = Item<M>>,
     {
         for item in other {
             self.insert(item)
@@ -160,7 +164,9 @@ impl<M> FuzzySet<M> where M: Member + Clone
     }
 }
 
-impl<M> IntoIterator for FuzzySet<M> where M: Member + Clone
+impl<M> IntoIterator for FuzzySet<M>
+where
+    M: Member + Clone,
 {
     type IntoIter = std::vec::IntoIter<Item<M>>;
     type Item = Item<M>;
@@ -170,24 +176,28 @@ impl<M> IntoIterator for FuzzySet<M> where M: Member + Clone
     }
 }
 
-impl<M> std::fmt::Display for FuzzySet<M> where M: Member + Clone
+impl<M> std::fmt::Display for FuzzySet<M>
+where
+    M: Member + Clone,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Member::display_fmt_set(self, f)
     }
 }
 
-impl<M> std::fmt::Debug for FuzzySet<M> where M: Member + std::fmt::Debug + Clone
+impl<M> std::fmt::Debug for FuzzySet<M>
+where
+    M: Member + std::fmt::Debug + Clone,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
         let mut seen = false;
         for item in self.iter() {
             if seen {
-                write!(f, ", {:?}+{:0.1}-{:0.1}", item.member, item.pdegree, item.ndegree)?;
+                write!(f, ", ({:?},{:0.1})", item.member, item.degree)?;
             } else {
                 seen = true;
-                write!(f, "{:?}+{:0.1}-{:0.1}", item.member, item.pdegree, item.ndegree)?;
+                write!(f, "({:?},{:0.1})", item.member, item.degree)?;
             }
         }
         write!(f, "}}")?;
@@ -197,10 +207,7 @@ impl<M> std::fmt::Debug for FuzzySet<M> where M: Member + std::fmt::Debug + Clon
 
 #[cfg(test)]
 mod test {
-    use super::{
-        FuzzySet,
-        Item,
-    };
+    use super::{FuzzySet, Item};
 
     #[derive(Clone)]
     struct TestMember(usize);
@@ -218,9 +225,10 @@ mod test {
 
     impl From<usize> for Item<TestMember> {
         fn from(member: usize) -> Self {
-            Item { member:  TestMember(member),
-                   pdegree: 1.0,
-                   ndegree: 0.0, }
+            Item {
+                member: TestMember(member),
+                degree: 1.0,
+            }
         }
     }
 
