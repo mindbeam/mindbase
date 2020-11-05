@@ -133,22 +133,21 @@ impl Analogy {
         //       This means we will have to score BOTH AL<>QL + AR<>QR __AND__ AL<>QR + AR<>QL
         //       then whichever one is stronger wins, and we either flip, or don't flip ALL Atoms in the resultant set
 
-        let mut ll_degree = 0f32;
-        let mut rr_degree = 0f32;
-        let mut lr_degree = 0f32;
-        let mut rl_degree = 0f32;
-        let mut ll_count = 0u32;
-        let mut rr_count = 0u32;
-        let mut lr_count = 0u32;
-        let mut rl_count = 0u32;
+        #[derive(Default)]
+        struct Avg {
+            degree: f32,
+            count: u32,
+        };
+        let mut left_left: Avg = Default::default();
+        let mut right_right: Avg = Default::default();
+        let mut left_right: Avg = Default::default();
+        let mut right_left: Avg = Default::default();
 
         let mut left_count = 0u32;
         let mut right_count = 0u32;
-        let mut left_degree = 0f32;
-        let mut right_degree = 0f32;
 
-        let mut normal_count = 0u32;
-        let mut inverse_count = 0u32;
+        // let mut normal_count = 0u32;
+        // let mut inverse_count = 0u32;
 
         let mut out: Vec<fs::Item<AnalogyMember>> = Vec::new();
 
@@ -182,41 +181,24 @@ impl Analogy {
                 EitherOrBoth::Both(analogy_item, query_item) => {
                     // So we know we match on ID
 
-                    let degree;
+                    let degree = analogy_item.degree * query_item.degree;
                     // println!("MATCH {:?} <-> {:?}", analogy_item.member.side, query_item.member.side);
                     match (&analogy_item.member.side, &query_item.member.side) {
                         (AnalogySide::Left, AnalogySide::Left) => {
-                            degree = analogy_item.degree * query_item.degree;
-                            left_degree += degree;
-                            ll_degree += degree;
-                            ll_count += 1;
-                            left_count += 1;
-                            normal_count += 1;
+                            left_left.degree += degree;
+                            left_left.count += 1;
                         }
                         (AnalogySide::Right, AnalogySide::Right) => {
-                            degree = analogy_item.degree * query_item.degree;
-                            right_degree += degree;
-                            rr_degree += degree;
-                            rr_count += 1;
-                            right_count += 1;
-                            normal_count += 1;
+                            right_right.degree += degree;
+                            right_right.count += 1;
                         }
                         (AnalogySide::Left, AnalogySide::Right) => {
-                            degree = analogy_item.degree * query_item.degree;
-                            left_degree += degree;
-                            lr_degree += degree;
-                            lr_count += 1;
-                            left_count += 1;
-                            inverse_count += 1;
+                            left_right.degree += degree;
+                            left_right.count += 1;
                         }
                         (AnalogySide::Right, AnalogySide::Left) => {
-                            degree = analogy_item.degree * query_item.degree;
-                            right_degree += degree;
-                            rl_degree += degree;
-                            // rl_ndegree += analogy_atom.ndegree * query_atom.ndegree;
-                            rl_count += 1;
-                            right_count += 1;
-                            inverse_count += 1;
+                            right_left.degree += degree;
+                            right_left.count += 1;
                         }
 
                         _ => unimplemented!(),
@@ -253,20 +235,25 @@ impl Analogy {
 
         // If any of these are zero, it will only detract from the average
         // If ALL of the set from the same side is zero, then the other side won't matter, because we're multiplying by zero
-        let forward_degree = ll_degree * rr_degree; // + lr_ndegree * rl_ndegree;
-        let reverse_degree = lr_degree * rl_degree; // + ll_ndegree * rr_pdegree;
+        let forward_degree = left_left.degree * right_right.degree;
+        let reverse_degree = left_right.degree * right_left.degree;
 
         // println!("Left {}: (LL {:0.1} + LR: {:0.1}), Right: {}: (RR: {:0.1} + RL: {:0.1})",
         //  left_count, ll_pdegree, lr_pdegree, right_count, rr_pdegree, rl_pdegree);
+
+        right_count += right_right.count + right_left.count;
+        left_count += left_left.count + left_right.count;
 
         if right_count == 0 || left_count == 0 {
             return None;
         }
 
-        let left_factor = right_degree / right_count as f32;
-        let right_factor = left_degree / left_count as f32;
+        let left_factor = (right_right.degree + right_left.degree) / right_count as f32;
+        let right_factor = (left_left.degree + left_right.degree) / left_count as f32;
         // println!("FACTOR LEFT {:0.1} RIGHT {:0.1}", left_factor, right_factor);
 
+        let normal_count = right_left.count + left_right.count;
+        let inverse_count = right_right.count + left_left.count;
         if normal_count > inverse_count {
             // println!("Forward");
 

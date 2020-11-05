@@ -13,9 +13,11 @@ use simpleid::*;
 use symbol::*;
 
 fn main() {
-    // experiment1()
+    // Q: What's the stupidest way to do this?
+    // A: don't friggin worry about unions right now
+    experiment1()
     // fuzzy_set_union_signal_to_noise_problem()
-    lesser_weights_through_imperfect_analogy()
+    // lesser_weights_through_imperfect_analogy()
 }
 
 fn experiment1() {

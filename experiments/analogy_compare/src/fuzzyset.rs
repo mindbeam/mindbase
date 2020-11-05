@@ -91,7 +91,19 @@ where
         match self.0.binary_search_by(|probe| probe.member.cmp(&item.member)) {
             Ok(i) => {
                 let existing = &mut self.0.get_mut(i).unwrap();
-                existing.degree = existing.degree.max(item.degree);
+                // existing.degree = existing.degree.max(item.degree);
+
+                // Idea 1: If the signs are opposite, add them
+                // if they are the same, then multiply them?
+
+                // Idea 2: Don't manipulate the degree of anything. Merely include multiple copies of the same member id within the set
+                // preserving the degree. This is less lossy, but may be more complex to intersect
+                // Is it meaningful to preserve the fact that I am 90% confident about X, and you are 70% confident?
+                // Surely we are either 80%(multiply) or 90%(max) confident in that member?
+
+                // Why is it that I should be able to union a set to itself idempotently? Maybe that's not necessary or appropriate?
+
+                existing.degree = (existing.degree + item.degree).min(1.0).max(-1.0)
             }
             Err(i) => self.0.insert(i, item),
         }
@@ -233,21 +245,37 @@ mod test {
     }
 
     #[test]
-    fn basic() {
+    fn identity() {
         // All members in this set are fully positive
         let mut fs1 = FuzzySet::from_list(vec![1, 2, 3]);
-        assert_eq!(format!("{:?}", fs1), "{1+1.0-0.0, 2+1.0-0.0, 3+1.0-0.0}");
+        assert_eq!(format!("{:?}", fs1), "{(1,1.0), (2,1.0), (3,1.0)}");
+
+        // union with itself
+        fs1.union(fs1.clone());
+
+        // should be unchanged (??)
+        assert_eq!(format!("{:?}", fs1), "{(1,1.0), (2,1.0), (3,1.0)}");
+    }
+    #[test]
+    fn inverse() {
+        // All members in this set are fully positive
+        let mut fs1 = FuzzySet::from_list(vec![1, 2, 3]);
+        assert_eq!(format!("{:?}", fs1), "{(1,1.0), (2,1.0), (3,1.0)}");
 
         // Fully negative degree set
-        let mut fs2 = FuzzySet::from_list(vec![1, 2, 3]);
+        let mut fs2 = fs1.clone();
         fs2.invert();
-        assert_eq!(format!("{:?}", fs2), "{1+0.0-1.0, 2+0.0-1.0, 3+0.0-1.0}");
+        assert_eq!(format!("{:?}", fs2), "{(1,-1.0), (2,-1.0), (3,-1.0)}");
 
         // Yes, it's strange, but when we take the union of the two sets, every member should be fully positive and fully negative
         // In practice, this essentially means that the set is null, but the behaviors may be different under subsequent
         // operations versus a null set. Either way we have to differentiate between non-membership and membership which is made
         // irrelevant through contradiction
+        // TODO 2 - is the above for real? Don't know enough right now to determine if the set should contain a lasting image of
+        // the contradiction, or if it should be expunged
+
         fs1.union(fs2);
-        assert_eq!(format!("{:?}", fs1), "{1+1.0-1.0, 2+1.0-1.0, 3+1.0-1.0}");
+        // assert_eq!(format!("{:?}", fs1), "{1+1.0-1.0, 2+1.0-1.0, 3+1.0-1.0}");
+        assert_eq!(format!("{:?}", fs1), "{(1,0.0), (2,0.0), (3,0.0)}");
     }
 }
