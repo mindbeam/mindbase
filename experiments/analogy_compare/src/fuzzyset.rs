@@ -2,6 +2,8 @@ use itertools::{EitherOrBoth, Itertools};
 
 use colorful::{Color, Colorful};
 
+const MEMBER_CULL_DEGREE: f32 = 0.01;
+
 #[derive(Debug, Clone)]
 pub struct Item<M>
 where
@@ -20,17 +22,17 @@ pub trait Member: Sized + Clone {
         false
     }
     fn display_fmt(&self, item: &Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Member+{:0.1}", item.degree)
+        write!(f, "(Member,{:0.1})", item.degree)
     }
     fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
-        let mut seen = false;
+        let mut first = true;
         for item in set.iter() {
-            if seen {
-                write!(f, ", ")?;
+            if !first {
+                write!(f, " ")?;
                 item.member.display_fmt(&item, f)?;
             } else {
-                seen = true;
+                first = false;
                 item.member.display_fmt(&item, f)?;
             }
         }
@@ -87,23 +89,30 @@ where
         }
     }
 
+    /// Insert this item into the set
+    /// Note that under certain circumstances this may actually result in the member being _removed_ from
+    /// the set if it is negated by this item
     pub fn insert(&mut self, item: Item<M>) {
+        if item.degree < MEMBER_CULL_DEGREE {
+            return;
+        }
+
         match self.0.binary_search_by(|probe| probe.member.cmp(&item.member)) {
             Ok(i) => {
-                let existing = &mut self.0.get_mut(i).unwrap();
-                // existing.degree = existing.degree.max(item.degree);
+                let degree;
+                {
+                    let existing = &mut self.0.get_mut(i).unwrap();
+                    // TODO 2 - how do we properly handle union? (Insufficient motivating examples to arrive at clarity)
 
-                // Idea 1: If the signs are opposite, add them
-                // if they are the same, then multiply them?
-
-                // Idea 2: Don't manipulate the degree of anything. Merely include multiple copies of the same member id within the set
-                // preserving the degree. This is less lossy, but may be more complex to intersect
-                // Is it meaningful to preserve the fact that I am 90% confident about X, and you are 70% confident?
-                // Surely we are either 80%(multiply) or 90%(max) confident in that member?
-
-                // Why is it that I should be able to union a set to itself idempotently? Maybe that's not necessary or appropriate?
-
-                existing.degree = (existing.degree + item.degree).min(1.0).max(-1.0)
+                    // Lets just average them for now. This gets us:
+                    // * idempotence (not sure if this is actually necessary)
+                    // * inverse union is null
+                    degree = (existing.degree + item.degree) / 2.0;
+                    existing.degree = degree;
+                }
+                if degree < MEMBER_CULL_DEGREE {
+                    self.0.remove(i);
+                }
             }
             Err(i) => self.0.insert(i, item),
         }
@@ -112,8 +121,15 @@ where
     pub fn insert_borrowed(&mut self, item: &Item<M>) {
         match self.0.binary_search_by(|probe| probe.member.cmp(&item.member)) {
             Ok(i) => {
-                let existing = &mut self.0.get_mut(i).unwrap();
-                existing.degree = existing.degree.max(item.degree);
+                let degree;
+                {
+                    let existing = &mut self.0.get_mut(i).unwrap();
+                    degree = (existing.degree + item.degree) / 2.0;
+                    existing.degree = degree;
+                }
+                if degree < MEMBER_CULL_DEGREE {
+                    self.0.remove(i);
+                }
             }
             Err(i) => self.0.insert(i, item.clone()),
         }
@@ -166,6 +182,7 @@ where
         //         },
         //     }
         // }
+        unimplemented!()
     }
 
     pub fn invert(&mut self) {
@@ -203,12 +220,12 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
-        let mut seen = false;
+        let mut first = true;
         for item in self.iter() {
-            if seen {
-                write!(f, ", ({:?},{:0.1})", item.member, item.degree)?;
+            if !first {
+                write!(f, " ({:?},{:0.1})", item.member, item.degree)?;
             } else {
-                seen = true;
+                first = false;
                 write!(f, "({:?},{:0.1})", item.member, item.degree)?;
             }
         }
@@ -248,24 +265,24 @@ mod test {
     fn identity() {
         // All members in this set are fully positive
         let mut fs1 = FuzzySet::from_list(vec![1, 2, 3]);
-        assert_eq!(format!("{:?}", fs1), "{(1,1.0), (2,1.0), (3,1.0)}");
+        assert_eq!(format!("{:?}", fs1), "{(1,1.0) (2,1.0) (3,1.0)}");
 
         // union with itself
         fs1.union(fs1.clone());
 
         // should be unchanged (??)
-        assert_eq!(format!("{:?}", fs1), "{(1,1.0), (2,1.0), (3,1.0)}");
+        assert_eq!(format!("{:?}", fs1), "{(1,1.0) (2,1.0) (3,1.0)}");
     }
     #[test]
     fn inverse() {
         // All members in this set are fully positive
         let mut fs1 = FuzzySet::from_list(vec![1, 2, 3]);
-        assert_eq!(format!("{:?}", fs1), "{(1,1.0), (2,1.0), (3,1.0)}");
+        assert_eq!(format!("{:?}", fs1), "{(1,1.0) (2,1.0) (3,1.0)}");
 
         // Fully negative degree set
         let mut fs2 = fs1.clone();
         fs2.invert();
-        assert_eq!(format!("{:?}", fs2), "{(1,-1.0), (2,-1.0), (3,-1.0)}");
+        assert_eq!(format!("{:?}", fs2), "{(1,-1.0) (2,-1.0) (3,-1.0)}");
 
         // Yes, it's strange, but when we take the union of the two sets, every member should be fully positive and fully negative
         // In practice, this essentially means that the set is null, but the behaviors may be different under subsequent
@@ -274,8 +291,9 @@ mod test {
         // TODO 2 - is the above for real? Don't know enough right now to determine if the set should contain a lasting image of
         // the contradiction, or if it should be expunged
 
-        fs1.union(fs2);
+        // TODO 2 - resume support for unions AFTER we have some better use cases to determine ideal behavior
+        // fs1.union(fs2);
         // assert_eq!(format!("{:?}", fs1), "{1+1.0-1.0, 2+1.0-1.0, 3+1.0-1.0}");
-        assert_eq!(format!("{:?}", fs1), "{(1,0.0), (2,0.0), (3,0.0)}");
+        // assert_eq!(format!("{:?}", fs1), "{(1,0.0), (2,0.0), (3,0.0)}");
     }
 }

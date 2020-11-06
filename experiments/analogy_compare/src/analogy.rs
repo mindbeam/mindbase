@@ -95,27 +95,16 @@ impl<'a> Into<&'a FuzzySet<AnalogyMember>> for &'a AnalogyQuery {
 
 impl Analogy {
     /// identify the subset of this analogy's fuzzy-set which intersect the comparison set
-    /// and conditionally invert the sidedness of the resultant subset to match the comparison set.
-    ///
-    ///
-    pub fn interrogate<'a, T>(&'a self, compare: T) -> Option<FuzzySet<AnalogyMember>>
+    /// and conditionally invert the sidedness of the resultant set to match the comparison set
+    pub fn interrogate<'a, T>(&'a self, query_set: T) -> Option<FuzzySet<AnalogyMember>>
     where
         T: Into<&'a FuzzySet<AnalogyMember>>,
     {
-        // QUESTION - Eventually we will have to trim the output set for performance reasons. Presumably by output weight
-        // descending.            How well or poorly does this converge? (TODO 2 - Run an experiment to determine this)
-
-        // outer-join the two sorted lists together based only on ID
-        // The list is sorted by ID and side, which means they are in the correct order.
-
-        // FuzzySets are always sorted by ID+Side, so we can use
-
-        // TODO 2 - Think about contradictions including the same atom: Eg Atom 123 is on both the left and the right side, or
-        // included with opposite Spin on the same side
+        // FuzzySets are always sorted by ID (side is disabled for now), so we can outer join
         let mut iter = self
             .set
             .iter()
-            .merge_join_by(compare.into().iter(), |a, b| a.member.id.cmp(&b.member.id));
+            .merge_join_by(query_set.into().iter(), |a, b| a.member.id.cmp(&b.member.id));
 
         // Execution plan:
         // * We're comparing all Members for both symbols within this analogy to a Two-sided FuzzySet containing *Candidate* Members
@@ -123,181 +112,104 @@ impl Analogy {
         // * We're expanding the set of those atoms which are inferred (Spin-adjusted opposite-side Atoms) with a score based on
         // weighted sum of the matching spin-adjusted same-side matches
 
-        // Question: How do we calculate the scores for Spin-adjusted Same-side matches?
-
-        // NOTE: I don't think we can swap sidedness of individual Atoms
-        //       I'm pretty sure we have to swap the sidedness of whole thing, or nothing         (extreme temps <> middle temps)
-        //       There could be tension between This analogy [hot,warm]<>[cold,cool] and this query pair [hot,cold]<>[warm,cool]
-        //       So they will have to vote.
-        //       This example should produce a pretty low weight for all of the above atoms
-        //       This means we will have to score BOTH AL<>QL + AR<>QR __AND__ AL<>QR + AR<>QL
-        //       then whichever one is stronger wins, and we either flip, or don't flip ALL Atoms in the resultant set
-
         #[derive(Default)]
-        struct Avg {
+        struct Bucket {
             degree: f32,
             count: u32,
         };
-        let mut left_left: Avg = Default::default();
-        let mut right_right: Avg = Default::default();
-        let mut left_right: Avg = Default::default();
-        let mut right_left: Avg = Default::default();
 
-        let mut left_count = 0u32;
-        let mut right_count = 0u32;
+        // We need to sum up the degrees, and the count of each matching item
+        // The first letter is the analogy item side, and the second is the query item side
+        let mut ll_bucket: Bucket = Default::default();
+        let mut rr_bucket: Bucket = Default::default();
+        let mut lr_bucket: Bucket = Default::default();
+        let mut rl_bucket: Bucket = Default::default();
 
-        // let mut normal_count = 0u32;
-        // let mut inverse_count = 0u32;
+        // We also need to count the non-matching count
+        let mut nonmatching_left_count = 0u32;
+        let mut nonmatching_right_count = 0u32;
 
-        let mut out: Vec<fs::Item<AnalogyMember>> = Vec::new();
+        let mut out = FuzzySet::new();
 
         for either in iter {
             match either {
-                // EitherOrBoth::Left(analogy_item) => {
-                // // QUESTION: Do we care if the analogy has more members than the query?
-                //     // Present in analogy, not present in query
-                //     match &analogy_item.member.side {
-                //         AnalogySide::Left => {
-                //             left_count += 1;
-                //         },
-                //         AnalogySide::Right => {
-                //             right_count += 1;
-                //         },
-                //         _ => unimplemented!(),
-                //     }
-                // },
                 EitherOrBoth::Right(analogy_item) => {
-                    // Present in query, not present in analogy
+                    // Present in query, but not present in analogy
                     match &analogy_item.member.side {
-                        AnalogySide::Left => {
-                            left_count += 1;
-                        }
-                        AnalogySide::Right => {
-                            right_count += 1;
-                        }
-                        _ => unimplemented!(),
+                        AnalogySide::Left => nonmatching_left_count += 1,
+                        AnalogySide::Right => nonmatching_right_count += 1,
+                        _ => unimplemented!("Not clear on how/if categorical analogies mix with sided"),
                     }
                 }
                 EitherOrBoth::Both(analogy_item, query_item) => {
-                    // So we know we match on ID
+                    // We've got a hit
 
-                    let degree = analogy_item.degree * query_item.degree;
-                    // println!("MATCH {:?} <-> {:?}", analogy_item.member.side, query_item.member.side);
-                    match (&analogy_item.member.side, &query_item.member.side) {
-                        (AnalogySide::Left, AnalogySide::Left) => {
-                            left_left.degree += degree;
-                            left_left.count += 1;
-                        }
-                        (AnalogySide::Right, AnalogySide::Right) => {
-                            right_right.degree += degree;
-                            right_right.count += 1;
-                        }
-                        (AnalogySide::Left, AnalogySide::Right) => {
-                            left_right.degree += degree;
-                            left_right.count += 1;
-                        }
-                        (AnalogySide::Right, AnalogySide::Left) => {
-                            right_left.degree += degree;
-                            right_left.count += 1;
-                        }
+                    // Scale the degree of the matching item by that of the query
+                    let match_degree = analogy_item.degree * query_item.degree;
 
-                        _ => unimplemented!(),
+                    let bucket = match (&analogy_item.member.side, &query_item.member.side) {
+                        (AnalogySide::Left, AnalogySide::Left) => &mut ll_bucket,
+                        (AnalogySide::Right, AnalogySide::Right) => &mut rr_bucket,
+                        (AnalogySide::Left, AnalogySide::Right) => &mut lr_bucket,
+                        (AnalogySide::Right, AnalogySide::Left) => &mut rl_bucket,
+                        _ => unimplemented!("Not clear on how/if categorical analogies mix with sided"),
                     };
 
-                    let mut output_item = analogy_item.clone();
-                    output_item.degree = degree;
+                    bucket.degree += match_degree;
+                    bucket.count += 1;
 
-                    // assuming we are only inverting the sidedness (conditionally)
-                    // then this should be sufficient, as it's based on the analogy_item.
-                    // Such inversion would be all-or-none for this analogy
-                    // if regular {
-                    out.push(output_item);
-                    // } else {
-                    // tmp.push(Polarity::Inverse(output_item));
-                    // }
+                    let mut output_item = analogy_item.clone();
+                    output_item.degree = match_degree;
+
+                    out.insert(output_item);
                 }
                 _ => {}
             };
 
-            // The problem is: An associative analogy involves two sets of Atoms, Left and Right, which are associated sets, but
-            // NOT associable pairwise as atoms. This is because each set represents a symbol in its own right.
-            // The allegation is that SymbolA(Atomset A) is associatively correlated to SymbolB(Atomset B)
-
-            // Given a perfect match of left-handed Atoms, all right-handed Atoms can be inferred.
-            // Given a PARTIAL match of left-handed Atoms, The entirety of the subset the right is inferred, but with a degree of
-            // confidence commensurate with the number of left-handed matches Commensurately, the inverse is true as
-            // well of right handed matches
-
-            // Questions:
+            // TODO 2:
             // * How does this compose across multiple levels of Associative analogy? Eg ("Smile" : "Mouth") : ("Wink" : "Eye")
             // * How do we represent this partial matching. Presumably via some scoring mechanism
         }
 
-        // If any of these are zero, it will only detract from the average
-        // If ALL of the set from the same side is zero, then the other side won't matter, because we're multiplying by zero
-        let forward_degree = left_left.degree * right_right.degree;
-        let reverse_degree = left_right.degree * right_left.degree;
+        // Now we have a set of matching items
+        // We need to decide if we should invert the members or not.
+        // We are not guaranteed to have a clear affinity, or inverse-affinity for the query set
+        // It could be mixed - so we have to vote!
 
-        // println!("Left {}: (LL {:0.1} + LR: {:0.1}), Right: {}: (RR: {:0.1} + RL: {:0.1})",
-        //  left_count, ll_pdegree, lr_pdegree, right_count, rr_pdegree, rl_pdegree);
+        // If ALL of the matches from one side is zero, then the other side is irrelevant
+        // let direct_degree = ll_bucket.degree * rr_bucket.degree;
+        // let inverse_degree = lr_bucket.degree * rl_bucket.degree;
 
-        right_count += right_right.count + right_left.count;
-        left_count += left_left.count + left_right.count;
+        // Count up all the hits by
+        let direct_count = rr_bucket.count + ll_bucket.count;
+        let inverse_count = rl_bucket.count + lr_bucket.count;
 
-        if right_count == 0 || left_count == 0 {
+        let total_right_count = nonmatching_right_count + rr_bucket.count + rl_bucket.count;
+        let total_left_count = nonmatching_left_count + ll_bucket.count + lr_bucket.count;
+
+        // If nothing matches, then we're done here
+        if direct_count == 0 && inverse_count == 0 {
             return None;
         }
 
-        let left_factor = (right_right.degree + right_left.degree) / right_count as f32;
-        let right_factor = (left_left.degree + left_right.degree) / left_count as f32;
-        // println!("FACTOR LEFT {:0.1} RIGHT {:0.1}", left_factor, right_factor);
-
-        let normal_count = right_left.count + left_right.count;
-        let inverse_count = right_right.count + left_left.count;
-        if normal_count > inverse_count {
-            // println!("Forward");
-
-            // The output factor of the left symbol is a function of how well the right matched, and vice versa
-
-            let mut f = FuzzySet::new();
-            for mut item in out.drain(..) {
-                item.scale_lr(left_factor, right_factor);
-                f.insert(item);
-            }
-
-            Some(f)
-        } else if inverse_count > 0 {
-            // println!("Reverse: {:?}", out);
-            // Same as above, except we're using the numbers from the inverse comparisons
-            let mut f = FuzzySet::new();
-            for mut item in out.drain(..) {
-                item.invert();
-                item.scale_lr(left_factor, right_factor);
-                f.insert(item);
-            }
-
-            Some(f)
-        } else {
-            None
+        // Gotta have at least one member on each side, or we're done
+        if total_right_count == 0 || total_left_count == 0 {
+            return None;
         }
 
-        // if left_weight > 0.0 || right_weight > 0.0 {
-        //     // each factor is the average of the opposite-side weights
-        //     let left_factor = right_weight / right_count as f32;
-        //     let right_factor = left_weight / left_count as f32;
+        // Scale *both* sides based on the opposing match_degree
+        // Remember first letter of the bucket is the input analogy item side
+        let left_scale_factor = (rr_bucket.degree + rl_bucket.degree) / total_right_count as f32;
+        let right_scale_factor = (ll_bucket.degree + lr_bucket.degree) / total_left_count as f32;
 
-        //     for atom in out.iter_mut() {
-        //         // Output side should match that of the
-        //         match atom.side {
-        //             AnalogySide::Middle => unimplemented!(),
-        //             AnalogySide::Left => atom.mutate_weight(left_factor),
-        //             AnalogySide::Right => atom.mutate_weight(right_factor),
-        //         }
-        //     }
-        //     Some(out)
-        // } else {
-        //     None
-        // }
+        out.scale_lr(left_scale_factor, right_scale_factor);
+
+        // Our output set has a stronger affinity than anti-affinity, so we _do not_ invert it
+        if inverse_count > direct_count {
+            out.invert()
+        }
+
+        Some(out)
     }
 
     pub fn categorical<I, L, T>(id: I, list: L) -> Self
@@ -375,7 +287,8 @@ impl fs::Member for AnalogyMember {
             Ordering::Equal => {}
             o @ _ => return o,
         }
-        self.side.cmp(&other.side)
+        unimplemented!("TODO 2 - better handle same identity with different sidedness")
+        // self.side.cmp(&other.side)
     }
 
     fn invert(&mut self) -> bool {
@@ -403,23 +316,23 @@ impl fs::Member for AnalogyMember {
 
     fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
-        let mut seen = false;
+        let mut first = true;
         for item in set.left() {
-            if seen {
-                write!(f, ", ")?;
+            if !first {
+                write!(f, " ")?;
                 item.member.display_fmt(&item, f)?;
             } else {
-                seen = true;
+                first = false;
                 item.member.display_fmt(&item, f)?;
             }
         }
 
-        write!(f, " <-> ")?;
+        write!(f, " : ")?;
 
         let mut seen = false;
         for item in set.right() {
             if seen {
-                write!(f, ", ")?;
+                write!(f, " ")?;
                 item.member.display_fmt(&item, f)?;
             } else {
                 seen = true;
@@ -450,18 +363,18 @@ impl fs::Item<AnalogyMember> {
             AnalogyCompare::Different
         }
     }
-
-    pub fn scale_lr(&mut self, left_factor: f32, right_factor: f32) {
-        // match self.member.side {
-        //     AnalogySide::Catagorical => unimplemented!(),
-        //     AnalogySide::Left => self.pdegree = left_factor,
-        //     AnalogySide::Right => self.pdegree = right_factor,
-        // }
-        unimplemented!()
-    }
 }
 
 impl FuzzySet<AnalogyMember> {
+    pub fn scale_lr(&mut self, left_scale_factor: f32, right_scale_factor: f32) {
+        for item in self.iter_mut() {
+            match item.member.side {
+                AnalogySide::Categorical => unimplemented!(),
+                AnalogySide::Left => item.degree *= left_scale_factor,
+                AnalogySide::Right => item.degree *= right_scale_factor,
+            }
+        }
+    }
     pub fn left<'a>(&'a self) -> impl Iterator<Item = fs::Item<SymbolMember>> + 'a {
         self.iter().filter(|a| a.member.side == AnalogySide::Left).map(|a| fs::Item {
             member: SymbolMember { id: a.member.id.clone() },
@@ -479,11 +392,55 @@ impl FuzzySet<AnalogyMember> {
 
 impl std::fmt::Display for Analogy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}[{}]", self.id.id, self.set)
+        write!(f, "{}={}", self.id.id, self.set)
     }
 }
 impl std::fmt::Display for AnalogyQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.set)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{sym, FuzzySet, Symbol};
+
+    use super::{Analogy, AnalogyMember};
+
+    #[test]
+    fn lesser_weights_through_imperfect_analogy() {
+        // TODO 1 - reconcile this experiment with the core crate
+        // and move this to a test
+
+        // There exists some catagory which is descibable with all of the following terms, modulo any potential mistakes
+        let c1 = Analogy::categorical("c1", &["doughnut", "bun", "pastry", "cruller", "sweet roll"]);
+
+        let a1 = Analogy::associative("a1", sym!["A", "B", "C", "D"], sym!["X", "Y", "Z"]);
+        // Notice this analogy is inverse to
+        let a2 = Analogy::associative("a2", sym!["X", "F"], sym!["A", "B", "Q"]);
+        println!("{}", a1);
+        println!("{}", a2);
+
+        // interrogate the first analogy with the second
+        let mut b: FuzzySet<AnalogyMember> = a1.interrogate(&a2).unwrap();
+
+        // Resultant set is scaled based on the common members and their degree
+        // and also inverted to match the sidedness of the query analogy
+        assert_eq!(format!("{}", b), "[(X,0.67) : (A,0.50) (B,0.50)]");
+
+        // TODO 1 - LEFT OFF HERE
+        // // So, We've interrogated a1 with a2 and gotten some "naturally" members with < 1 weights.
+        // // How do we clean up this scenario to be more realistic?
+        // // "interrogation" only makes sense in the context of a query – Not just blindly rubbing two analogies together
+        // // How do we formulate a query using a corpus of prior analogies?
+
+        // let a3 = Analogy::associative("a2", sym!["Q", "R"], sym!["F", "G"]);
+        // // let c = b.interrogate(&a3).unwrap();
+        // // This does not work, because interrogation (rightly) does not return an analogy. Someone would have to claim that analogy on
+        // // the basis of some prior query
+
+        // let Analogy::from_left_right("a2", sym!["Q", "R"], sym!["F", "G"]);
+
+        // println!("{}", c);
     }
 }

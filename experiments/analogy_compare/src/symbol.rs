@@ -19,7 +19,7 @@ impl fs::Member for SymbolMember {
     }
 
     fn display_fmt(&self, item: &fs::Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}~{:0.2}", self.id.id, item.degree)
+        write!(f, "({},{:0.2})", self.id.id, item.degree)
     }
 }
 impl From<fs::Item<AnalogyMember>> for fs::Item<SymbolMember> {
