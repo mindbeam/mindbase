@@ -1,28 +1,17 @@
 use crate::{
-    allegation::{
-        Allegation,
-        Body,
-    },
+    claim::{Body, Claim},
     mbql::ast,
-    AgentId,
-    AllegationId,
-    Analogy,
-    ArtifactId,
-    MBError,
-    MindBase,
+    AgentId, Analogy, ArtifactId, ClaimId, MBError, MindBase,
 };
 
-use ast::{
-    GPair,
-    GSymbolizable,
-};
+use ast::{GPair, GSymbolizable};
 
 /// Context object for low level search operations
 pub struct SearchContext<'a> {
-    scan_min:  [u8; 64],
-    scan_max:  [u8; 64],
+    scan_min: [u8; 64],
+    scan_max: [u8; 64],
     gs_agents: Vec<AgentId>,
-    pub mb:    &'a MindBase,
+    pub mb: &'a MindBase,
 }
 
 impl<'a> SearchContext<'a> {
@@ -30,14 +19,20 @@ impl<'a> SearchContext<'a> {
         let gs_agents = mb.ground_symbol_agents.lock().unwrap().clone();
 
         let mut scan_min: [u8; 64] = [0; 64];
-        scan_min[32..64].copy_from_slice(gs_agents.first().unwrap().as_ref());
+        if let Some(agent) = gs_agents.first() {
+            scan_min[32..64].copy_from_slice(agent.as_ref());
+        }
         let mut scan_max: [u8; 64] = [0; 64];
-        scan_max[32..64].copy_from_slice(gs_agents.last().unwrap().as_ref());
+        if let Some(agent) = gs_agents.last() {
+            scan_max[32..64].copy_from_slice(agent.as_ref());
+        }
 
-        Self { scan_min,
-               scan_max,
-               gs_agents,
-               mb }
+        Self {
+            scan_min,
+            scan_max,
+            gs_agents,
+            mb,
+        }
     }
 
     fn find_matching_analogies(&self, search_item: GSymbolizable) -> Result<(), MBError> {
@@ -48,7 +43,7 @@ impl<'a> SearchContext<'a> {
         // But where is L and R coming from?
 
         for analogy in self.all_gs_analogies() {
-            let (analogy, id): (Analogy, AllegationId) = analogy?;
+            let (analogy, id): (Analogy, ClaimId) = analogy?;
             // This is just one Atom. Is it one of the ones I'm looking for?
 
             // Associative Analogies have two parts
@@ -61,7 +56,7 @@ impl<'a> SearchContext<'a> {
                 GSymbolizable::Ground(_) => unimplemented!(),
                 GSymbolizable::GroundPair(GPair { left, right, .. }) => {
                     //
-                },
+                }
             }
         }
 
@@ -69,26 +64,26 @@ impl<'a> SearchContext<'a> {
     }
 
     /// Returns an iterator over all Analogies which were alledged by our ground-symbol agents
-    fn all_gs_analogies(&self) -> impl Iterator<Item = Result<(Analogy, AllegationId), MBError>> {
+    fn all_gs_analogies(&self) -> impl Iterator<Item = Result<(Analogy, ClaimId), MBError>> {
         let gs_agents = self.gs_agents.clone();
-        self.mb.allegation_iter().filter_map(move |allegation| {
-                                     match allegation {
-                                         Ok((id,
-                                             Allegation { body: Body::Analogy(analogy),
-                                                          agent_id,
-                                                          .. }))
-                                             if gs_agents.contains(&agent_id) =>
-                                         {
-                                             Some(Ok((analogy, id)))
-                                         },
-                                         Ok(_) => None,
-                                         Err(e) => Some(Err(e)),
-                                     }
-                                 })
+        self.mb.allegation_iter().filter_map(move |allegation| match allegation {
+            Ok((
+                id,
+                Claim {
+                    body: Body::Analogy(analogy),
+                    agent_id,
+                    ..
+                },
+            )) if gs_agents.contains(&agent_id) => Some(Ok((analogy, id))),
+            Ok(_) => None,
+            Err(e) => Some(Err(e)),
+        })
     }
 
-    /// Returns a binary vector containing 16 all byte Atoms which represent symbolizations of the given artifact
-    pub fn artifact_atom_vec(&mut self, search_artifact_id: &ArtifactId) -> Result<Vec<u8>, MBError> {
+    /// Returns a binary vector containing 16 all byte Atoms which are symbolizations of the given artifact
+    pub fn query_atoms_by_artifact(&mut self, search_artifact_id: &ArtifactId) -> Result<Vec<u8>, MBError> {
+        // bits 32-63 already contain our min/max valid agent ids
+        // overwrite bits 0-31 for each query
         self.scan_min[0..32].copy_from_slice(search_artifact_id.as_ref());
         self.scan_max[0..32].copy_from_slice(search_artifact_id.as_ref());
 
@@ -114,8 +109,11 @@ impl<'a> SearchContext<'a> {
             }
 
             if out.len() == 0 {
+                // We have a result, but nothing in the output buffer yet.
+                // Lets economize a bit by just jamming it in (it's already sorted)
                 out.extend(&atom_list[..])
             } else {
+                // Ok, we have to weave it in
                 for chunk in atom_list.chunks(16) {
                     insert_entity_mut::<U16>(&mut out, chunk)
                 }

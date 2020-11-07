@@ -1,17 +1,6 @@
-use crate::{
-    allegation::AllegationId,
-    error::MBError,
-    Analogy,
-    MindBase,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::{
-    convert::TryInto,
-    fmt,
-};
+use crate::{claim::ClaimId, error::MBError, Analogy, MindBase};
+use serde::{Deserialize, Serialize};
+use std::{convert::TryInto, fmt};
 
 // QUESTION: What is an "uncertainty budget" and how can it help us?
 // TODO 2 - create a Context object that contains a lossy lookup of Symbols on a rolling basis
@@ -27,7 +16,7 @@ pub struct Symbol {
     // # Of the cluster they're actually referring to, but it will suffice
     // # for now I think.
     /// A list of entities which serve as a representative sample of the K-Space cluster
-    pub atoms:         Vec<Atom>,
+    pub atoms: Vec<Atom>,
     // TODO 4 - update members to include a "weight" for each allegation id.
     pub spread_factor: f32,
     /* # Here's a slightly different way, but still not great
@@ -43,25 +32,25 @@ pub enum Spin {
 
 #[derive(Serialize, Deserialize, PartialEq, Ord, Eq, PartialOrd, Debug, Clone)]
 pub struct Atom {
-    id:   AllegationId,
+    id: ClaimId,
     spin: Spin,
 }
 
 // TODO 1 - rename Atom->DirectedAtom, and Allegation->Atom
 impl Atom {
-    pub fn id(&self) -> &AllegationId {
+    pub fn id(&self) -> &ClaimId {
         &self.id
     }
 
-    pub fn up(id: AllegationId) -> Self {
+    pub fn up(id: ClaimId) -> Self {
         Self { id, spin: Spin::Up }
     }
 
-    pub fn down(id: AllegationId) -> Self {
+    pub fn down(id: ClaimId) -> Self {
         Self { id, spin: Spin::Down }
     }
 
-    pub fn with_spin(spin: Spin, id: AllegationId) -> Self {
+    pub fn with_spin(spin: Spin, id: ClaimId) -> Self {
         Self { id, spin }
     }
 }
@@ -90,37 +79,44 @@ impl Symbol {
 
         for a in unsorted_atoms.drain(..) {
             match atoms.binary_search(&a) {
-                Ok(_) => {}, // duplicate
+                Ok(_) => {} // duplicate
                 Err(i) => atoms.insert(i, a),
             }
         }
 
-        Symbol { atoms,
-                 spread_factor: 0.0 }
+        Symbol {
+            atoms,
+            spread_factor: 0.0,
+        }
     }
 
     /// User promises that this vec is lexically sorted by id
     pub fn new_from_sorted_atoms(atoms: Vec<Atom>) -> Self {
         assert!(atoms.len() > 0);
 
-        Symbol { atoms,
-                 spread_factor: 0.0 }
+        Symbol {
+            atoms,
+            spread_factor: 0.0,
+        }
     }
 
     pub fn new_option(atoms: Vec<Atom>) -> Option<Self> {
         if atoms.len() == 0 {
             None
         } else {
-            Some(Symbol { atoms,
-                          spread_factor: 0.0 })
+            Some(Symbol {
+                atoms,
+                spread_factor: 0.0,
+            })
         }
     }
 
     pub fn new_from_vec(vec: Vec<u8>) -> Option<Self> {
         // TODO 1 - handle Atom vs DirectedAtom. wrongly assuming that these are Spin::Up
-        let atoms: Vec<Atom> = vec.chunks_exact(16)
-                                  .map(|c| Atom::up(AllegationId::from_bytes(c.try_into().unwrap())))
-                                  .collect();
+        let atoms: Vec<Atom> = vec
+            .chunks_exact(16)
+            .map(|c| Atom::up(ClaimId::from_bytes(c.try_into().unwrap())))
+            .collect();
         Self::new_option(atoms)
     }
 
@@ -147,7 +143,7 @@ impl Symbol {
 
     pub fn extend(&mut self, atom: Atom) {
         match self.atoms.binary_search(&atom) {
-            Ok(_) => {}, // duplicate
+            Ok(_) => {} // duplicate
             Err(i) => self.atoms.insert(i, atom),
         }
     }
@@ -170,14 +166,14 @@ impl Symbol {
             Some(v) => v,
             None => {
                 return false;
-            },
+            }
         };
 
         let mut b = match b_iter.next() {
             Some(v) => v,
             None => {
                 return false;
-            },
+            }
         };
 
         use std::cmp::Ordering::*;
@@ -188,13 +184,13 @@ impl Symbol {
                         Some(x) => x,
                         None => return false,
                     };
-                },
+                }
                 Greater => {
                     b = match b_iter.next() {
                         Some(x) => x,
                         None => return false,
                     };
-                },
+                }
                 Equal => return true,
             }
         }
@@ -210,14 +206,14 @@ impl Symbol {
             Some(v) => v,
             None => {
                 return out;
-            },
+            }
         };
 
         let mut b = match b_iter.next() {
             Some(v) => v,
             None => {
                 return out;
-            },
+            }
         };
 
         use std::cmp::Ordering::*;
@@ -228,16 +224,16 @@ impl Symbol {
                         Some(x) => x,
                         None => return out,
                     };
-                },
+                }
                 Greater => {
                     b = match b_iter.next() {
                         Some(x) => x,
                         None => return out,
                     };
-                },
+                }
                 Equal => {
                     out.push(a.clone());
-                },
+                }
             }
         }
 
@@ -248,7 +244,7 @@ impl Symbol {
     pub fn narrow_by(&mut self, mb: &MindBase, test_memberof: &Symbol) -> Result<(), MBError> {
         // We're looking for Analogies mentioning the memberof Symbol which mention the allegations in our symbol
 
-        use crate::allegation::Body;
+        use crate::claim::Body;
 
         let mut members: Vec<Atom> = Vec::new();
 
@@ -278,8 +274,8 @@ impl Symbol {
                             }
                         }
                     }
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
 
@@ -298,7 +294,7 @@ impl Symbol {
         let mut right: Vec<Atom> = Vec::new();
 
         for atom in self.atoms.iter() {
-            use crate::allegation::Body;
+            use crate::claim::Body;
             match mb.get_allegation(atom.id())? {
                 None => return Err(MBError::TraversalFailed),
                 Some(a) => {
@@ -307,14 +303,14 @@ impl Symbol {
                             Spin::Up => {
                                 left.extend(analogy.left.atoms);
                                 right.extend(analogy.right.atoms);
-                            },
+                            }
                             Spin::Down => {
                                 left.extend(analogy.right.atoms);
                                 right.extend(analogy.left.atoms);
-                            },
+                            }
                         }
                     }
-                },
+                }
             }
         }
 
@@ -340,7 +336,7 @@ impl Symbol {
             };
 
             if depth > 0 {
-                use crate::allegation::Body;
+                use crate::claim::Body;
                 match mb.get_allegation(atom.id())? {
                     None => return Err(MBError::TraversalFailed),
                     Some(a) => {
@@ -351,7 +347,7 @@ impl Symbol {
                             analogy.right.contents_buf(mb, buf, depth - 1)?;
                         }
                         write!(buf, " )").unwrap();
-                    },
+                    }
                 }
             }
         }

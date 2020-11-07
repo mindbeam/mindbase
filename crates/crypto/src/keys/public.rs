@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct AgentIdentity {
-    pubkey: [u8; 32],
+    pub(crate) pubkey: [u8; 32],
 }

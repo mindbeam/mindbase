@@ -7,10 +7,15 @@ use mindbase_core::{
 use mindbase_crypto::KeyManager;
 use rustyline::{error::ReadlineError, Editor};
 
-fn repl(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {
-    let query = mb.query_str(r#"$isaid = Ground("Things that I said" : "In mbcli")"#)?;
-    query.apply()?;
-    let isaid = query.get_symbol_for_var("isaid")?.unwrap();
+pub fn run(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {
+    // TODO 1 - LEFT OFF HERE - Update core to use crypto
+    let agent_key = match keymanager.default_agent_key()? {
+        Some(agent_key) => agent_key,
+        None => {
+            println!("No default agent found. use `mbcli auth login` or `mbcli auth create`");
+            return Ok(());
+        }
+    };
 
     // What situations might have precipitated that would lead me to conjuring a non-narrow symbol?
 
@@ -26,7 +31,7 @@ fn repl(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
-    if rl.load_history(".mindbasecli_history").is_err() {
+    if rl.load_history(".mbcli_history").is_err() {
         println!("No previous history.");
     }
 
@@ -34,14 +39,14 @@ fn repl(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {
         let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                let statement = mb.alledge(Text::new(&line))?;
-                let analogy = mb.alledge(Analogy::declarative(statement.subjective(), isaid.clone()))?;
+                // let statement = mb.alledge(Text::new(&line))?;
+                // let analogy = mb.alledge(Analogy::declarative(statement.subjective(), isaid.clone()))?;
 
                 // TODO 3 - create a linkage between this allegation and the previous one:
                 // * [A1] Screw you
                 // * [A2 ]...and the horse you rode in on (in the category of [things that follow A1])
                 rl.add_history_entry(line.as_str());
-                println!("{}", analogy);
+                // println!("{}", analogy);
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");

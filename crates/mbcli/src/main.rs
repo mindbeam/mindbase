@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufReader};
 
 use mindbase_core::MindBase;
-use mindbase_crypto::KeyManager;
+use mindbase_crypto::{key_manager::storage::sled::SledAdapter, KeyManager};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -40,6 +40,9 @@ enum Command {
         #[structopt(parse(from_os_str))]
         file: PathBuf,
     },
+
+    /// Run the Mindbase REPL
+    REPL,
 }
 fn main() -> Result<(), std::io::Error> {
     let opt = Opt::from_args();
@@ -53,6 +56,7 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 fn run(opt: Opt) -> Result<(), std::io::Error> {
+    let homedir = dirs::home_dir().expect("HOME directory environment variable is required");
     let cwd = std::env::current_dir().unwrap();
     let path = match &opt.mindbase {
         Some(path) => path,
@@ -62,11 +66,12 @@ fn run(opt: Opt) -> Result<(), std::io::Error> {
     println!("Loading database in {}", path.display());
 
     let mb = MindBase::open(path)?;
-    let keymanager = KeyManager::new();
+    let keymanager = KeyManager::new(Box::new(SledAdapter::new(homedir.as_path())?));
     match opt.cmd {
         Command::Auth { cmd } => crate::subcommand::auth::run(mb, keymanager, cmd)?,
         Command::Import { echo, file } => crate::subcommand::import::run(mb, keymanager, file, echo)?,
         Command::Export { file } => crate::subcommand::export::run(mb, keymanager, file)?,
+        Command::REPL => crate::subcommand::repl::run(mb, keymanager)?,
     }
 
     // let agent = mb.default_agent().unwrap();

@@ -1,7 +1,7 @@
 pub mod agent;
-pub mod allegation;
 pub mod analogy;
 pub mod artifact;
+pub mod claim;
 pub mod error;
 mod genesis;
 pub mod search;
@@ -20,9 +20,9 @@ extern crate pest_derive;
 pub mod prelude {
     pub use super::{
         agent::{Agent, AgentId},
-        allegation::{Allegation, AllegationId},
         analogy::Analogy,
         artifact::{Artifact, ArtifactId, Text},
+        claim::{Claim, ClaimId},
         error::MBError,
         mbql::query::Query,
         symbol::Symbol,
@@ -32,14 +32,14 @@ pub mod prelude {
 
 use self::{
     agent::{Agent, AgentId},
-    allegation::{Allegation, AllegationId},
     analogy::Analogy,
     artifact::{Artifact, ArtifactId},
+    claim::{Claim, ClaimId},
     error::MBError,
     symbol::Symbol,
 };
 
-use allegation::ArtifactList;
+use claim::ArtifactList;
 use core::marker::PhantomData;
 use mbql::{error::MBQLError, Query};
 use policy::Policy;
@@ -76,7 +76,6 @@ pub struct MindBase {
 
     ground_symbol_agents: Arc<Mutex<Vec<AgentId>>>,
     // QUESTION: Should these be two different trees? or one?
-    // default_agent: Agent,
 }
 
 impl MindBase {
@@ -93,7 +92,6 @@ impl MindBase {
 
         let db = sled::open(pathbuf.as_path())?;
 
-        // let my_agents = db.open_tree("agents")?;
         let artifacts = db.open_tree("artifacts")?;
         let allegations = db.open_tree("allegations")?;
         let atoms_by_artifact_agent = db.open_tree("allegation_rev")?;
@@ -120,7 +118,6 @@ impl MindBase {
         };
 
         // me.genesis()?;
-        // me.default_agent()?;
 
         Ok(me)
     }
@@ -140,17 +137,17 @@ impl MindBase {
     //     _default_agent(&self.my_agents)
     // }
 
-    pub fn get_allegation(&self, allegation_id: &AllegationId) -> Result<Option<Allegation>, MBError> {
+    pub fn get_allegation(&self, allegation_id: &ClaimId) -> Result<Option<Claim>, MBError> {
         match self.allegations.get(allegation_id.as_ref())? {
             Some(ivec) => {
-                let allegation: Allegation = bincode::deserialize(&ivec)?;
+                let allegation: Claim = bincode::deserialize(&ivec)?;
                 Ok(Some(allegation))
             }
             None => Ok(None),
         }
     }
 
-    pub fn put_allegation(&self, atom: &Allegation) -> Result<AllegationId, MBError> {
+    pub fn put_allegation(&self, atom: &Claim) -> Result<ClaimId, MBError> {
         let encoded: Vec<u8> = bincode::serialize(&atom).unwrap();
 
         let mut key: [u8; 64] = [0u8; 64];
@@ -229,43 +226,43 @@ impl MindBase {
 
     pub fn symbolize<T>(&self, thing: T) -> Result<Symbol, MBError>
     where
-        T: crate::allegation::Alledgable,
+        T: crate::claim::Alledgable,
     {
         // Ok(thing.alledge(self, &self.default_agent)?.subjective())
         unimplemented!()
     }
 
-    pub(crate) fn symbolize_atom<T>(&self, thing: T) -> Result<Allegation, MBError>
+    pub(crate) fn symbolize_atom<T>(&self, thing: T) -> Result<Claim, MBError>
     where
-        T: crate::allegation::Alledgable,
+        T: crate::claim::Alledgable,
     {
         // Ok(thing.alledge(self, &self.default_agent)?)
         unimplemented!()
     }
 
-    pub fn alledge<T>(&self, thing: T) -> Result<Allegation, MBError>
+    pub fn alledge<T>(&self, thing: T) -> Result<Claim, MBError>
     where
-        T: crate::allegation::Alledgable,
+        T: crate::claim::Alledgable,
     {
         // thing.alledge(self, &self.default_agent)
         unimplemented!()
     }
 
     // Alledge an Alledgable thing using specified agent
-    pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Allegation, MBError>
+    pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Claim, MBError>
     where
-        T: crate::allegation::Alledgable,
+        T: crate::claim::Alledgable,
     {
         thing.alledge(self, agent)
     }
 
-    pub fn alledge_artifact<A>(&self, agent: &Agent, artifact: A) -> Result<AllegationId, MBError>
+    pub fn alledge_artifact<A>(&self, agent: &Agent, artifact: A) -> Result<ClaimId, MBError>
     where
         A: Into<crate::artifact::Artifact>,
     {
         let artifact_id = self.put_artifact(artifact.into())?;
 
-        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
+        let allegation = Claim::new(agent, crate::claim::Body::Artifact(artifact_id))?;
         self.put_allegation(&allegation)
     }
 
@@ -277,7 +274,7 @@ impl MindBase {
         }
     }
 
-    pub fn allegation_iter(&self) -> Iter<AllegationId, Allegation> {
+    pub fn allegation_iter(&self) -> Iter<ClaimId, Claim> {
         Iter {
             iter: self.allegations.iter(),
             phantomkey: PhantomData,
@@ -287,7 +284,7 @@ impl MindBase {
 
     pub fn symbol_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Option<Symbol>, MBError>
     where
-        F: Fn(&Allegation) -> bool,
+        F: Fn(&Claim) -> bool,
     {
         let mut atoms = Vec::new();
 
@@ -321,30 +318,6 @@ impl MindBase {
         self.allegations.len()
     }
 }
-
-// fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
-//     match my_agents.get(b"latest")? {
-//         None => _create_agent(my_agents),
-//         Some(pubkey) => match my_agents.get(pubkey)? {
-//             None => Err(MBError::AgentHandleNotFound),
-//             Some(v) => {
-//                 let agenthandle = bincode::deserialize(&v)?;
-//                 Ok(agenthandle)
-//             }
-//         },
-//     }
-// }
-
-// fn _create_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
-//     let agent = Agent::new();
-
-//     let encoded: Vec<u8> = bincode::serialize(&agent).unwrap();
-//     my_agents.insert(agent.pubkey().as_bytes(), encoded)?;
-//     my_agents.insert(b"latest", agent.pubkey().as_bytes())?;
-//     my_agents.flush()?;
-
-//     Ok(agent)
-// }
 
 pub struct Iter<K, V> {
     iter: sled::Iter,
@@ -408,6 +381,18 @@ fn merge_16byte_list(
 mod tests {
     use crate::prelude::*;
 
+    #[test]
+    fn basic() -> Result<(), MBError> {
+        let tmpdir = tempfile::tempdir()?;
+        let tmpdirpath = tmpdir.path();
+        let mb = MindBase::open(&tmpdirpath)?;
+        let query = mb.query_str(r#"$isaid = Ground("Things that I said" : "In this test")"#)?;
+
+        query.apply()?;
+        let isaid = query.get_symbol_for_var("isaid")?.unwrap();
+
+        Ok(())
+    }
     #[test]
     fn dump() -> Result<(), MBError> {
         let tmpdir = tempfile::tempdir()?;
@@ -474,9 +459,9 @@ mod tests {
 
         crate::xport::load_json(&mb, cursor).unwrap();
 
-        let _s1 = AllegationId::from_base64("AXDCW2dnN7VS4wpoUWGJMw")?; // this one second
-        let _s2 = AllegationId::from_base64("AXDCW2fEtID9DIZzkMgQvg")?; // manipulated the dumpfile above for this one to be recorded first
-        let _s3 = AllegationId::from_base64("AXDCW2gsaVltJU2vcQFKuQ")?; // this one third
+        let _s1 = ClaimId::from_base64("AXDCW2dnN7VS4wpoUWGJMw")?; // this one second
+        let _s2 = ClaimId::from_base64("AXDCW2fEtID9DIZzkMgQvg")?; // manipulated the dumpfile above for this one to be recorded first
+        let _s3 = ClaimId::from_base64("AXDCW2gsaVltJU2vcQFKuQ")?; // this one third
 
         let _s = ArtifactId::from_base64("Wtw2TYgjfvmTVazfM0IDhkfwlJFUZ9w0xhNc1H0ilRc")?;
 

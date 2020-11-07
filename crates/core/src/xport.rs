@@ -1,24 +1,15 @@
 use crate::{
-    allegation::{
-        Allegation,
-        AllegationId,
-    },
-    artifact::{
-        Artifact,
-        ArtifactId,
-    },
+    artifact::{Artifact, ArtifactId},
+    claim::{Claim, ClaimId},
     error::MBError,
     MindBase,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 enum JSONLine {
     Artifact((ArtifactId, Artifact)),
-    Allegation((AllegationId, Allegation)),
+    Allegation((ClaimId, Claim)),
 }
 
 #[allow(unused)]
@@ -46,10 +37,10 @@ pub fn load_json<T: std::io::BufRead>(mb: &MindBase, mut reader: T) -> Result<()
         match line {
             JSONLine::Allegation((_id, allegation)) => {
                 mb.put_allegation(&allegation)?;
-            },
+            }
             JSONLine::Artifact((_id, artifact)) => {
                 mb.put_artifact(artifact)?;
-            },
+            }
         }
     }
 

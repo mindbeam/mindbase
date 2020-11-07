@@ -1,34 +1,38 @@
+pub mod storage;
+
 // use web_sys::{window, Storage};
-use crate::{keys::private::AgentKey, PassKey};
+use crate::{keys::private::AgentKey, keys::AgentIdentity, Error, PassKey};
+
+use self::storage::{memory::MemoryAdapter, StorageAdapter};
 
 pub struct KeyManager {
-    agentkeys: Vec<AgentKey>,
+    storage_adapter: Box<dyn StorageAdapter>,
 }
 
 impl KeyManager {
-    pub fn new() -> Self {
-        let agentkeys = Vec::new();
-        Self { agentkeys }
+    pub fn new(storage_adapter: Box<dyn StorageAdapter>) -> Self {
+        Self { storage_adapter }
     }
 
-    // pub fn get_key(&self) {}
-    pub fn insert_key(&mut self, agentkey: AgentKey) -> bool {
-        match self
-            .agentkeys
-            .binary_search_by(|x| x.pubkey().cmp(&agentkey.pubkey()))
-        {
-            Ok(_) => false,
-            Err(i) => {
-                self.agentkeys.insert(i, agentkey);
-                true
-            }
+    pub fn get_agent_key(&self, agent_id: &AgentIdentity) -> Result<Option<AgentKey>, Error> {
+        self.storage_adapter.get_agent_key(agent_id)
+    }
+    pub fn put_agent_key(&self, agentkey: AgentKey) -> Result<(), Error> {
+        self.storage_adapter.put_agent_key(agentkey)?;
+        Ok(())
+    }
+
+    pub fn default_agent_key(&self) -> Result<Option<AgentKey>, Error> {
+        match self.storage_adapter.get_labeled_agent_id("latest")? {
+            Some(agent_id) => self.storage_adapter.get_agent_key(&agent_id),
+            None => Ok(None),
         }
     }
 }
 
 impl Default for KeyManager {
     fn default() -> Self {
-        KeyManager::new()
+        KeyManager::new(Box::new(MemoryAdapter::new()))
     }
 }
 

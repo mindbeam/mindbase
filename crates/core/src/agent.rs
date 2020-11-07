@@ -3,7 +3,7 @@ pub mod signature;
 use mindbase_crypto::AgentKey;
 
 use crate::{
-    allegation::{Alledgable, Allegation},
+    claim::{Alledgable, Claim},
     error::MBError,
     Artifact, MindBase,
 };
@@ -111,9 +111,9 @@ impl std::fmt::Display for Agent {
 // }
 
 impl Alledgable for &Agent {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
         let artifact_id = mb.put_artifact(self.id())?;
-        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
+        let allegation = Claim::new(agent, crate::claim::Body::Artifact(artifact_id))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)
     }

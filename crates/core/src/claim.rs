@@ -11,7 +11,7 @@ use rusty_ulid::generate_ulid_bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 #[derive(Clone, Serialize, Deserialize, Ord, Eq, PartialOrd, PartialEq)]
-pub struct AllegationId(
+pub struct ClaimId(
     #[serde(
         serialize_with = "crate::util::serde_helper::as_base64",
         deserialize_with = "crate::util::serde_helper::from_base64_16"
@@ -19,16 +19,16 @@ pub struct AllegationId(
     pub(crate) [u8; 16],
 );
 
-impl AllegationId {
+impl ClaimId {
     pub fn new() -> Self {
-        AllegationId(generate_ulid_bytes())
+        ClaimId(generate_ulid_bytes())
     }
 
     pub fn from_base64(input: &str) -> Result<Self, MBError> {
         use std::convert::TryInto;
         let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
         let array: [u8; 16] = decoded[..].try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?;
-        Ok(AllegationId(array.into()))
+        Ok(ClaimId(array.into()))
     }
 
     pub fn base64(&self) -> String {
@@ -61,7 +61,7 @@ impl AllegationId {
     }
 }
 
-impl std::convert::TryFrom<sled::IVec> for AllegationId {
+impl std::convert::TryFrom<sled::IVec> for ClaimId {
     type Error = MBError;
 
     fn try_from(ivec: sled::IVec) -> Result<Self, MBError> {
@@ -70,25 +70,25 @@ impl std::convert::TryFrom<sled::IVec> for AllegationId {
     }
 }
 
-impl crate::util::AsBytes for &AllegationId {
+impl crate::util::AsBytes for &ClaimId {
     fn as_bytes(&self) -> Vec<u8> {
         self.0[..].to_vec()
     }
 }
 
-impl fmt::Display for AllegationId {
+impl fmt::Display for ClaimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use base64::STANDARD_NO_PAD;
         write!(f, "{}", base64::encode_config(&self.0[12..16], STANDARD_NO_PAD))
     }
 }
-impl fmt::Debug for AllegationId {
+impl fmt::Debug for ClaimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "AllegationId:{}", base64::encode(&self.0))
     }
 }
 
-/// # Allegation
+/// # Claim
 /// An allogation is kind of like an "Atom" of meaning. In the same way that you typically interact with molecules rather than
 /// atoms in the physical world, so to do you interact with "Symbols" in the ontological world. These
 /// molecules/symbols don't simply spring into existence however. Molecules must be built of atoms, and Symbols must be built of
@@ -121,9 +121,9 @@ impl fmt::Debug for AllegationId {
 /// another to be referring to approximately the "same" thing
 /// See [`mindbase::symbol::Symbol`][Symbol] for more details
 #[derive(Serialize, Deserialize)]
-pub struct Allegation {
+pub struct Claim {
     /// TODO 3 - Consider renaming "Allegation*" to "Symbol*"
-    pub id: AllegationId,
+    pub id: ClaimId,
     pub agent_id: AgentId,
     // TODO 3 - Context (Date, time, place, etc)
     pub body: Body,
@@ -136,18 +136,18 @@ pub enum ArtifactList<'a> {
     Many(Vec<ArtifactId>),
 }
 
-impl Allegation {
+impl Claim {
     pub fn new<T>(agent: &Agent, body: T) -> Result<Self, MBError>
     where
         T: Into<Body>,
     {
         let body: Body = body.into();
-        let id = AllegationId::new();
+        let id = ClaimId::new();
         let agent_id = agent.id();
 
         let signature = Signature::new(agent, (&id, &agent_id, &body))?;
 
-        Ok(Allegation {
+        Ok(Claim {
             id,
             agent_id,
             body,
@@ -167,7 +167,7 @@ impl Allegation {
         }
     }
 
-    pub fn id(&self) -> &AllegationId {
+    pub fn id(&self) -> &ClaimId {
         &self.id
     }
 
@@ -219,13 +219,13 @@ impl Allegation {
     }
 }
 
-impl std::convert::AsRef<[u8]> for AllegationId {
+impl std::convert::AsRef<[u8]> for ClaimId {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl fmt::Display for Allegation {
+impl fmt::Display for Claim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.id, self.body)
     }
@@ -261,5 +261,5 @@ impl fmt::Display for Body {
 
 // TODO 1 - Rename this to Symbolize
 pub trait Alledgable: std::fmt::Debug {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError>;
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError>;
 }

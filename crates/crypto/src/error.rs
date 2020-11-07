@@ -2,6 +2,9 @@
 pub enum Error {
     Mac(crypto_mac::MacError),
     Signature(ed25519_dalek::SignatureError),
+    Bincode(bincode::Error),
+    #[cfg(not(target_arch = "wasm32"))]
+    Sled(sled::Error),
 }
 
 impl From<crypto_mac::MacError> for Error {
@@ -15,11 +18,30 @@ impl From<ed25519_dalek::SignatureError> for Error {
         Error::Signature(e)
     }
 }
+impl From<bincode::Error> for Error {
+    fn from(e: bincode::Error) -> Self {
+        Self::Bincode(e)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl From<sled::Error> for Error {
+    fn from(e: sled::Error) -> Self {
+        Self::Sled(e)
+    }
+}
 
 // NFI why this impl can't seem to be found from mindbase_app
 #[cfg(target_arch = "wasm32")]
 impl std::convert::Into<wasm_bindgen::JsValue> for Error {
     fn into(self) -> wasm_bindgen::JsValue {
         format!("{:?}", self).into()
+    }
+}
+
+impl std::convert::From<Error> for std::io::Error {
+    fn from(error: Error) -> Self {
+        use std::io::ErrorKind;
+        std::io::Error::new(ErrorKind::Other, format!("{:?}", error))
     }
 }

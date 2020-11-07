@@ -1,9 +1,9 @@
-use crate::allegation::AllegationId;
+use crate::claim::ClaimId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
     agent::Agent,
-    allegation::{Alledgable, Allegation},
+    claim::{Alledgable, Claim},
     error::MBError,
     symbol::Symbol,
     AgentId, MindBase,
@@ -53,15 +53,15 @@ impl std::convert::AsRef<[u8]> for ArtifactId {
     }
 }
 
-impl Into<crate::allegation::Body> for ArtifactId {
-    fn into(self) -> crate::allegation::Body {
-        crate::allegation::Body::Artifact(self)
+impl Into<crate::claim::Body> for ArtifactId {
+    fn into(self) -> crate::claim::Body {
+        crate::claim::Body::Artifact(self)
     }
 }
 
 impl ArtifactId {
-    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<AllegationId, MBError> {
-        let allegation = Allegation::new(agent, self)?;
+    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<ClaimId, MBError> {
+        let allegation = Claim::new(agent, self)?;
         mb.put_allegation(&allegation)
     }
 
@@ -186,7 +186,7 @@ pub struct DataGraph {
     pub graph_type: Symbol,
     pub bytes: u32, // Optional
     /// Must contain all unreachable nodes. Optionally reachable nodes may be present
-    pub nodes: Vec<AllegationId>,
+    pub nodes: Vec<ClaimId>,
 }
 
 impl Into<Artifact> for DataGraph {
@@ -208,15 +208,15 @@ impl Into<Artifact> for DataNode {
 }
 
 impl Alledgable for &ArtifactId {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
-        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(self.clone()))?;
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
+        let allegation = Claim::new(agent, crate::claim::Body::Artifact(self.clone()))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)
     }
 }
 impl Alledgable for ArtifactId {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
-        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(self))?;
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
+        let allegation = Claim::new(agent, crate::claim::Body::Artifact(self))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)
     }
@@ -226,9 +226,9 @@ impl<T> Alledgable for T
 where
     T: Into<Artifact> + std::fmt::Debug,
 {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Allegation, MBError> {
+    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
         let artifact_id = mb.put_artifact(self)?;
-        let allegation = Allegation::new(agent, crate::allegation::Body::Artifact(artifact_id))?;
+        let allegation = Claim::new(agent, crate::claim::Body::Artifact(artifact_id))?;
         mb.put_allegation(&allegation)?;
         Ok(allegation)
     }
@@ -236,6 +236,6 @@ where
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNodeRelation {
-    pub to: AllegationId,
+    pub to: ClaimId,
     pub relation_type: Symbol,
 }

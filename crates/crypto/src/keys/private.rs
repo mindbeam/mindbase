@@ -3,12 +3,12 @@ use ed25519_dalek::{Keypair, Sha512};
 use hmac::{Hmac, Mac, NewMac};
 use rand::rngs::OsRng;
 use scrypt::{scrypt, ScryptParams};
+use serde::{Deserialize, Serialize};
 use sha2::Sha512Trunc256;
 use zeroize::Zeroize;
 
-// DO NOT ALLOW SERIALIZATION
 // dalek::Keypair already derives Zeroize
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AgentKey {
     pub keypair: Keypair,
 }

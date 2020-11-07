@@ -20,19 +20,14 @@ pub(crate) fn run(mb: MindBase, keymanager: KeyManager, cmd: Command) -> Result<
 }
 
 fn create(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {
-    let (email, password) = get_email_and_password();
+    // let (email, password) = get_email_and_password();
 
-    unimplemented!()
-    // let agentkey = AgentKey::create();
-    // let passkey = PassKey::new(&password);
-    // let user_auth_key = passkey.auth();
-    // let custodial_key = agentkey.custodial_key(passkey);
+    println!("TODO 1: Update this to register with the server");
 
-    // let response_channel = self.send_request(SignupRequest {
-    //     email,
-    //     custodial_key,
-    //     user_auth_key,
-    // });
+    let agentkey = AgentKey::create();
+    keymanager.put_agent_key(agentkey)?;
+
+    Ok(())
 }
 
 fn login(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {

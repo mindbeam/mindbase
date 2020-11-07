@@ -12,3 +12,4 @@ mindbase-crypto = {path = "../crypto"}
 structopt = "0.3"
 rustyline = "6.3"
 dialoguer = "0.7"
+dirs = "3.0"
