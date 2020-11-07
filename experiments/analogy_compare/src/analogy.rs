@@ -410,10 +410,6 @@ mod test {
     #[test]
     fn lesser_weights_through_imperfect_analogy() {
         // TODO 1 - reconcile this experiment with the core crate
-        // and move this to a test
-
-        // There exists some catagory which is descibable with all of the following terms, modulo any potential mistakes
-        let c1 = Analogy::categorical("c1", &["doughnut", "bun", "pastry", "cruller", "sweet roll"]);
 
         let a1 = Analogy::associative("a1", sym!["A", "B", "C", "D"], sym!["X", "Y", "Z"]);
         // Notice this analogy is inverse to
@@ -428,11 +424,14 @@ mod test {
         // and also inverted to match the sidedness of the query analogy
         assert_eq!(format!("{}", b), "[(X,0.67) : (A,0.50) (B,0.50)]");
 
-        // TODO 1 - LEFT OFF HERE
+        // TODO 2 - Continue authoring this test case meaningfully
         // // So, We've interrogated a1 with a2 and gotten some "naturally" members with < 1 weights.
         // // How do we clean up this scenario to be more realistic?
         // // "interrogation" only makes sense in the context of a query – Not just blindly rubbing two analogies together
         // // How do we formulate a query using a corpus of prior analogies?
+
+        // There exists some catagory which is descibable with all of the following terms, modulo any potential mistakes
+        // let c1 = Analogy::categorical("c1", &["doughnut", "bun", "pastry", "cruller", "sweet roll"]);
 
         // let a3 = Analogy::associative("a2", sym!["Q", "R"], sym!["F", "G"]);
         // // let c = b.interrogate(&a3).unwrap();
