@@ -62,9 +62,12 @@ pub struct Agent {
     agentkey: AgentKey,
 }
 
+/// The active form of an agent - Lets actually do some stuff
+/// AgentKey and AgentIdent are not the active forms of an agent,
+/// but rather the keepers of information about an agent
 impl Agent {
     pub fn new() -> Self {
-        let agentkey = AgentKey::create();
+        let agentkey = AgentKey::create(None);
         Self { agentkey }
     }
 

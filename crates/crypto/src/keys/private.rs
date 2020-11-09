@@ -1,4 +1,7 @@
-use super::custodian::{CustodialAgentKey, KeyMask, UserAuthKey};
+use super::{
+    custodian::{CustodialAgentKey, KeyMask, UserAuthKey},
+    AgentIdentity,
+};
 use ed25519_dalek::{Keypair, Sha512};
 use hmac::{Hmac, Mac, NewMac};
 use rand::rngs::OsRng;
@@ -11,6 +14,7 @@ use zeroize::Zeroize;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentKey {
     pub keypair: Keypair,
+    pub email: Option<String>,
 }
 
 // impl Eq for AgentKey{
@@ -24,7 +28,7 @@ impl PartialEq for AgentKey {
 }
 
 impl AgentKey {
-    pub fn create() -> AgentKey {
+    pub fn create(email: Option<String>) -> AgentKey {
         let mut csprng = OsRng {};
         let keypair = Keypair::generate(&mut csprng);
 
@@ -33,7 +37,7 @@ impl AgentKey {
         // let mut csprng: OsRng = OsRng::new().unwrap();
         // let keypair: Keypair = Keypair::generate::<Sha512>(&mut csprng);
 
-        AgentKey { keypair }
+        AgentKey { keypair, email }
     }
     pub fn hmac(&self) -> [u8; 32] {
         let mut mac = Hmac::<Sha512Trunc256>::new_varkey(b"agentkey").unwrap();
@@ -42,6 +46,13 @@ impl AgentKey {
         let result = mac.finalize();
 
         result.into_bytes().into()
+    }
+    pub fn id(&self) -> AgentIdentity {
+        let pubkey = self.keypair.public.as_bytes().clone();
+        AgentIdentity {
+            pubkey,
+            email: self.email.clone(),
+        }
     }
     pub fn pubkey(&self) -> [u8; 32] {
         self.keypair.public.as_bytes().clone()
@@ -68,6 +79,7 @@ impl AgentKey {
             pubkey: self.keypair.public.as_bytes().clone(),
             mask: self.keymask(&passkey),
             check: self.hmac(),
+            email: self.email.clone(),
         }
     }
     pub fn from_custodial_key(custodial_key: CustodialAgentKey, passkey: PassKey) -> Result<Self, crate::Error> {
@@ -94,6 +106,7 @@ impl AgentKey {
                 secret: ed25519_dalek::SecretKey::from_bytes(&secret)?,
                 public: ed25519_dalek::PublicKey::from_bytes(&custodial_key.pubkey)?,
             },
+            email: custodial_key.email.clone(),
         })
     }
 }

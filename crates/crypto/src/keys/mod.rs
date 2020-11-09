@@ -12,7 +12,7 @@ mod test {
 
     #[test]
     fn keys_basic() {
-        let agentkey = AgentKey::create();
+        let agentkey = AgentKey::create(None);
 
         let passkey = PassKey::new("I like turtles");
         let custkey = agentkey.custodial_key(passkey);
@@ -24,7 +24,7 @@ mod test {
 
     #[test]
     fn wrong_passphrase() {
-        let agentkey = AgentKey::create();
+        let agentkey = AgentKey::create(None);
 
         let passkey = PassKey::new("I like turtles");
         let custkey = agentkey.custodial_key(passkey);

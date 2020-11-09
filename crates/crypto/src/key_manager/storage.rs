@@ -1,9 +1,11 @@
 use crate::{keys::AgentIdentity, AgentKey, Error};
 
 pub trait StorageAdapter {
+    fn list_agents(&self) -> Result<Vec<AgentIdentity>, Error>;
     fn get_agent_key(&self, agent_id: &AgentIdentity) -> Result<Option<AgentKey>, Error>;
     fn put_agent_key(&self, key: AgentKey) -> Result<(), Error>;
-    fn get_labeled_agent_id(&self, label: &str) -> Result<Option<AgentIdentity>, Error>;
+    fn set_labeled_agent(&self, label: &str, id: AgentIdentity) -> Result<(), Error>;
+    fn get_labeled_agent(&self, label: &str) -> Result<Option<AgentIdentity>, Error>;
     fn remove_all_agent_keys(&self) -> Result<(), Error>;
 }
 
@@ -27,6 +29,9 @@ pub mod memory {
     }
 
     impl StorageAdapter for MemoryAdapter {
+        fn list_agents(&self) -> Result<Vec<AgentIdentity>, Error> {
+            Ok(self.agent_keys.lock().unwrap().values().map(|k| k.id().clone()).collect())
+        }
         fn get_agent_key(&self, agent_id: &AgentIdentity) -> Result<Option<crate::AgentKey>, Error> {
             // Proba
             let pubkey = &agent_id.pubkey;
@@ -38,6 +43,7 @@ pub mod memory {
                     Ok(Some(AgentKey {
                         // Doesn't implement clone, so we have to fake it
                         keypair: ed25519_dalek::Keypair::from_bytes(&danger_non_securely_deleted_buffer).unwrap(),
+                        email: v.email.clone(),
                     }))
                 }
                 None => Ok(None),
@@ -46,19 +52,14 @@ pub mod memory {
 
         fn put_agent_key(&self, agent_key: crate::AgentKey) -> Result<(), Error> {
             let pubkey = agent_key.pubkey();
-
             self.agent_keys.lock().unwrap().insert(pubkey.to_vec(), agent_key);
-
-            // TODO - implement put_labeled_agent_id
-            self.agent_id_config
-                .lock()
-                .unwrap()
-                .insert(b"latest".to_vec(), AgentIdentity { pubkey });
-
             Ok(())
         }
-
-        fn get_labeled_agent_id(&self, label: &str) -> Result<Option<AgentIdentity>, Error> {
+        fn set_labeled_agent(&self, label: &str, id: AgentIdentity) -> Result<(), Error> {
+            self.agent_id_config.lock().unwrap().insert(label.as_bytes().to_owned(), id);
+            Ok(())
+        }
+        fn get_labeled_agent(&self, label: &str) -> Result<Option<AgentIdentity>, Error> {
             match self.agent_id_config.lock().unwrap().get(label.as_bytes()) {
                 Some(id) => Ok(Some(id.clone())),
                 None => Ok(None),
@@ -97,6 +98,20 @@ pub mod sled {
     }
 
     impl StorageAdapter for SledAdapter {
+        fn list_agents(&self) -> Result<Vec<AgentIdentity>, Error> {
+            Ok(self
+                .agent_keys
+                .iter()
+                .map(|kv| {
+                    let kv = kv.unwrap();
+                    let agentkey: AgentKey = bincode::deserialize(&kv.1).unwrap();
+                    AgentIdentity {
+                        pubkey: agentkey.pubkey(),
+                        email: agentkey.email,
+                    }
+                })
+                .collect())
+        }
         fn get_agent_key(&self, agent_id: &AgentIdentity) -> Result<Option<crate::AgentKey>, Error> {
             match self.agent_keys.get(&agent_id.pubkey)? {
                 Some(ivec) => {
@@ -108,20 +123,22 @@ pub mod sled {
         }
 
         fn put_agent_key(&self, agent_key: crate::AgentKey) -> Result<(), Error> {
-            let encoded: Vec<u8> = bincode::serialize(&agent_key).unwrap();
+            let key_ser: Vec<u8> = bincode::serialize(&agent_key).unwrap();
 
-            let agent_id = agent_key.pubkey();
-            self.agent_keys.insert(&agent_id, encoded)?;
-            self.agent_id_config.insert(b"latest", &agent_id)?;
+            let agent_id = agent_key.id();
+            self.agent_keys.insert(&agent_id.pubkey, key_ser)?;
             self.agent_keys.flush()?;
 
             Ok(())
         }
-        fn get_labeled_agent_id(&self, label: &str) -> Result<Option<AgentIdentity>, Error> {
-            match self.agent_id_config.get(label.as_bytes())? {
-                Some(pubkey) => Ok(Some(AgentIdentity {
-                    pubkey: pubkey[0..32].try_into().unwrap(),
-                })),
+        fn set_labeled_agent(&self, label: &str, id: AgentIdentity) -> Result<(), Error> {
+            let id_ser: Vec<u8> = bincode::serialize(&id).unwrap();
+            self.agent_id_config.insert(label, id_ser)?;
+            Ok(())
+        }
+        fn get_labeled_agent(&self, label: &str) -> Result<Option<AgentIdentity>, Error> {
+            match self.agent_id_config.get(label)? {
+                Some(ivec) => Ok(Some(bincode::deserialize(&ivec)?)),
                 None => Ok(None),
             }
         }
@@ -129,18 +146,5 @@ pub mod sled {
             self.agent_keys.clear()?;
             Ok(())
         }
-
-        // fn _default_agent(my_agents: &sled::Tree) -> Result<Agent, MBError> {
-        //     match my_agents.get(b"latest")? {
-        //         None => _create_agent(my_agents),
-        //         Some(pubkey) => match my_agents.get(pubkey)? {
-        //             None => Err(MBError::AgentHandleNotFound),
-        //             Some(v) => {
-        //                 let agenthandle = bincode::deserialize(&v)?;
-        //                 Ok(agenthandle)
-        //             }
-        //         },
-        //     }
-        // }
     }
 }

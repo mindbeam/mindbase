@@ -9,7 +9,7 @@ use rustyline::{error::ReadlineError, Editor};
 
 pub fn run(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {
     // TODO 1 - LEFT OFF HERE - Update core to use crypto
-    let agent_key = match keymanager.default_agent_key()? {
+    let agent_key = match keymanager.current_agent_key()? {
         Some(agent_key) => agent_key,
         None => {
             println!("No default agent found. use `mbcli auth login` or `mbcli auth create`");

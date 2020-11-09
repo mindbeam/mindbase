@@ -27,6 +27,7 @@ pub struct CustodialAgentKey {
         deserialize_with = "serde_helper::from_base64_32"
     )]
     pub(crate) check: [u8; 32],
+    pub(crate) email: Option<String>,
 }
 
 /// KeyMask is a private key which has been XORed with a passkey

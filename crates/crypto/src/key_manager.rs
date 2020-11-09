@@ -13,7 +13,9 @@ impl KeyManager {
     pub fn new(storage_adapter: Box<dyn StorageAdapter>) -> Self {
         Self { storage_adapter }
     }
-
+    pub fn list_agents(&self) -> Result<Vec<AgentIdentity>, Error> {
+        self.storage_adapter.list_agents()
+    }
     pub fn get_agent_key(&self, agent_id: &AgentIdentity) -> Result<Option<AgentKey>, Error> {
         self.storage_adapter.get_agent_key(agent_id)
     }
@@ -21,9 +23,17 @@ impl KeyManager {
         self.storage_adapter.put_agent_key(agentkey)?;
         Ok(())
     }
+    pub fn remove_all_agent_keys(&self) -> Result<(), Error> {
+        self.storage_adapter.remove_all_agent_keys()?;
+        Ok(())
+    }
 
-    pub fn default_agent_key(&self) -> Result<Option<AgentKey>, Error> {
-        match self.storage_adapter.get_labeled_agent_id("latest")? {
+    pub fn set_current_agent(&self, id: AgentIdentity) -> Result<(), Error> {
+        self.storage_adapter.set_labeled_agent("current", id)?;
+        Ok(())
+    }
+    pub fn current_agent_key(&self) -> Result<Option<AgentKey>, Error> {
+        match self.storage_adapter.get_labeled_agent("current")? {
             Some(agent_id) => self.storage_adapter.get_agent_key(&agent_id),
             None => Ok(None),
         }
