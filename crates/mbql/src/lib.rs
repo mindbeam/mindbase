@@ -2,6 +2,7 @@ pub mod ast;
 pub mod error;
 pub mod parse;
 pub mod query;
+pub mod search;
 
 pub use query::Query;
 
@@ -17,5 +18,13 @@ impl Position {
 
     pub fn row(row: usize) -> Self {
         Self { row }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
     }
 }
