@@ -3,7 +3,7 @@ pub mod analogy;
 pub mod artifact;
 pub mod claim;
 pub mod error;
-mod genesis;
+pub mod fuzzyset;
 pub mod search;
 pub mod symbol;
 
@@ -120,17 +120,6 @@ impl MindBase {
         // me.genesis()?;
 
         Ok(me)
-    }
-
-    /// Include whatever batteries we want to include
-    pub fn genesis(&self) -> Result<(), MBError> {
-        // TODO 2 - use the genesis Agent, not ours
-        // TODO 2 - make this NoOp when an exact artifact exists
-        //    Other entity types should NOT deduplicate, only artifacts. This means they have to be hashed, but other entity types
-        // should be enumerated
-        crate::genesis::language_en::genesis(self)?;
-
-        Ok(())
     }
 
     // pub fn default_agent(&self) -> Result<Agent, MBError> {

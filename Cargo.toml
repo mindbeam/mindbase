@@ -4,5 +4,6 @@ members = [
     "crates/crypto",
     "crates/util",
     "crates/mbcli",
+    "crates/genesis",
     "experiments/analogy_compare"
 ]
