@@ -1,5 +1,5 @@
 [package]
-name = "analogy_compare"
+name = "mindbase-hypergraph"
 version = "0.1.0"
 authors = ["Daniel Norman <daniel@danielnorman.net>"]
 edition = "2018"
@@ -7,7 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-regex="1.3.7"
-# mindbase-core={ path="../../crates/core" }
 colorful = "0.2.1"
 itertools = "0.9.0"
+regex="1.4"

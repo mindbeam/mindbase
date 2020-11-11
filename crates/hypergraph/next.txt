@@ -1,0 +1,6 @@
+
+Truth value and the principle of bivalence
+Propositional logic
+proposition is a claim about reality. 
+The law of excluded middle
+"Grizzly adams had a beard" is either true or false
