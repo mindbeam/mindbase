@@ -1,6 +1,6 @@
 use crate::{
+    ast,
     claim::{Body, Claim},
-    mbql::ast,
     AgentId, Analogy, ArtifactId, ClaimId, MBError, MindBase,
 };
 

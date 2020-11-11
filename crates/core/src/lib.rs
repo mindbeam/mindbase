@@ -1,44 +1,37 @@
 pub mod agent;
-pub mod analogy;
-pub mod artifact;
-pub mod claim;
 pub mod error;
-pub mod fuzzyset;
-pub mod symbol;
 
 mod policy;
 pub use mindbase_util as util;
 pub mod xport;
 
-extern crate pest;
-#[macro_use]
-extern crate pest_derive;
-
 pub mod prelude {
     pub use super::{
         agent::{Agent, AgentId},
-        analogy::Analogy,
-        artifact::{Artifact, ArtifactId, Text},
-        claim::{Claim, ClaimId},
         error::MBError,
-        mbql::query::Query,
-        symbol::Symbol,
         MindBase,
     };
+
+    //     pub use hypergraph::{        artifact::{Artifact, ArtifactId, Text},
+    //     claim::{Claim, ClaimId},
+
+    //     symbol::Symbol,
+    // }
 }
 
 use self::{
     agent::{Agent, AgentId},
-    analogy::Analogy,
-    artifact::{Artifact, ArtifactId},
-    claim::{Claim, ClaimId},
     error::MBError,
-    symbol::Symbol,
 };
 
-use claim::ArtifactList;
+// use hypergraph::{
+//     artifact::{Artifact, ArtifactId},
+//     claim::{Claim, ClaimId},
+//     symbol::Symbol,
+// };
+
+// use claim::ArtifactList;
 use core::marker::PhantomData;
-use mbql::{error::MBQLError, Query};
 use policy::Policy;
 use serde::de::DeserializeOwned;
 use sled::IVec;
@@ -46,7 +39,7 @@ use std::{
     convert::TryInto,
     sync::{Arc, Mutex},
 };
-use symbol::Atom;
+// use symbol::Atom;
 
 // pub mod allegation_capnp {
 //     include!(concat!(env!("OUT_DIR"), "/capnp/allegation_capnp.rs"));
@@ -404,13 +397,13 @@ mod tests {
         let dow = mb.alledge(Text::new("Abstract day of the week"))?;
         let alright = mb.alledge(Text::new("Days that are alright for figting in the evening"))?;
 
-        mb.alledge(Analogy::declarative(s1.subjective(), dow.subjective()))?;
-        mb.alledge(Analogy::declarative(s2.subjective(), dow.subjective()))?;
-        mb.alledge(Analogy::declarative(s3.subjective(), dow.subjective()))?;
+        mb.alledge(Analogy::associative(s1.subjective(), dow.subjective()))?;
+        mb.alledge(Analogy::associative(s2.subjective(), dow.subjective()))?;
+        mb.alledge(Analogy::associative(s3.subjective(), dow.subjective()))?;
 
-        mb.alledge(Analogy::declarative(s1.subjective(), alright.subjective()))?;
-        mb.alledge(Analogy::declarative(s2.subjective(), alright.subjective()))?;
-        mb.alledge(Analogy::declarative(s3.subjective(), alright.subjective()))?;
+        mb.alledge(Analogy::associative(s1.subjective(), alright.subjective()))?;
+        mb.alledge(Analogy::associative(s2.subjective(), alright.subjective()))?;
+        mb.alledge(Analogy::associative(s3.subjective(), alright.subjective()))?;
 
         let stdout = std::io::stdout();
         let handle = stdout.lock();

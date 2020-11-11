@@ -7,14 +7,8 @@ pub use node::SearchNode;
 #[cfg(test)]
 mod test {
     use crate::{
-        mbql::{
-            error::{
-                MBQLError,
-                MBQLErrorKind,
-            },
-            Query,
-        },
-        MindBase,
+        error::{MBQLError, MBQLErrorKind},
+        Query,
     };
     use std::io::Cursor;
 
@@ -26,15 +20,17 @@ mod test {
 
         let query = mb.query_str(r#"Ground!(("Smile" : "Mouth") : ("Wink" : "Eye"))"#)?;
         match query.apply() {
-            Err(MBQLError { kind: MBQLErrorKind::GSymNotFound,
-                            .. }) => {
+            Err(MBQLError {
+                kind: MBQLErrorKind::GSymNotFound,
+                ..
+            }) => {
                 // This should fail, because we're disallowing vivification
-            },
+            }
             r @ _ => panic!("Ground symbol vivification is disallowed {:?}", r),
         }
 
         let query = mb.query_str(
-                                 r#"
+            r#"
         $foo = Allege(("Smile" : "Mouth") : ("Wink":"Eye"))
         $bar = Ground!(("Smile" : "Mouth") : ("Wink" : "Eye"))
         Diag($foo, $bar)
@@ -80,7 +76,7 @@ mod test {
         let mb = MindBase::open(&tmpdirpath).unwrap();
 
         let mbql = Cursor::new(
-                               r#"
+            r#"
             $foo = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
             $bar = Ground(("Smile" : "Mouth") : ("Wink" : "Eye"))
             Diag($foo, $bar)
@@ -110,7 +106,7 @@ mod test {
 
         // WIP: How to validate that we're properly re-symbolizing?
         let query = mb.query_str(
-                                 r#"
+            r#"
             $a = Allege("Ragdoll" : "Leopard")
             $b = Allege("Shepherd" : "Wolf")
             $c = Allege($a : $b)

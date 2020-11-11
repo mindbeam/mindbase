@@ -6,6 +6,10 @@ pub mod search;
 
 pub use query::Query;
 
+extern crate pest;
+#[macro_use]
+extern crate pest_derive;
+
 #[derive(Debug, Clone)]
 pub struct Position {
     pub row: usize,

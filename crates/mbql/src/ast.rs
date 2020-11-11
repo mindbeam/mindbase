@@ -1,14 +1,13 @@
 pub mod artifact;
 
 use crate::{
-    mbql::{
-        error::MBQLError,
-        parse::{self, Rule},
-        Position, Query,
-    },
+    error::MBQLError,
+    parse::{self, Rule},
     search::SearchNode,
-    AgentId, Analogy, ArtifactId, MBError, MindBase, Symbol,
+    Position, Query,
 };
+
+// use mindbase_hypergraph::{AgentId, Analogy, ArtifactId, Symbol};
 
 use super::error::MBQLErrorKind;
 use pest::iterators::Pair;

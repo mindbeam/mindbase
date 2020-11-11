@@ -1,10 +1,10 @@
 [workspace]
 members = [
     "crates/core",
+    "crates/mbql",
     "crates/crypto",
     "crates/util",
     "crates/mbcli",
     "crates/genesis",
-    "crates/mbql",
-    "crates/hypergraph"
+    "crates/hypergraph",
 ]

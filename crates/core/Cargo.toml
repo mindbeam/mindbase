@@ -10,8 +10,11 @@ repository = "https://github.com/mindbeam/mindbase"
 exclude = ["mbql/*"]
 
 [dependencies]
+# hypergraph = { path="../hypergraph" }
+mindbase-mbql = { path="../mbql" }
 mindbase-util = { path="../util" }
 mindbase-crypto = { path="../crypto" }
+
 typenum = "1.12"
 inverted-index-util = "0.0.5"
 base64 = "0.12"
@@ -25,13 +28,8 @@ sha2 = "0.9"
 rusty_ulid = "0.9.3"
 chrono = { version = "0.4.10", features = ["serde"] }
 # capnp = "0.12.1"
-regex="1.3.6"
+regex="1.4"
 lazy_static="1.4.0"
-
-# TODO 3 - Move mbql bin to new crate
-pest = "2.1.3"
-pest_derive = "2.1.0"
-
 
 [build-dependencies]
 # capnpc = "0.12.1"

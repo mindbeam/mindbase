@@ -1,24 +1,21 @@
-use crate::mbql::{
+use crate::{
     ast,
-    error::{
-        MBQLError,
-        MBQLErrorKind,
-    },
+    error::{MBQLError, MBQLErrorKind},
     Position,
 };
 
 use pest::Parser;
 
 #[derive(Parser)]
-#[grammar = "mbql/mbql.pest"]
+#[grammar = "mbql.pest"]
 pub struct MBQLParser;
 
 pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result<(), MBQLError> {
     for (line_number, line) in reader.lines().enumerate() {
-        let line_str: String = line.map_err(|error| {
-                                       MBQLError { position: Position { row: line_number },
-                                                   kind:     MBQLErrorKind::IOError { error }, }
-                                   })?;
+        let line_str: String = line.map_err(|error| MBQLError {
+            position: Position { row: line_number },
+            kind: MBQLErrorKind::IOError { error },
+        })?;
 
         parse_line(line_number + 1, &line_str, query)?;
     }
@@ -27,12 +24,13 @@ pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result
 }
 
 fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), MBQLError> {
-    let mut line =
-        MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| {
-                                                      MBQLError { position: Position { row },
-                                                                  kind:     MBQLErrorKind::ParseRow { input: input.to_string(),
-                                                                                                      pest_err }, }
-                                                  })?;
+    let mut line = MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| MBQLError {
+        position: Position { row },
+        kind: MBQLErrorKind::ParseRow {
+            input: input.to_string(),
+            pest_err,
+        },
+    })?;
 
     let inner = match line.next() {
         None => return Ok(()), // Comment or blank line
@@ -51,14 +49,8 @@ fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), M
 
 #[cfg(test)]
 mod test {
-    use super::{
-        MBQLParser,
-        Rule,
-    };
-    use pest::{
-        consumes_to,
-        parses_to,
-    };
+    use super::{MBQLParser, Rule};
+    use pest::{consumes_to, parses_to};
     #[test]
     fn pest_basic() {
         parses_to! {

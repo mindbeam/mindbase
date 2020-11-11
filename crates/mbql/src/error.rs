@@ -1,16 +1,10 @@
 #[derive(Debug)]
 pub struct MBQLError {
     pub position: Position,
-    pub kind:     MBQLErrorKind,
+    pub kind: MBQLErrorKind,
 }
 
-use crate::{
-    error::MBError,
-    mbql::{
-        ast,
-        Position,
-    },
-};
+use crate::{ast, Position};
 
 #[derive(Debug)]
 pub enum MBQLErrorKind {
@@ -18,7 +12,7 @@ pub enum MBQLErrorKind {
         error: std::io::Error,
     },
     ParseRow {
-        input:    String,
+        input: String,
         pest_err: pest::error::Error<super::parse::Rule>,
     },
     InvalidLine {
@@ -46,16 +40,18 @@ pub enum MBQLErrorKind {
 
     // TODO 2 - Move this to MBError
     GSymNotFound,
-
-    MBError(Box<MBError>),
+    // MBError(Box<MBError>),
 }
 
-impl std::convert::From<MBError> for MBQLError {
-    fn from(error: MBError) -> Self {
-        MBQLError { position: Position::none(),
-                    kind:     MBQLErrorKind::MBError(Box::new(error)), }
-    }
-}
+// impl std::convert::From<MBError> for MBQLError {
+//     fn from(error: MBError) -> Self {
+//         MBQLError {
+//             position: Position::none(),
+//             kind: MBQLErrorKind::MBError(Box::new(error)),
+//         }
+//     }
+// }
+
 impl std::convert::From<MBQLError> for std::io::Error {
     fn from(error: MBQLError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
@@ -70,25 +66,25 @@ impl std::fmt::Display for MBQLError {
             MBQLErrorKind::ParseRow { pest_err, .. } => {
                 // TODO - fix line numbers
                 f.write_fmt(format_args!("Failed to parse row {}: {}", self.position.row, pest_err))
-            },
+            }
             MBQLErrorKind::InvalidCommand { .. } => f.write_str("meow"),
             MBQLErrorKind::UnknownCommand { .. } => f.write_str("meow"),
             MBQLErrorKind::CommandParse { .. } => f.write_str("meow"),
-            MBQLErrorKind::MBError(e) => write!(f, "{:?}", e),
+            // MBQLErrorKind::MBError(e) => write!(f, "{:?}", e),
             MBQLErrorKind::ArtifactVarNotFound { var } => {
                 write!(f, "Artifact Variable `{}` not found at row {}", var, self.position.row)
-            },
+            }
             MBQLErrorKind::SymbolVarNotFound { var } => {
                 write!(f, "Symbol Variable `{}` not found at row {}", var, self.position.row)
-            },
+            }
             MBQLErrorKind::GSymNotFound => write!(f, "Ground Symbol not found at row {}", self.position.row),
 
-            MBQLErrorKind::SymbolVarBindingFailed { bound_to } => {
-                write!(f,
-                       "Symbol binding failed at row {}. Already bound to row {}",
-                       self.position.row,
-                       bound_to.position().row)
-            },
+            MBQLErrorKind::SymbolVarBindingFailed { bound_to } => write!(
+                f,
+                "Symbol binding failed at row {}. Already bound to row {}",
+                self.position.row,
+                bound_to.position().row
+            ),
         }
     }
 }

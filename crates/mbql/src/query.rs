@@ -3,7 +3,9 @@ use super::{
     error::{MBQLError, MBQLErrorKind},
     Position,
 };
-use crate::{search::SearchContext, ArtifactId, MindBase, Symbol};
+use crate::search::SearchContext;
+use mindbase_hypergraph as hg;
+
 use std::{collections::BTreeMap, io::Cursor, sync::Mutex};
 
 struct ArtifactVarMapItem {

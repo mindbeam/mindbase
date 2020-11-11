@@ -11,7 +11,6 @@ pub trait StorageAdapter {
 
 pub mod memory {
     use std::{collections::HashMap, sync::Mutex};
-    use zeroize::Zeroizing;
 
     use super::StorageAdapter;
     use crate::{keys::AgentIdentity, AgentKey, Error};

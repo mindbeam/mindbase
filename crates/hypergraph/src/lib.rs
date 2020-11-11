@@ -1,10 +1,12 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_mut)]
-mod analogy;
-mod fuzzyset;
-mod simpleid;
-mod symbol;
+pub mod analogy;
+pub mod artifact;
+pub mod claim;
+pub mod fuzzyset;
+pub mod simpleid;
+pub mod symbol;
 
 // use analogy::*;
 use analogy::{Analogy, AnalogyQuery};
@@ -12,12 +14,12 @@ use fuzzyset::FuzzySet;
 use simpleid::*;
 use symbol::*;
 
-fn main() {
-    // Q: What's the stupidest way to do this?
-    // A: don't friggin worry about unions right now
-    // experiment1()
-    // fuzzy_set_union_signal_to_noise_problem()
-}
+// fn main() {
+//     // Q: What's the stupidest way to do this?
+//     // A: don't friggin worry about unions right now
+//     // experiment1()
+//     // fuzzy_set_union_signal_to_noise_problem()
+// }
 
 fn experiment1() {
     // In this experiment, we are approximating the following MBQL

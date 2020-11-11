@@ -2,13 +2,11 @@ use crate::claim::ClaimId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
-    agent::Agent,
+    // agent::Agent,
     claim::{Alledgable, Claim},
-    error::MBError,
     symbol::Symbol,
-    AgentId, MindBase,
 };
-use sha2::{Digest, Sha512Trunc256};
+// use sha2::{Digest, Sha512Trunc256};
 use std::fmt;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
