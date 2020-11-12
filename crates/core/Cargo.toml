@@ -10,7 +10,7 @@ repository = "https://github.com/mindbeam/mindbase"
 exclude = ["mbql/*"]
 
 [dependencies]
-# hypergraph = { path="../hypergraph" }
+mindbase-hypergraph = { path="../hypergraph" }
 mindbase-mbql = { path="../mbql" }
 mindbase-util = { path="../util" }
 mindbase-crypto = { path="../crypto" }

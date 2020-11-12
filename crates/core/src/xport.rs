@@ -1,7 +1,7 @@
 use crate::{
     artifact::{Artifact, ArtifactId},
     claim::{Claim, ClaimId},
-    error::MBError,
+    error::Error,
     MindBase,
 };
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ enum JSONLine {
 }
 
 #[allow(unused)]
-pub fn dump_json<T: std::io::Write>(mb: &MindBase, mut writer: T) -> Result<(), MBError> {
+pub fn dump_json<T: std::io::Write>(mb: &MindBase, mut writer: T) -> Result<(), Error> {
     for result in mb.artifact_iter() {
         let (id, artifact) = result?; // we may have failed to retrieve/decode one of them
         let string = serde_json::to_writer(&mut writer, &JSONLine::Artifact((id, artifact)))?;
@@ -30,7 +30,7 @@ pub fn dump_json<T: std::io::Write>(mb: &MindBase, mut writer: T) -> Result<(), 
 }
 
 #[allow(unused)]
-pub fn load_json<T: std::io::BufRead>(mb: &MindBase, mut reader: T) -> Result<(), MBError> {
+pub fn load_json<T: std::io::BufRead>(mb: &MindBase, mut reader: T) -> Result<(), Error> {
     for line in reader.lines() {
         let line: JSONLine = serde_json::from_str(&line?[..])?;
 

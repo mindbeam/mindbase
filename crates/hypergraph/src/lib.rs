@@ -9,10 +9,11 @@ pub mod simpleid;
 pub mod symbol;
 
 // use analogy::*;
-use analogy::{Analogy, AnalogyQuery};
+pub use analogy::{Analogy, AnalogyQuery};
+use claim::*;
 use fuzzyset::FuzzySet;
 use simpleid::*;
-use symbol::*;
+pub use symbol::*;
 
 // fn main() {
 //     // Q: What's the stupidest way to do this?

@@ -6,11 +6,7 @@ pub use mindbase_util as util;
 pub mod xport;
 
 pub mod prelude {
-    pub use super::{
-        agent::{Agent, AgentId},
-        error::MBError,
-        MindBase,
-    };
+    pub use super::{agent::Agent, error::Error, MindBase};
 
     //     pub use hypergraph::{        artifact::{Artifact, ArtifactId, Text},
     //     claim::{Claim, ClaimId},
@@ -19,10 +15,7 @@ pub mod prelude {
     // }
 }
 
-use self::{
-    agent::{Agent, AgentId},
-    error::MBError,
-};
+use self::{agent::Agent, error::Error};
 
 // use hypergraph::{
 //     artifact::{Artifact, ArtifactId},
@@ -63,13 +56,11 @@ pub struct MindBase {
 
     /// I forget why I would actually need known agents
     _known_agents: sled::Tree,
-
-    ground_symbol_agents: Arc<Mutex<Vec<AgentId>>>,
     // QUESTION: Should these be two different trees? or one?
 }
 
 impl MindBase {
-    pub fn open_temp() -> Result<Self, MBError> {
+    pub fn open_temp() -> Result<Self, Error> {
         let tmpdir = tempfile::tempdir().unwrap();
         let tmpdirpath = tmpdir.path();
 
@@ -77,7 +68,7 @@ impl MindBase {
     }
 
     #[allow(dead_code)]
-    pub fn open(basedir: &std::path::Path) -> Result<Self, MBError> {
+    pub fn open(basedir: &std::path::Path) -> Result<Self, Error> {
         let pathbuf = basedir.join(format!("./mindbase.sled"));
 
         let db = sled::open(pathbuf.as_path())?;
@@ -94,8 +85,6 @@ impl MindBase {
         // let default_agent = _default_agent(&my_agents)?;
         let _known_agents = db.open_tree("known_agents")?;
 
-        let ground_symbol_agents = Arc::new(Mutex::new(vec![/*default_agent.id()*/]));
-
         let me = MindBase {
             allegations,
             // my_agents,
@@ -103,7 +92,6 @@ impl MindBase {
             _known_agents,
             atoms_by_artifact_agent,
             // analogy_rev,
-            ground_symbol_agents,
             // default_agent,
         };
 
@@ -116,7 +104,7 @@ impl MindBase {
     //     _default_agent(&self.my_agents)
     // }
 
-    pub fn get_allegation(&self, allegation_id: &ClaimId) -> Result<Option<Claim>, MBError> {
+    pub fn get_allegation(&self, allegation_id: &ClaimId) -> Result<Option<Claim>, Error> {
         match self.allegations.get(allegation_id.as_ref())? {
             Some(ivec) => {
                 let allegation: Claim = bincode::deserialize(&ivec)?;
@@ -126,7 +114,7 @@ impl MindBase {
         }
     }
 
-    pub fn put_allegation(&self, atom: &Claim) -> Result<ClaimId, MBError> {
+    pub fn put_allegation(&self, atom: &Claim) -> Result<ClaimId, Error> {
         let encoded: Vec<u8> = bincode::serialize(&atom).unwrap();
 
         let mut key: [u8; 64] = [0u8; 64];
@@ -179,7 +167,7 @@ impl MindBase {
         Query::new(self, reader)
     }
 
-    pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, MBError>
+    pub fn put_artifact<T>(&self, artifact: T) -> Result<ArtifactId, Error>
     where
         T: Into<Artifact>,
     {
@@ -203,39 +191,39 @@ impl MindBase {
         Ok(id)
     }
 
-    pub fn symbolize<T>(&self, thing: T) -> Result<Symbol, MBError>
+    pub fn symbolize<T>(&self, thing: T) -> Result<Symbol, Error>
     where
-        T: crate::claim::Alledgable,
+        T: crate::claim::Claimable,
     {
         // Ok(thing.alledge(self, &self.default_agent)?.subjective())
         unimplemented!()
     }
 
-    pub(crate) fn symbolize_atom<T>(&self, thing: T) -> Result<Claim, MBError>
+    pub(crate) fn symbolize_atom<T>(&self, thing: T) -> Result<Claim, Error>
     where
-        T: crate::claim::Alledgable,
+        T: crate::claim::Claimable,
     {
         // Ok(thing.alledge(self, &self.default_agent)?)
         unimplemented!()
     }
 
-    pub fn alledge<T>(&self, thing: T) -> Result<Claim, MBError>
+    pub fn alledge<T>(&self, thing: T) -> Result<Claim, Error>
     where
-        T: crate::claim::Alledgable,
+        T: crate::claim::Claimable,
     {
         // thing.alledge(self, &self.default_agent)
         unimplemented!()
     }
 
-    // Alledge an Alledgable thing using specified agent
-    pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Claim, MBError>
+    // Alledge an Claimable thing using specified agent
+    pub fn alledge2<T>(&self, agent: &Agent, thing: T) -> Result<Claim, Error>
     where
-        T: crate::claim::Alledgable,
+        T: crate::claim::Claimable,
     {
         thing.alledge(self, agent)
     }
 
-    pub fn alledge_artifact<A>(&self, agent: &Agent, artifact: A) -> Result<ClaimId, MBError>
+    pub fn alledge_artifact<A>(&self, agent: &Agent, artifact: A) -> Result<ClaimId, Error>
     where
         A: Into<crate::artifact::Artifact>,
     {
@@ -261,7 +249,7 @@ impl MindBase {
         }
     }
 
-    pub fn symbol_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Option<Symbol>, MBError>
+    pub fn symbol_filter_allegations_by<'a, F>(&'a self, f: F) -> Result<Option<Symbol>, Error>
     where
         F: Fn(&Claim) -> bool,
     {
@@ -277,7 +265,7 @@ impl MindBase {
         Ok(Symbol::new_option(atoms))
     }
 
-    pub fn add_ground_symbol_agent(&self, agent_id: &AgentId) -> Result<(), MBError> {
+    pub fn add_ground_symbol_agent(&self, agent_id: &AgentId) -> Result<(), Error> {
         // TODO 2 - Build the policy system and convert this to a policy
         let mut gsa = self.ground_symbol_agents.lock().unwrap();
 
@@ -289,7 +277,7 @@ impl MindBase {
         Ok(())
     }
 
-    pub fn add_policy(&self, _policy: Policy) -> Result<(), MBError> {
+    pub fn add_policy(&self, _policy: Policy) -> Result<(), Error> {
         unimplemented!()
     }
 
@@ -309,7 +297,7 @@ where
     K: std::convert::TryFrom<IVec>,
     V: DeserializeOwned,
 {
-    type Item = Result<(K, V), crate::MBError>;
+    type Item = Result<(K, V), crate::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Did we find it?
@@ -327,7 +315,7 @@ where
                     };
                     let v: V = match bincode::deserialize::<V>(&value[..]) {
                         Ok(v) => v,
-                        Err(e) => return Some(Err(MBError::Bincode(e))),
+                        Err(e) => return Some(Err(Error::Bincode(e))),
                     };
 
                     Some(Ok((k, v)))
@@ -361,7 +349,7 @@ mod tests {
     use crate::prelude::*;
 
     #[test]
-    fn basic() -> Result<(), MBError> {
+    fn basic() -> Result<(), Error> {
         let tmpdir = tempfile::tempdir()?;
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;
@@ -373,7 +361,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn dump() -> Result<(), MBError> {
+    fn dump() -> Result<(), Error> {
         let tmpdir = tempfile::tempdir()?;
         let tmpdirpath = tmpdir.path();
         let mb = MindBase::open(&tmpdirpath)?;

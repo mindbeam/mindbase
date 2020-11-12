@@ -1,7 +1,10 @@
-use crate::{agent::Agent, error::MBError, util::AsBytes};
+use mindbase_util::AsBytes;
+use mindbase_util::Error;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use std::fmt;
+
+use crate::AgentKey;
 
 #[derive(Serialize, Deserialize)]
 pub struct Signature(
@@ -13,14 +16,14 @@ pub struct Signature(
 );
 
 impl Signature {
-    pub(crate) fn new<T>(agent: &Agent, content: T) -> Result<Self, MBError>
+    pub(crate) fn new<T>(agentkey: &AgentKey, content: T) -> Result<Self, Error>
     where
         T: HashHelper,
     {
         let mut hasher: Sha512 = Sha512::default();
         content.hash(&mut hasher);
 
-        let sig = agent.agentkey.keypair.sign_prehashed(hasher, Some(b"allegation")).unwrap();
+        let sig = agentkey.keypair.sign_prehashed(hasher, Some(b"allegation")).unwrap();
 
         Ok(Signature(sig.to_bytes()))
     }

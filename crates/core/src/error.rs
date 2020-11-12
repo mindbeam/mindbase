@@ -1,6 +1,5 @@
-use crate::mbql::error::MBQLError;
 #[derive(Debug)]
-pub enum MBError {
+pub enum Error {
     Sled(sled::Error),
     SerdeJson(serde_json::Error),
     Bincode(bincode::Error),
@@ -9,7 +8,7 @@ pub enum MBError {
     SignatureError,
     Base64Error,
     AllegationNotFound,
-    MBQL(Box<MBQLError>),
+    MBQL(Box<mindbase_mbql::error::MBQLError>),
     TraversalFailed,
     UnboundSymbol,
     SymbolVarNotFound,
@@ -19,48 +18,48 @@ pub enum MBError {
     Util(mindbase_util::Error),
 }
 
-impl std::fmt::Display for MBError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl From<MBQLError> for MBError {
+impl From<MBQLError> for Error {
     fn from(e: MBQLError) -> Self {
         Self::MBQL(Box::new(e))
     }
 }
 
-impl From<mindbase_util::Error> for MBError {
+impl From<mindbase_util::Error> for Error {
     fn from(e: mindbase_util::Error) -> Self {
         Self::Util(e)
     }
 }
 
-impl From<sled::Error> for MBError {
+impl From<sled::Error> for Error {
     fn from(e: sled::Error) -> Self {
         Self::Sled(e)
     }
 }
 
-impl From<serde_json::Error> for MBError {
+impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::SerdeJson(e)
     }
 }
-impl From<bincode::Error> for MBError {
+impl From<bincode::Error> for Error {
     fn from(e: bincode::Error) -> Self {
         Self::Bincode(e)
     }
 }
-impl From<std::io::Error> for MBError {
+impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Self::IoError(e)
     }
 }
 
-impl std::convert::From<MBError> for std::io::Error {
-    fn from(error: MBError) -> Self {
+impl std::convert::From<Error> for std::io::Error {
+    fn from(error: Error) -> Self {
         use std::io::ErrorKind;
         std::io::Error::new(ErrorKind::Other, format!("{:?}", error))
     }

@@ -1,10 +1,7 @@
 use crate::{
-    agent::{signature::Signature, AgentId},
     analogy::Analogy,
     artifact::ArtifactId,
-    error::MBError,
-    symbol::{Atom, Symbol},
-    Agent, MindBase,
+    symbol::{Symbol, SymbolMember},
 };
 
 use rusty_ulid::generate_ulid_bytes;
@@ -42,10 +39,11 @@ impl ClaimId {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol {
-            atoms: vec![Atom::up(self.clone())],
-            spread_factor: 0.0,
-        }
+        unimplemented!("should probably remove this")
+        // Symbol {
+        //     atoms: vec![Atom::up(self.clone())],
+        //     spread_factor: 0.0,
+        // }
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -161,10 +159,13 @@ impl Claim {
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
     pub fn subjective(&self) -> Symbol {
-        Symbol {
-            atoms: vec![Atom::up(self.id().clone())],
-            spread_factor: 0.0,
-        }
+        unimplemented!()
+        // should probably remove this
+
+        // Symbol {
+        //     atoms: vec![Atom::up(self.id().clone())],
+        //     spread_factor: 0.0,
+        // }
     }
 
     pub fn id(&self) -> &ClaimId {
@@ -257,9 +258,4 @@ impl fmt::Display for Body {
             Body::Artifact(a) => write!(f, "Artifact({})", a),
         }
     }
-}
-
-// TODO 1 - Rename this to Symbolize
-pub trait Alledgable: std::fmt::Debug {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError>;
 }

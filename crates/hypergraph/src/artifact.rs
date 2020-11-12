@@ -1,12 +1,10 @@
 use crate::claim::ClaimId;
+use mindbase_crypto::AgentId;
+use mindbase_util::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{
-    // agent::Agent,
-    claim::{Alledgable, Claim},
-    symbol::Symbol,
-};
-// use sha2::{Digest, Sha512Trunc256};
+use crate::symbol::Symbol;
+use sha2::{Digest, Sha512Trunc256};
 use std::fmt;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
@@ -58,25 +56,27 @@ impl Into<crate::claim::Body> for ArtifactId {
 }
 
 impl ArtifactId {
-    pub fn alledge(self, agent: &Agent, mb: &MindBase) -> Result<ClaimId, MBError> {
-        let allegation = Claim::new(agent, self)?;
-        mb.put_allegation(&allegation)
-    }
-
-    pub fn from_base64(input: &str) -> Result<Self, MBError> {
+    pub fn from_base64(input: &str) -> Result<Self, Error> {
         use std::convert::TryInto;
-        let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
-        let array: [u8; 32] = decoded[..].try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?;
+        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
+        let array: [u8; 32] = decoded[..].try_into().map_err(|_| Error::TryFromSlice)?;
         Ok(ArtifactId(array.into()))
     }
 }
 
-impl std::convert::TryFrom<sled::IVec> for ArtifactId {
-    type Error = MBError;
+impl<T> std::convert::TryFrom<T> for ArtifactId
+where
+    T: AsRef<[u8]>,
+{
+    type Error = Error;
 
-    fn try_from(ivec: sled::IVec) -> Result<Self, MBError> {
+    fn try_from(slice: T) -> Result<Self, Error> {
         use std::convert::TryInto;
-        Ok(Self((&ivec[..]).try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?))
+        Ok(Self(
+            (&slice.as_ref()[..])
+                .try_into()
+                .map_err(|_| mindbase_util::Error::TryFromSlice)?,
+        ))
     }
 }
 
@@ -205,30 +205,9 @@ impl Into<Artifact> for DataNode {
     }
 }
 
-impl Alledgable for &ArtifactId {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
-        let allegation = Claim::new(agent, crate::claim::Body::Artifact(self.clone()))?;
-        mb.put_allegation(&allegation)?;
-        Ok(allegation)
-    }
-}
-impl Alledgable for ArtifactId {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
-        let allegation = Claim::new(agent, crate::claim::Body::Artifact(self))?;
-        mb.put_allegation(&allegation)?;
-        Ok(allegation)
-    }
-}
-
-impl<T> Alledgable for T
-where
-    T: Into<Artifact> + std::fmt::Debug,
-{
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
-        let artifact_id = mb.put_artifact(self)?;
-        let allegation = Claim::new(agent, crate::claim::Body::Artifact(artifact_id))?;
-        mb.put_allegation(&allegation)?;
-        Ok(allegation)
+impl Into<Artifact> for AgentId {
+    fn into(self) -> Artifact {
+        Artifact::Agent(self)
     }
 }
 

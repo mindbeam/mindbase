@@ -1,4 +1,4 @@
-use crate::{claim::Alledgable, symbol::Symbol, Agent, Claim, MBError, MindBase};
+use crate::{claim::Claimable, symbol::Symbol, Agent, Claim, MBError, MindBase};
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -52,7 +52,7 @@ impl fmt::Display for Analogy {
     }
 }
 
-impl Alledgable for Analogy {
+impl Claimable for Analogy {
     fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
         let allegation = Claim::new(agent, crate::claim::Body::Analogy(self))?;
         mb.put_allegation(&allegation)?;

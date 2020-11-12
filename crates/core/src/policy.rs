@@ -1,4 +1,4 @@
-use crate::{agent::AgentId, error::MBError};
+use crate::{agent::AgentId, error::Error};
 
 struct PolicyId {}
 
@@ -8,7 +8,7 @@ pub struct Policy {
 }
 
 impl Policy {
-    pub fn new(_body: PolicyBody) -> Result<Policy, MBError> {
+    pub fn new(_body: PolicyBody) -> Result<Policy, Error> {
         unimplemented!()
     }
 }

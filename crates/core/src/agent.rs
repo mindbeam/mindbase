@@ -1,74 +1,34 @@
-pub mod signature;
+use mindbase_crypto::{AgentKey, Signature};
+use mindbase_hypergraph::Claim;
 
-use mindbase_crypto::AgentKey;
-
-use crate::{
-    claim::{Alledgable, Claim},
-    error::MBError,
-    Artifact, MindBase,
-};
+use crate::{error::Error, MindBase};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord, Clone)]
-pub struct AgentId {
-    #[serde(
-        serialize_with = "crate::util::serde_helper::as_base64",
-        deserialize_with = "crate::util::serde_helper::from_base64_32"
-    )]
-    pubkey: [u8; 32],
-}
-
-impl AgentId {
-    pub fn pubkey_short(&self) -> String {
-        use base64::STANDARD_NO_PAD;
-        base64::encode_config(&self.pubkey[0..12], STANDARD_NO_PAD)
-    }
-
-    pub fn from_base64(input: &str) -> Result<Self, MBError> {
-        use std::convert::TryInto;
-        let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
-        let array: [u8; 32] = decoded[..].try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?;
-        Ok(AgentId { pubkey: array.into() })
-    }
-}
-
-impl crate::util::AsBytes for &AgentId {
-    fn as_bytes(&self) -> Vec<u8> {
-        self.pubkey[..].to_vec()
-    }
-}
-impl std::convert::AsRef<[u8]> for AgentId {
-    fn as_ref(&self) -> &[u8] {
-        &self.pubkey[..]
-    }
-}
-
-impl fmt::Display for AgentId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.pubkey_short())
-    }
-}
-impl fmt::Debug for AgentId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "AgentId:{}", &self.pubkey_short())
-    }
-}
+mod symbolize;
 
 /// Arguably an Agent is also an Artifact, but this probably isn't crucial
 #[derive(Debug)]
 pub struct Agent {
     agentkey: AgentKey,
+    ground_symbol_agents: Arc<Mutex<Vec<AgentId>>>,
+    mindbase: MindBase,
 }
 
 /// The active form of an agent - Lets actually do some stuff
 /// AgentKey and AgentIdent are not the active forms of an agent,
 /// but rather the keepers of information about an agent
 impl Agent {
-    pub fn new() -> Self {
+    pub fn new(mindbase: Mindbase) -> Self {
         let agentkey = AgentKey::create(None);
-        Self { agentkey }
+        let ground_symbol_agents = Arc::new(Mutex::new(vec![self.id()]));
+
+        Self {
+            agentkey,
+            ground_symbol_agents,
+            mindbase,
+        }
     }
 
     pub fn id(&self) -> AgentId {
@@ -112,18 +72,3 @@ impl std::fmt::Display for Agent {
 //         crate::allegation::Body::Artifact(Artifact::Agent(self.id()))
 //     }
 // }
-
-impl Alledgable for &Agent {
-    fn alledge(self, mb: &MindBase, agent: &Agent) -> Result<Claim, MBError> {
-        let artifact_id = mb.put_artifact(self.id())?;
-        let allegation = Claim::new(agent, crate::claim::Body::Artifact(artifact_id))?;
-        mb.put_allegation(&allegation)?;
-        Ok(allegation)
-    }
-}
-
-impl Into<Artifact> for AgentId {
-    fn into(self) -> Artifact {
-        Artifact::Agent(self)
-    }
-}

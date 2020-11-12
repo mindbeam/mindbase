@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use mindbase_core::{artifact::text, prelude::*};
 
-fn insert_test_dataset(mb: &MindBase) -> Result<(), MBError> {
+fn insert_test_dataset(mb: &MindBase) -> Result<(), Error> {
     for _i in 0..50 {
         let mut last_symbol: Option<Symbol> = None;
         // println!("Loop {}", _i);
@@ -19,7 +19,7 @@ fn insert_test_dataset(mb: &MindBase) -> Result<(), MBError> {
     Ok(())
 }
 
-fn get_ground_symbol(mb: &MindBase) -> Result<(), MBError> {
+fn get_ground_symbol(mb: &MindBase) -> Result<(), Error> {
     unimplemented!()
     // let _symbol1: Symbol = mb.get_ground_symbol(vec!["A", "B", "C", "D"])?;
     // let _symbol2: Symbol = mb.get_ground_symbol(vec!["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"])?;
@@ -34,9 +34,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     insert_test_dataset(&mb).unwrap();
 
     // c.bench_function("insert_test_dataset", |b| b.iter(|| insert_test_dataset(&mb).unwrap()));
-    c.bench_function("get_ground_symbol", |b| {
-        b.iter(|| get_ground_symbol(&mb).unwrap())
-    });
+    c.bench_function("get_ground_symbol", |b| b.iter(|| get_ground_symbol(&mb).unwrap()));
 }
 
 criterion_group!(benches, criterion_benchmark);
