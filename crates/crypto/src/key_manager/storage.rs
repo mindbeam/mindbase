@@ -85,14 +85,14 @@ pub mod sled {
     }
 
     impl SledAdapter {
-        pub fn new(basedir: &std::path::Path) -> Result<Self, Error> {
+        pub fn open(basedir: &std::path::Path) -> Result<Box<dyn StorageAdapter>, Error> {
             let pathbuf = basedir.join(format!("./mindbase_key_manager.sled"));
             let db = sled::open(pathbuf.as_path())?;
 
-            Ok(SledAdapter {
+            Ok(Box::new(SledAdapter {
                 agent_keys: db.open_tree("agent_keys")?,
                 agent_id_config: db.open_tree("agent_id_config")?,
-            })
+            }))
         }
     }
 

@@ -1,3 +1,5 @@
+use crate::AgentId;
+
 use super::{
     custodian::{CustodialAgentKey, KeyMask, UserAuthKey},
     AgentIdentity,
@@ -47,7 +49,11 @@ impl AgentKey {
 
         result.into_bytes().into()
     }
-    pub fn id(&self) -> AgentIdentity {
+    pub fn id(&self) -> AgentId {
+        let pubkey = self.keypair.public.as_bytes().clone();
+        AgentId { pubkey }
+    }
+    pub fn identity(&self) -> AgentIdentity {
         let pubkey = self.keypair.public.as_bytes().clone();
         AgentIdentity {
             pubkey,

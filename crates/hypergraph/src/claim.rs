@@ -2,16 +2,19 @@ use crate::{
     analogy::Analogy,
     artifact::ArtifactId,
     symbol::{Symbol, SymbolMember},
+    AssociativeAnalogy, CategoricalAnalogy,
 };
 
+use mindbase_crypto::{AgentId, AgentKey, Signature};
+use mindbase_util::Error;
 use rusty_ulid::generate_ulid_bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 #[derive(Clone, Serialize, Deserialize, Ord, Eq, PartialOrd, PartialEq)]
 pub struct ClaimId(
     #[serde(
-        serialize_with = "crate::util::serde_helper::as_base64",
-        deserialize_with = "crate::util::serde_helper::from_base64_16"
+        serialize_with = "mindbase_util::serde_helper::as_base64",
+        deserialize_with = "mindbase_util::serde_helper::from_base64_16"
     )]
     pub(crate) [u8; 16],
 );
@@ -21,9 +24,9 @@ impl ClaimId {
         ClaimId(generate_ulid_bytes())
     }
 
-    pub fn from_base64(input: &str) -> Result<Self, MBError> {
+    pub fn from_base64(input: &str) -> Result<Self, Error> {
         use std::convert::TryInto;
-        let decoded = base64::decode(input).map_err(|_| MBError::Base64Error)?;
+        let decoded = base64::decode(input).map_err(|_| Error::Base64Error)?;
         let array: [u8; 16] = decoded[..].try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?;
         Ok(ClaimId(array.into()))
     }
@@ -59,16 +62,7 @@ impl ClaimId {
     }
 }
 
-impl std::convert::TryFrom<sled::IVec> for ClaimId {
-    type Error = MBError;
-
-    fn try_from(ivec: sled::IVec) -> Result<Self, MBError> {
-        use std::convert::TryInto;
-        Ok(Self((&ivec[..]).try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?))
-    }
-}
-
-impl crate::util::AsBytes for &ClaimId {
+impl mindbase_util::AsBytes for &ClaimId {
     fn as_bytes(&self) -> Vec<u8> {
         self.0[..].to_vec()
     }
@@ -83,6 +77,18 @@ impl fmt::Display for ClaimId {
 impl fmt::Debug for ClaimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "AllegationId:{}", base64::encode(&self.0))
+    }
+}
+
+pub mod convenience {
+    use crate::artifact::ArtifactId;
+
+    use super::Body;
+
+    impl From<ArtifactId> for Body {
+        fn from(id: ArtifactId) -> Self {
+            Body::Artifact(id)
+        }
     }
 }
 
@@ -118,7 +124,8 @@ impl fmt::Debug for ClaimId {
 /// Agent. Agents may then form `Symbols` from a collection of allegations which are believed to one degree of confidence or
 /// another to be referring to approximately the "same" thing
 /// See [`mindbase::symbol::Symbol`][Symbol] for more details
-#[derive(Serialize, Deserialize)]
+
+// #[derive(Serialize, Deserialize)]
 pub struct Claim {
     /// TODO 3 - Consider renaming "Allegation*" to "Symbol*"
     pub id: ClaimId,
@@ -135,15 +142,15 @@ pub enum ArtifactList<'a> {
 }
 
 impl Claim {
-    pub fn new<T>(agent: &Agent, body: T) -> Result<Self, MBError>
+    pub fn new<T>(agentkey: &AgentKey, body: T) -> Result<Self, Error>
     where
         T: Into<Body>,
     {
         let body: Body = body.into();
         let id = ClaimId::new();
-        let agent_id = agent.id();
+        let agent_id = agentkey.id();
 
-        let signature = Signature::new(agent, (&id, &agent_id, &body))?;
+        let signature = Signature::new(agentkey, (&id, &agent_id, &body))?;
 
         Ok(Claim {
             id,
@@ -173,7 +180,7 @@ impl Claim {
     }
 
     // Get all artifacts referenced by this allegation
-    pub fn referenced_artifacts(&self, mb: &MindBase) -> Result<ArtifactList, MBError> {
+    pub fn referenced_artifacts(&self, mb: &MindBase) -> Result<ArtifactList, Error> {
         match self.body {
             Body::Artifact(ref artifact_id) => Ok(ArtifactList::One(artifact_id)),
             Body::Unit => Ok(ArtifactList::None),
@@ -232,29 +239,39 @@ impl fmt::Display for Claim {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+// #[derive(Serialize, Deserialize)]
 pub enum Body {
-    /// A Unit Allegation a globally unique entity with no payload
+    /// A Unit Claim a globally unique entity with no payload
     Unit,
 
-    /// An Agent Allegation is a globally unique reference to an actual Agent
-    /// It is conceivabe that someone could want to construct different Allegations referencing the same AgentId
-    /// Which are otherwise identical except for their AllegationId.
-    Analogy(Analogy),
+    /// An Agent Claim is a globally unique entity which references to an actual Agent
+    /// one could construct other Claims which were distinct in their identity, but reference the same AgentId
+    AssociativeAnalogy(AssociativeAnalogy),
+    CategoricalAnalogy(CategoricalAnalogy),
     Artifact(ArtifactId),
 }
 
-impl crate::util::AsBytes for &Body {
-    fn as_bytes(&self) -> Vec<u8> {
-        bincode::serialize(self).unwrap()
+impl std::convert::TryFrom<&[u8]> for ClaimId {
+    type Error = Error;
+
+    fn try_from(ivec: &[u8]) -> Result<Self, Error> {
+        use std::convert::TryInto;
+        Ok(Self((&ivec[..]).try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?))
     }
 }
+
+// impl mindbase_util::AsBytes for &Body {
+//     fn as_bytes(&self) -> Vec<u8> {
+//         bincode::serialize(self).unwrap()
+//     }
+// }
 
 impl fmt::Display for Body {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Body::Unit => write!(f, "Unit()"),
-            Body::Analogy(a) => write!(f, "Analogy({})", a),
+            Body::AssociativeAnalogy(a) => write!(f, "Assoc({})", a),
+            Body::CategoricalAnalogy(c) => write!(f, "Cat({})", c),
             Body::Artifact(a) => write!(f, "Artifact({})", a),
         }
     }

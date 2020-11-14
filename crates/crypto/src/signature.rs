@@ -16,7 +16,7 @@ pub struct Signature(
 );
 
 impl Signature {
-    pub(crate) fn new<T>(agentkey: &AgentKey, content: T) -> Result<Self, Error>
+    pub fn new<T>(agentkey: &AgentKey, content: T) -> Result<Self, Error>
     where
         T: HashHelper,
     {
@@ -41,9 +41,8 @@ impl fmt::Debug for Signature {
     }
 }
 
-// TODO 3 - switch back to AsRef<[u8]> after CapnProto implementation
-pub(crate) trait HashHelper {
-    fn hash(&self, _hasher: &mut Sha512) {}
+pub trait HashHelper {
+    fn hash(&self, hasher: &mut Sha512);
 }
 
 impl<A> HashHelper for (A,)

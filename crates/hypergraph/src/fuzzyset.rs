@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 // use itertools::{EitherOrBoth, Itertools};
 // use colorful::{Color, Colorful};
 
 const MEMBER_CULL_DEGREE: f32 = 0.01;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Item<M>
 where
     M: Member,
@@ -24,6 +26,9 @@ pub trait Member: Sized + Clone {
         write!(f, "(Member,{:0.1})", item.degree)
     }
     fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO - consider removing this. We don't need Fuzzysets to format
+        // themselves differently based on their member type
+
         write!(f, "{{")?;
         let mut first = true;
         for item in set.iter() {

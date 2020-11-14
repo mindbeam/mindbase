@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufReader};
 
-use mindbase_core::MindBase;
-use mindbase_crypto::{key_manager::storage::sled::SledAdapter, KeyManager};
+use mindbase_core::*;
+use mindbase_crypto::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -65,8 +65,8 @@ fn run(opt: Opt) -> Result<(), std::io::Error> {
 
     println!("Loading database in {}", path.display());
 
-    let mb = MindBase::open(path)?;
-    let keymanager = KeyManager::new(Box::new(SledAdapter::new(homedir.as_path())?));
+    let mb = Service::new(SledStore::open(path)?)?;
+    let keymanager = KeyManager::new(SledAdapter::open(homedir.as_path())?);
     match opt.cmd {
         Command::Auth { cmd } => crate::subcommand::auth::run(mb, keymanager, cmd)?,
         Command::Import { echo, file } => crate::subcommand::import::run(mb, keymanager, file, echo)?,

@@ -1,10 +1,4 @@
-use crate::{
-    ast,
-    claim::{Body, Claim},
-    AgentId, Analogy, ArtifactId, ClaimId, MBError, MindBase,
-};
-
-use ast::{GPair, GSymbolizable};
+use crate::ast;
 
 /// Context object for low level search operations
 pub struct SearchContext<'a> {

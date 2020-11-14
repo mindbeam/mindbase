@@ -7,4 +7,5 @@ members = [
     "crates/mbcli",
     "crates/genesis",
     "crates/hypergraph",
+    "crates/store"
 ]
