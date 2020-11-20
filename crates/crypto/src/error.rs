@@ -3,8 +3,6 @@ pub enum Error {
     Mac(crypto_mac::MacError),
     Signature(ed25519_dalek::SignatureError),
     Bincode(bincode::Error),
-    #[cfg(not(target_arch = "wasm32"))]
-    Sled(sled::Error),
 }
 
 impl From<crypto_mac::MacError> for Error {
@@ -21,13 +19,6 @@ impl From<ed25519_dalek::SignatureError> for Error {
 impl From<bincode::Error> for Error {
     fn from(e: bincode::Error) -> Self {
         Self::Bincode(e)
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl From<sled::Error> for Error {
-    fn from(e: sled::Error) -> Self {
-        Self::Sled(e)
     }
 }
 

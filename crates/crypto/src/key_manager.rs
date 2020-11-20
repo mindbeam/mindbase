@@ -1,40 +1,65 @@
-pub mod storage;
+use mindbase_store::Store;
 
-// use web_sys::{window, Storage};
-use crate::{keys::private::AgentKey, keys::AgentIdentity, Error, PassKey};
+use crate::{keys::private::AgentKey, AgentId, Error, PassKey};
 
-use self::storage::{memory::MemoryAdapter, StorageAdapter};
-
-pub struct KeyManager {
-    storage_adapter: Box<dyn StorageAdapter>,
+pub struct KeyManager<S: Store> {
+    store: S,
+    agent_keys: S::Tree,
+    agent_id_config: S::Tree,
 }
 
-impl KeyManager {
-    pub fn new(storage_adapter: Box<dyn StorageAdapter>) -> Self {
-        Self { storage_adapter }
+impl<S> KeyManager<S: Store> {
+    pub fn new(store: S) -> Self {
+        Self {
+            store,
+            agent_keys: store.open_tree("agent_keys")?,
+            agent_id_config: store.open_tree("agent_id_config")?,
+        }
     }
-    pub fn list_agents(&self) -> Result<Vec<AgentIdentity>, Error> {
-        self.storage_adapter.list_agents()
+    pub fn list_agents(&self) -> Result<Vec<AgentId>, Error> {
+        Ok(self
+            .agent_keys
+            .iter()
+            .map(|kv| {
+                let kv = kv.unwrap();
+                let agentkey: AgentKey = bincode::deserialize(&kv.1).unwrap();
+                AgentId {
+                    pubkey: agentkey.pubkey(),
+                }
+            })
+            .collect())
     }
-    pub fn get_agent_key(&self, agent_id: &AgentIdentity) -> Result<Option<AgentKey>, Error> {
-        self.storage_adapter.get_agent_key(agent_id)
+    pub fn get_agent_key(&self, agent_id: &AgentId) -> Result<Option<AgentKey>, Error> {
+        match self.agent_keys.get(&agent_id.pubkey)? {
+            Some(ivec) => {
+                let agentkey: AgentKey = bincode::deserialize(&ivec)?;
+                Ok(Some(agentkey))
+            }
+            None => Ok(None),
+        }
     }
     pub fn put_agent_key(&self, agentkey: AgentKey) -> Result<(), Error> {
-        self.storage_adapter.put_agent_key(agentkey)?;
+        let key_ser: Vec<u8> = bincode::serialize(&agent_key).unwrap();
+
+        let agent_id = agent_key.id();
+        self.agent_keys.insert(&agent_id.pubkey, key_ser)?;
+        self.agent_keys.flush()?;
+
         Ok(())
     }
     pub fn remove_all_agent_keys(&self) -> Result<(), Error> {
-        self.storage_adapter.remove_all_agent_keys()?;
+        self.agent_keys.clear()?;
         Ok(())
     }
 
-    pub fn set_current_agent(&self, id: AgentIdentity) -> Result<(), Error> {
-        self.storage_adapter.set_labeled_agent("current", id)?;
+    pub fn set_current_agent(&self, id: AgentId) -> Result<(), Error> {
+        let id_ser: Vec<u8> = bincode::serialize(&id).unwrap();
+        self.agent_id_config.insert("current", id_ser)?;
         Ok(())
     }
     pub fn current_agent_key(&self) -> Result<Option<AgentKey>, Error> {
-        match self.storage_adapter.get_labeled_agent("current")? {
-            Some(agent_id) => self.storage_adapter.get_agent_key(&agent_id),
+        match self.agent_id_config.get("current")? {
+            Some(ivec) => Ok(Some(bincode::deserialize(&ivec)?)),
             None => Ok(None),
         }
     }

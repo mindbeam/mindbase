@@ -11,7 +11,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn keys_basic() {
+    fn custodial_key_round_trip() {
         let agentkey = AgentKey::create(None);
 
         let passkey = PassKey::new("I like turtles");
@@ -23,7 +23,7 @@ mod test {
     }
 
     #[test]
-    fn wrong_passphrase() {
+    fn custodial_key_wrong_passphrase() {
         let agentkey = AgentKey::create(None);
 
         let passkey = PassKey::new("I like turtles");

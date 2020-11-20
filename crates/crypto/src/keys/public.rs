@@ -8,7 +8,7 @@ pub struct AgentId {
         serialize_with = "mindbase_util::serde_helper::as_base64",
         deserialize_with = "mindbase_util::serde_helper::from_base64_32"
     )]
-    pubkey: [u8; 32],
+    pub pubkey: [u8; 32],
 }
 
 impl AgentId {
