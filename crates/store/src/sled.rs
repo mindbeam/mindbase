@@ -1,5 +1,51 @@
+use std::collections::BTreeMap;
+
 use sled::IVec;
-pub struct SledStore {}
+
+use crate::{Error, Store, Tree};
+pub struct SledStore {
+    db: sled::Db,
+}
+pub struct SledStoreTree(sled::Tree);
+
+impl Store for SledStore {
+    type Tree = SledStoreTree;
+    fn open_tree<V: AsRef<[u8]>>(&self, name: V) -> Result<Self::Tree, Error> {
+        Ok(SledStoreTree(self.db.open_tree(name)?))
+    }
+}
+
+impl Tree for SledStoreTree {
+    type Value = sled::IVec;
+
+    fn insert<K: AsRef<[u8]> + Into<Vec<u8>>>(&self, key: K, value: Vec<u8>) -> Result<(), Error> {
+        self.0.insert(key, value)?;
+        Ok(())
+    }
+
+    fn set_merge_operator(&self, merge_operator: impl crate::MergeOperator + 'static) {
+        self.0.set_merge_operator(merge_operator);
+    }
+
+    fn merge<K: AsRef<[u8]>, V: AsRef<[u8]>>(&self, key: K, value: V) -> Result<(), Error> {
+        self.0.merge(key, value)?;
+        Ok(())
+    }
+
+    fn get<K: AsRef<[u8]>>(&self, key: K) -> Result<Option<Self::Value>, Error> {
+        Ok(self.0.get(key)?)
+    }
+
+    fn flush(&self) -> Result<(), Error> {
+        self.0.flush()?;
+        Ok(())
+    }
+
+    fn clear(&self) -> Result<(), Error> {
+        self.0.clear()?;
+        Ok(())
+    }
+}
 
 impl SledStore {
     pub fn open_temp() -> Result<Self, Error> {
@@ -15,30 +61,6 @@ impl SledStore {
 
         let db = sled::open(pathbuf.as_path())?;
 
-        let artifacts = db.open_tree("artifacts")?;
-        let allegations = db.open_tree("allegations")?;
-        let atoms_by_artifact_agent = db.open_tree("allegation_rev")?;
-        // let analogy_rev = db.open_tree("allegation_rev")?;
-
-        // Both of these are &k[..] / Vec<sorted u8;16 chunks>
-        atoms_by_artifact_agent.set_merge_operator(merge_16byte_list);
-        // analogy_rev.set_merge_operator(merge_16byte_list);
-
-        // let default_agent = _default_agent(&my_agents)?;
-        let _known_agents = db.open_tree("known_agents")?;
-
-        let me = MindBase {
-            allegations,
-            // my_agents,
-            artifacts,
-            _known_agents,
-            atoms_by_artifact_agent,
-            // analogy_rev,
-            // default_agent,
-        };
-
-        // me.genesis()?;
-
-        Ok(me)
+        Ok(SledStore { db })
     }
 }
