@@ -1,4 +1,4 @@
-use crate::{MergeOperator, Store, Tree};
+use crate::{Error, MergeOperator, Store, Tree};
 use std::{
     collections::BTreeMap,
     sync::{Arc, Mutex},
@@ -28,7 +28,8 @@ impl Store for MemoryStore {
 }
 
 impl Tree for MemoryStoreTree {
-    type Value = Vec<u8>;
+    type OutValue = Vec<u8>;
+    type Iter = StupidIterator<(Self::OutValue, Self::OutValue)>;
 
     fn insert<K: AsRef<[u8]> + Into<Vec<u8>>>(&self, key: K, value: Vec<u8>) -> Result<(), crate::Error> {
         self.inner.lock().unwrap().btree.insert(key.into(), value);
@@ -43,7 +44,7 @@ impl Tree for MemoryStoreTree {
         todo!()
     }
 
-    fn get<K: AsRef<[u8]>>(&self, key: K) -> Result<Option<Self::Value>, crate::Error> {
+    fn get<K: AsRef<[u8]>>(&self, key: K) -> Result<Option<Self::OutValue>, crate::Error> {
         todo!()
     }
 
@@ -53,5 +54,35 @@ impl Tree for MemoryStoreTree {
 
     fn clear(&self) -> Result<(), crate::Error> {
         todo!()
+    }
+
+    fn iter(&self) -> StupidIterator<(Self::OutValue, Self::OutValue)> {
+        let inner = self.inner.lock().unwrap();
+        StupidIterator {
+            list: inner.btree.iter().map(|v| (v.0.to_owned(), v.1.to_owned())).collect(),
+            offset: 0,
+        }
+    }
+}
+
+pub struct StupidIterator<T> {
+    offset: usize,
+    list: Vec<T>,
+}
+
+impl<T> Iterator for StupidIterator<T>
+where
+    T: Clone,
+{
+    type Item = Result<T, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.list.get(self.offset) {
+            Some(v) => {
+                self.offset += 1;
+                Some(Ok(v.clone()))
+            }
+            None => None,
+        }
     }
 }

@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Error {
     #[cfg(not(target_arch = "wasm32"))]
     Sled(sled::Error),

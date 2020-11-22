@@ -3,6 +3,13 @@ pub enum Error {
     Mac(crypto_mac::MacError),
     Signature(ed25519_dalek::SignatureError),
     Bincode(bincode::Error),
+    Store(mindbase_store::Error),
+}
+
+impl From<mindbase_store::Error> for Error {
+    fn from(e: mindbase_store::Error) -> Self {
+        Error::Store(e)
+    }
 }
 
 impl From<crypto_mac::MacError> for Error {

@@ -8,13 +8,16 @@ pub struct KeyManager<S: Store> {
     agent_id_config: S::Tree,
 }
 
-impl<S> KeyManager<S: Store> {
-    pub fn new(store: S) -> Self {
-        Self {
+impl<S> KeyManager<S>
+where
+    S: Store,
+{
+    pub fn new(store: S) -> Result<Self, Error> {
+        Ok(Self {
             store,
             agent_keys: store.open_tree("agent_keys")?,
             agent_id_config: store.open_tree("agent_id_config")?,
-        }
+        })
     }
     pub fn list_agents(&self) -> Result<Vec<AgentId>, Error> {
         Ok(self
