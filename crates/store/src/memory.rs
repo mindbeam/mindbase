@@ -4,11 +4,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[derive(Default, Clone)]
 pub struct MemoryStore {
-    trees: BTreeMap<Vec<u8>, Arc<MemoryStoreTree>>,
+    trees: Arc<Mutex<BTreeMap<Vec<u8>, MemoryStoreTree>>>,
 }
 
-#[derive(Default)]
+impl MemoryStore {
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+#[derive(Default, Clone)]
 pub struct MemoryStoreTree {
     inner: Arc<Mutex<TreeInner>>,
 }
@@ -23,7 +30,11 @@ impl Store for MemoryStore {
     type Tree = MemoryStoreTree;
 
     fn open_tree<V: AsRef<[u8]>>(&self, name: V) -> Result<Self::Tree, crate::Error> {
-        Ok(Default::default())
+        let mut trees = self.trees.lock().unwrap();
+        match trees.entry(name.as_ref().to_owned()) {
+            std::collections::btree_map::Entry::Vacant(v) => Ok(v.insert(Default::default()).clone()),
+            std::collections::btree_map::Entry::Occupied(o) => Ok(o.get().clone()),
+        }
     }
 }
 
@@ -31,17 +42,21 @@ impl Tree for MemoryStoreTree {
     type OutValue = Vec<u8>;
     type Iter = StupidIterator<(Self::OutValue, Self::OutValue)>;
 
-    fn insert<K: AsRef<[u8]> + Into<Vec<u8>>>(&self, key: K, value: Vec<u8>) -> Result<(), crate::Error> {
-        self.inner.lock().unwrap().btree.insert(key.into(), value);
+    fn insert<K: AsRef<[u8]> + Into<Vec<u8>>, V: AsRef<[u8]>>(&self, key: K, value: V) -> Result<(), crate::Error> {
+        self.inner.lock().unwrap().btree.insert(key.into(), value.as_ref().into());
         Ok(())
     }
 
     fn set_merge_operator(&self, merge_operator: impl crate::MergeOperator + 'static) {
-        todo!()
+        self.inner.lock().unwrap().merge_operator = Some(Box::new(merge_operator));
     }
 
     fn merge<K: AsRef<[u8]>, V: AsRef<[u8]>>(&self, key: K, value: V) -> Result<(), crate::Error> {
-        todo!()
+        let mut inner = self.inner.lock().unwrap();
+        match inner.merge_operator {
+            Some(op) => {}
+            None => {}
+        }
     }
 
     fn get<K: AsRef<[u8]>>(&self, key: K) -> Result<Option<Self::OutValue>, crate::Error> {

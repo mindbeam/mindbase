@@ -18,10 +18,10 @@ pub trait MergeOperator: Fn(&[u8], Option<&[u8]>, &[u8]) -> Option<Vec<u8>> {}
 impl<F> MergeOperator for F where F: Fn(&[u8], Option<&[u8]>, &[u8]) -> Option<Vec<u8>> {}
 
 pub trait Tree {
-    type OutValue: AsRef<[u8]> + std::borrow::Borrow<[u8]> + Debug;
+    type OutValue: AsRef<[u8]> + std::borrow::Borrow<[u8]> + PartialEq<Vec<u8>> + std::ops::Deref<Target = [u8]> + Debug;
     type Iter: Iterator<Item = Result<(Self::OutValue, Self::OutValue), Error>>;
 
-    fn insert<K: AsRef<[u8]> + Into<Vec<u8>>>(&self, key: K, value: Vec<u8>) -> Result<(), Error>;
+    fn insert<K: AsRef<[u8]> + Into<Vec<u8>>, V: AsRef<[u8]>>(&self, key: K, value: V) -> Result<(), Error>;
     fn set_merge_operator(&self, merge_operator: impl MergeOperator + 'static);
     fn merge<K: AsRef<[u8]>, V: AsRef<[u8]>>(&self, key: K, value: V) -> Result<(), Error>;
     fn get<K: AsRef<[u8]>>(&self, key: K) -> Result<Option<Self::OutValue>, Error>;
@@ -32,14 +32,18 @@ pub trait Tree {
 
 #[cfg(test)]
 mod tests {
-    use crate::{SledStore, Store, Tree};
+    use crate::{MemoryStore, SledStore, Store, Tree};
 
     struct Tester<S: Store>(S);
     impl<S: Store> Tester<S> {
         pub fn test(&self) {
             let foo = self.0.open_tree("foo").unwrap();
-            foo.insert("meow", "cat".into()).unwrap();
-            foo.insert("woof", "dog".into()).unwrap();
+            foo.insert("meow", "cat").unwrap();
+            foo.insert("woof", "dog").unwrap();
+            // let items: Vec<_> = foo.iter().map(|r| r.unwrap()).collect();
+            // assert_eq!(items, [(b"meow", b"cat"), (b"woof", b"dog")]);
+            // assert_eq!(items, &[(&b"meow"[..], &b"cat"[..]), (&b"woof"[..], &b"dog"[..])][..]);
+
             // assert_eq!(
             //     foo.iter()
             //         .map(|r| r.unwrap())
@@ -48,15 +52,28 @@ mod tests {
             //     [(b"meow".to_vec(), b"cat".to_vec()), (b"woof".to_vec(), b"dog".to_vec())]
             // );
             let mut iter = foo.iter();
-            iter.next().unwrap().unwrap();
-            iter.next().unwrap().unwrap();
-            // TODO - left off here
+
+            // TODO 4 - fix trait bounds so we don't need to do such rediculous wrangling
+            let item = iter.next().unwrap().unwrap();
+            assert_eq!((&item.0 as &[u8], &item.1 as &[u8]), (&b"meow"[..], &b"cat"[..]));
+
+            let item = iter.next().unwrap().unwrap();
+            assert_eq!((&item.0 as &[u8], &item.1 as &[u8]), (&b"woof"[..], &b"dog"[..]));
+
+            assert!(iter.next().is_none());
         }
     }
 
     #[test]
     fn sled() {
         let store = SledStore::open_temp().unwrap();
+        let tester = Tester(store);
+        tester.test()
+    }
+
+    #[test]
+    fn memory() {
+        let store = MemoryStore::new();
         let tester = Tester(store);
         tester.test()
     }

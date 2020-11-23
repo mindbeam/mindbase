@@ -19,8 +19,8 @@ impl Tree for SledStoreTree {
     type OutValue = sled::IVec;
     type Iter = SledIterWrapper;
 
-    fn insert<K: AsRef<[u8]> + Into<Vec<u8>>>(&self, key: K, value: Vec<u8>) -> Result<(), Error> {
-        self.0.insert(key, value)?;
+    fn insert<K: AsRef<[u8]> + Into<Vec<u8>>, V: AsRef<[u8]>>(&self, key: K, value: V) -> Result<(), Error> {
+        self.0.insert(key, value.as_ref())?;
         Ok(())
     }
 
