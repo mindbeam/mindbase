@@ -53,22 +53,42 @@ impl Tree for MemoryStoreTree {
 
     fn merge<K: AsRef<[u8]>, V: AsRef<[u8]>>(&self, key: K, value: V) -> Result<(), crate::Error> {
         let mut inner = self.inner.lock().unwrap();
-        match inner.merge_operator {
-            Some(op) => {}
-            None => {}
+
+        // consider adding + Into<Vec<u8>>
+        let key = key.as_ref();
+        let value = value.as_ref();
+
+        match &inner.merge_operator {
+            Some(op) => {
+                // entry API requires an unnecessary clone >_>
+                let last = inner.btree.get(key).map(|v| v.as_ref());
+
+                match op(key, last, value.as_ref()) {
+                    Some(merged_value) => inner.btree.insert(key.to_vec(), merged_value),
+                    None => inner.btree.remove(key),
+                };
+            }
+            None => {
+                inner.btree.insert(key.to_vec(), value.to_vec());
+            }
         }
+
+        Ok(())
     }
 
     fn get<K: AsRef<[u8]>>(&self, key: K) -> Result<Option<Self::OutValue>, crate::Error> {
-        todo!()
+        let inner = self.inner.lock().unwrap();
+        Ok(inner.btree.get(key.as_ref()).map(|v| v.to_owned()))
     }
 
     fn flush(&self) -> Result<(), crate::Error> {
-        todo!()
+        Ok(())
     }
 
     fn clear(&self) -> Result<(), crate::Error> {
-        todo!()
+        let mut inner = self.inner.lock().unwrap();
+        inner.btree.clear();
+        Ok(())
     }
 
     fn iter(&self) -> StupidIterator<(Self::OutValue, Self::OutValue)> {
