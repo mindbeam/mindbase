@@ -10,3 +10,10 @@ impl From<sled::Error> for Error {
         Self::Sled(e)
     }
 }
+
+impl std::convert::From<Error> for std::io::Error {
+    fn from(error: Error) -> Self {
+        use std::io::ErrorKind;
+        std::io::Error::new(ErrorKind::Other, format!("{:?}", error))
+    }
+}
