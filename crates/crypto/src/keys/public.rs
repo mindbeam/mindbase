@@ -4,10 +4,10 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub struct AgentId {
-    #[serde(
-        serialize_with = "mindbase_util::serde_helper::as_base64",
-        deserialize_with = "mindbase_util::serde_helper::from_base64_32"
-    )]
+    // #[serde(
+    //     serialize_with = "mindbase_util::serde_helper::as_base64",
+    //     deserialize_with = "mindbase_util::serde_helper::from_base64_32"
+    // )]
     pub pubkey: [u8; 32],
 }
 
@@ -68,5 +68,19 @@ impl fmt::Display for AgentIdentity {
             &string,
             self.email.as_ref().map(|v| &v[..]).unwrap_or("-" as &str)
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::AgentId;
+
+    #[test]
+    fn serde() {
+        let id = AgentId { pubkey: [0; 32] };
+        let bytes = bincode::serialize(&id).unwrap();
+        let id2: AgentId = bincode::deserialize(&bytes).unwrap();
+
+        assert_eq!(id, id2);
     }
 }

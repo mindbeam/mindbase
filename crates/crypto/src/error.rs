@@ -1,5 +1,6 @@
 #[derive(Debug)]
 pub enum Error {
+    InvalidReferent,
     Mac(crypto_mac::MacError),
     Signature(ed25519_dalek::SignatureError),
     Bincode(bincode::Error),

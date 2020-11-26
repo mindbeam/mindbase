@@ -1,9 +1,9 @@
-use mindbase_store::Store;
+use mindbase_store::{MemoryStore, Store, Tree};
 
 use crate::{keys::private::AgentKey, AgentId, Error, PassKey};
 
 pub struct KeyManager<S: Store> {
-    store: S,
+    _store: S,
     agent_keys: S::Tree,
     agent_id_config: S::Tree,
 }
@@ -14,9 +14,9 @@ where
 {
     pub fn new(store: S) -> Result<Self, Error> {
         Ok(Self {
-            store,
             agent_keys: store.open_tree("agent_keys")?,
             agent_id_config: store.open_tree("agent_id_config")?,
+            _store: store,
         })
     }
     pub fn list_agents(&self) -> Result<Vec<AgentId>, Error> {
@@ -42,10 +42,10 @@ where
         }
     }
     pub fn put_agent_key(&self, agentkey: AgentKey) -> Result<(), Error> {
-        let key_ser: Vec<u8> = bincode::serialize(&agent_key).unwrap();
+        let key_ser: Vec<u8> = bincode::serialize(&agentkey).unwrap();
 
-        let agent_id = agent_key.id();
-        self.agent_keys.insert(&agent_id.pubkey, key_ser)?;
+        let agent_id = agentkey.id();
+        self.agent_keys.insert(&agent_id.pubkey[..], key_ser)?;
         self.agent_keys.flush()?;
 
         Ok(())
@@ -62,40 +62,36 @@ where
     }
     pub fn current_agent_key(&self) -> Result<Option<AgentKey>, Error> {
         match self.agent_id_config.get("current")? {
-            Some(ivec) => Ok(Some(bincode::deserialize(&ivec)?)),
+            Some(value) => {
+                let id: AgentId = bincode::deserialize(&value[..])?;
+
+                match self.get_agent_key(&id)? {
+                    Some(a) => Ok(Some(a)),
+                    None => Err(Error::InvalidReferent),
+                }
+            }
             None => Ok(None),
         }
     }
 }
 
-impl Default for KeyManager {
-    fn default() -> Self {
-        KeyManager::new(Box::new(MemoryAdapter::new()))
-    }
-}
-
 #[cfg(test)]
 mod test {
-    // use super::{keypair, KeyMask, PassKey};
+    use mindbase_store::MemoryStore;
 
-    // #[test]
-    // fn basic_keys() {
-    //     let secret = keypair();
-    //     let passkey = PassKey::new("My dog spot");
-    //     let mask = KeyMask::new(&secret, &passkey);
+    use crate::{AgentKey, KeyManager};
 
-    //     // The SecretKey is obviously not safe to send to the server, nor is the passkey.
-    //     // But the keymask IS safe to send to the server, because the server cannot extract
-    //     // the secret key from the KeyMask without the passkey.
+    #[test]
+    fn init() -> Result<(), std::io::Error> {
+        let keymanager = KeyManager::new(MemoryStore::new())?;
 
-    //     // This gives the user the ability to recover the secret key with the help of the
-    //     // server without the server having the ability to read it, and thus compromise the
-    //     // user's privacy
+        let agentkey = AgentKey::create(None);
+        let id = agentkey.id();
+        keymanager.put_agent_key(agentkey)?;
+        keymanager.set_current_agent(id.clone())?;
 
-    //     println!("The mask is {}", mask.base64());
+        assert_eq!(keymanager.current_agent_key().expect("is good").expect("is some").id(), id);
 
-    //     let passkey2 = mask.reveal(&passkey);
-
-    //     assert_eq!(secret)
-    // }
+        Ok(())
+    }
 }
