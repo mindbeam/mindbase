@@ -1,5 +1,5 @@
 [package]
-name = "mindbase-hypergraph"
+name = "mindbase-kgraph"
 version = "0.1.0"
 authors = ["Daniel Norman <daniel@danielnorman.net>"]
 edition = "2018"

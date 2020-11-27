@@ -6,7 +6,7 @@ members = [
     "crates/util",
     "crates/mbcli",
     "crates/genesis",
-    "crates/hypergraph",
+    "crates/kgraph",
     "crates/store"
 ]
 

@@ -1,4 +1,4 @@
-use mindbase_hypergraph::{query::AnalogyQuery, AssociativeAnalogy, testing::SimpleEntity};
+use mindbase_kgraph::{query::AnalogyQuery, AssociativeAnalogy, testing::SimpleEntity};
 
 
 fn experiment1() {
