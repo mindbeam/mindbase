@@ -2,42 +2,39 @@ pub mod associative;
 pub mod categorical;
 pub mod query;
 
+use crate::Entity;
+
 use self::{associative::AssociativeAnalogy, categorical::CategoricalAnalogy};
 
 pub enum Analogy<E>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     Associative(AssociativeAnalogy<E>),
     Categorical(CategoricalAnalogy<E>),
 }
 
-// impl std::fmt::Display for Analogy {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{}={}", self.set)
-//     }
-// }
-
 #[cfg(test)]
 mod test {
-
-    use crate::fuzzyset::FuzzySet;
-
     use super::{query::AnalogyQuery, AssociativeAnalogy};
+    use crate::{fuzzyset::FuzzySet, prelude::*, testing::SimpleEntity};
 
     #[test]
     fn lesser_weights_through_imperfect_analogy() {
         // TODO 1 - reconcile this experiment with the core crate
 
-        // Notice this analogy is inverse to
-        let a = AssociativeAnalogy::new(sym!["X", "F"], sym!["A", "B", "Q"]);
+        // Notice this analogy is inverse tom
+        let a = AssociativeAnalogy::<SimpleEntity>::new(sym![("X", 1.0), ("F", 1.0)], sym![("A", 1.0), ("B", 1.0), ("Q", 1.0)]);
         println!("{}", a);
 
-        let q = AnalogyQuery::new((sym!["A", "B", "C", "D"], sym!["X", "Y", "Z"]));
+        let q = AnalogyQuery::new((
+            sym![("A", 1.0), ("B", 1.0), ("C", 1.0), ("D", 1.0)],
+            sym![("X", 1.0), ("Y", 1.0), ("Z", 1.0)],
+        ));
         println!("{}", q);
 
         // interrogate the first analogy with the second
-        let mut b: FuzzySet = q.interrogate(&a).unwrap();
+        let mut b: FuzzySet<_> = q.interrogate(&a).unwrap();
 
         // Resultant set is scaled based on the common members and their degree
         // and also inverted to match the sidedness of the query analogy

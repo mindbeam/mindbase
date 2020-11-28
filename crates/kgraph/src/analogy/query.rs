@@ -1,8 +1,5 @@
 use crate::{
-    analogy::associative::AssociativeAnalogyMember,
-    analogy::associative::Side,
-    fuzzyset::{self as fs, FuzzySet},
-    AssociativeAnalogy,
+    analogy::associative::AssociativeAnalogyMember, analogy::associative::Side, fuzzyset::FuzzySet, AssociativeAnalogy, Entity,
 };
 
 pub struct AnalogyQuery<E>
@@ -14,7 +11,7 @@ where
 
 impl<E> AnalogyQuery<E>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     // Create a new analogy query
     pub fn new<Q>(query: Q) -> Self
@@ -26,7 +23,7 @@ where
 
     /// identify the subset of this analogy's fuzzy-set which intersect the comparison set
     /// and conditionally invert the sidedness of the resultant set to match the comparison set
-    pub fn interrogate<A>(&self, analogy: AssociativeAnalogy<E>) -> Option<FuzzySet<AssociativeAnalogyMember<E>>> {
+    pub fn interrogate(&self, analogy: &AssociativeAnalogy<E>) -> Option<FuzzySet<AssociativeAnalogyMember<E>>> {
         // FuzzySets are always sorted by ID (side is disabled for now), so we can outer join
         let mut iter = analogy
             .set

@@ -1,5 +1,11 @@
-use mindbase_kgraph::{query::AnalogyQuery, AssociativeAnalogy, testing::SimpleEntity};
-
+use mindbase_kgraph::{
+    analogy::{associative::AssociativeAnalogyMember, query::AnalogyQuery},
+    fuzzyset::FuzzySet,
+    prelude::*,
+    symbol::Symbol,
+    testing::SimpleEntity,
+    AssociativeAnalogy,
+};
 
 fn experiment1() {
     // In this experiment, we are approximating the following MBQL
@@ -10,19 +16,25 @@ fn experiment1() {
     let mut y = FuzzySet::new();
 
     // For simplicity, lets say these are all the analogies in the system
-    let candidates = [
+    let candidates: [AssociativeAnalogy<SimpleEntity>; 3] = [
         //
-        AssociativeAnalogy<SimpleEntity>::new(sym!["Hot1", "Hot2", "Heated1"], sym!["Mild1", "Mild2", "Cold3"]),
-        AssociativeAnalogy<SimpleEntity>::new(sym!["Hot3"], sym!["Cold1", "Cold2"]),
-        AssociativeAnalogy<SimpleEntity>::new(sym!["Cold3"], sym!["Hot3"]),
+        AssociativeAnalogy::new(
+            sym![("Hot1", 1.0), ("Hot2", 1.0), ("Heated1", 1.0)],
+            sym![("Mild1", 1.0), ("Mild2", 1.0), ("Cold3", 1.0)],
+        ),
+        AssociativeAnalogy::new(sym![("Hot3", 1.0)], sym![("Cold1", 1.0), ("Cold2", 1.0)]),
+        AssociativeAnalogy::new(sym![("Cold3", 1.0)], sym![("Hot3", 1.0)]),
     ];
 
     // Imagine we looked up all AtomIds for all Allegations related to Artifacts "Hot" and "Cold"
-    let query = AnalogyQuery::new((sym!["Hot1", "Hot2", "Hot3"], sym!["Cold1", "Cold2", "Cold3"]));
+    let query = AnalogyQuery::new((
+        sym![("Hot1", 1.0), ("Hot2", 1.0), ("Hot3", 1.0)],
+        sym![("Cold1", 1.0), ("Cold2", 1.0), ("Cold3", 1.0)],
+    ));
     println!("Query is: {}", query);
 
     for candidate in &candidates {
-        let v: FuzzySet<analogy::AnalogyMember> = candidate.interrogate(&query).expect("All of the above should match");
+        let v: FuzzySet<AssociativeAnalogyMember<_>> = query.interrogate(candidate).expect("All of the above should match");
         println!("v is {}", v);
 
         // QUESTION: should the union of the resultant query output sets (for each candidate analogy) bear equal weight in the
@@ -80,7 +92,7 @@ fn fuzzy_set_union_signal_to_noise_problem() {
 
     // lets imagine we interrogate three candidate Analogies and we are left with the following Symbols
     // which we are constructing manually here, but would be typically be analogy interrogation outputs created by the query tree.
-    let io1 = sym!["Hot1"];
+    let io1: Symbol<SimpleEntity> = sym![("Hot1", 1.0)];
     let io2 = sym![("Hot1", 0.5), ("Muggy1", 0.9)];
     let io3 = sym![("Hot1", 1.0), ("Sticky1", 0.5)];
     println!("{:?}", io3);

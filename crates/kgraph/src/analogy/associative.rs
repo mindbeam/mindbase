@@ -1,13 +1,25 @@
 use std::cmp::Ordering;
 
+// QUESTION: How do we reconcile Associative Analogies and Subject-Predicate-Object statements?
+// Arguably they are mirrors of each other. SPO declares the predicate, whereas AA infers it.
+// TODO 2 - Experiment – explore the reciprocality of SPO / AA
+// TODO 3 - Experiment - explore the inferability of SPO -> AA and AA -> SPO
+// TODO 3 - Experiment - explore the relationship between the AA identity and the Predicate identity
+
+// (Parent  : Child)   :  (Commander  : Subordinate)
+// (Parent [X] Child) <-> (Commander [X] Subordinate)
+// where X is all of the predicates which associate the terms ( according to whom? )
+// Eg: [in charge of], [older than], [more resolute than], []
+
 use crate::{
     fuzzyset::{self as fs, FuzzySet},
     symbol::SymbolMember,
+    Entity,
 };
 
-pub struct AssociativeAnalogy<E = crate::claim::ClaimId>
+pub struct AssociativeAnalogy<E>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     pub(crate) set: FuzzySet<AssociativeAnalogyMember<E>>,
 }
@@ -26,12 +38,12 @@ pub enum Side {
 
 impl<E> AssociativeAnalogy<E>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     pub fn new<List, IntoItem>(left: List, right: List) -> Self
     where
         List: IntoIterator<Item = IntoItem>,
-        IntoItem: Into<fs::Item<AssociativeAnalogyMember<E>>>,
+        IntoItem: Into<fs::Item<SymbolMember<E>>>,
     {
         let mut set = FuzzySet::new();
 
@@ -105,7 +117,10 @@ where
     }
 }
 
-impl std::fmt::Display for AssociativeAnalogy {
+impl<E> std::fmt::Display for AssociativeAnalogy<E>
+where
+    E: Entity,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
         let mut first = true;
@@ -137,7 +152,7 @@ impl std::fmt::Display for AssociativeAnalogy {
 
 impl<E> FuzzySet<AssociativeAnalogyMember<E>>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     pub fn scale_lr(&mut self, left_scale_factor: f32, right_scale_factor: f32) {
         for item in self.iter_mut() {

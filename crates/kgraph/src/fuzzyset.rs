@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 const MEMBER_CULL_DEGREE: f32 = 0.01;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item<M>
 where
     M: Member,

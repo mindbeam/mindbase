@@ -1,13 +1,14 @@
-use serde::{Deserialize, Serialize};
-
-use crate::fuzzyset::{self as fs, FuzzySet};
+use crate::{
+    fuzzyset::{self as fs, FuzzySet},
+    Entity,
+};
 
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone)]
-pub struct Symbol<E = crate::claim::ClaimId>
+pub struct Symbol<E>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     pub set: FuzzySet<SymbolMember<E>>,
 }
@@ -19,7 +20,7 @@ pub struct SymbolMember<E> {
 
 impl<E> Symbol<E>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     pub fn null() -> Self {
         // QUESTION: Should it be possible to represent a null symbol?
@@ -58,7 +59,7 @@ where
 
 impl<E> fs::Member for SymbolMember<E>
 where
-    E: Clone + std::fmt::Display + std::cmp::Ord,
+    E: Entity,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.entity.cmp(&other.entity)
@@ -69,64 +70,24 @@ where
     }
 }
 
-impl std::fmt::Display for Symbol {
+impl<E> std::fmt::Display for Symbol<E>
+where
+    E: Entity,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.set)
     }
 }
 
-pub mod convenience {
-    use crate::analogy::associative::AssociativeAnalogyMember;
+impl<E> IntoIterator for Symbol<E>
+where
+    E: Entity, // IntoItem: Into<fs::Item<AssociativeAnalogyMember<E>>>,
+{
+    type Item = fs::Item<SymbolMember<E>>;
 
-    use super::*;
+    type IntoIter = std::vec::IntoIter<fs::Item<SymbolMember<E>>>;
 
-    #[macro_export]
-    #[warn(unused_macros)]
-    macro_rules! sym {
-        ($($x:expr),+) => (
-            Symbol::new(&[$($x),+])
-        );
-    }
-
-    // impl<E> From<fs::Item<AssociativeAnalogyMember<E>>> for fs::Item<SymbolMember<E>>
-    // where
-    //     E: Clone,
-    // {
-    //     fn from(analogy_member: fs::Item<AssociativeAnalogyMember<E>>) -> Self {
-    //         fs::Item {
-    //             member: SymbolMember {
-    //                 entity: analogy_member.member.entity,
-    //             },
-    //             degree: analogy_member.degree,
-    //         }
-    //     }
-    // }
-
-    // impl<E, I> From<I> for fs::Item<SymbolMember<E>>
-    // where
-    //     I: Into<E>,
-    // {
-    //     fn from(item: I) -> Self {
-    //         fs::Item {
-    //             member: SymbolMember { entity: item.into() },
-    //             degree: 1.0,
-    //         }
-    //     }
-    // }
-
-    impl<E, T> From<&(T, f32)> for fs::Item<SymbolMember<E>>
-    where
-        T: Into<E>,
-        T: Clone,
-        E: Clone + std::fmt::Display + std::cmp::Ord,
-    {
-        fn from(item: &(T, f32)) -> Self {
-            fs::Item {
-                member: SymbolMember {
-                    entity: item.0.clone().into(),
-                },
-                degree: item.1,
-            }
-        }
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_iter()
     }
 }
