@@ -4,7 +4,9 @@ use super::{
     custodian::{CustodialAgentKey, KeyMask, UserAuthKey},
     AgentIdentity,
 };
-use ed25519_dalek::{Keypair, Sha512};
+use ed25519_dalek::Keypair;
+use ed25519_dalek::Signature;
+// use ed25519_dalek::{Keypair, Sha512};
 use hmac::{Hmac, Mac, NewMac};
 use rand::rngs::OsRng;
 use scrypt::{scrypt, ScryptParams};

@@ -1,6 +1,6 @@
-use mindbase_store::{MemoryStore, Store, Tree};
+use mindbase_store::{Store, Tree};
 
-use crate::{keys::private::AgentKey, AgentId, Error, PassKey};
+use crate::{keys::private::AgentKey, AgentId, Error};
 
 pub struct KeyManager<S: Store> {
     _store: S,

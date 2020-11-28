@@ -1,7 +1,3 @@
-use std::collections::BTreeMap;
-
-use sled::IVec;
-
 use crate::{Error, Store, Tree};
 pub struct SledStore {
     db: sled::Db,
