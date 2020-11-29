@@ -7,7 +7,7 @@ pub enum Error {
     SignatureError,
     Base64Error,
     AllegationNotFound,
-    MBQL(Box<mindbase_mbql::error::MBQLError>),
+    // MBQL(Box<mindbase_mbql::error::MBQLError>),
     TraversalFailed,
     UnboundSymbol,
     SymbolVarNotFound,
@@ -23,11 +23,11 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl From<MBQLError> for Error {
-    fn from(e: MBQLError) -> Self {
-        Self::MBQL(Box::new(e))
-    }
-}
+// impl From<MBQLError> for Error {
+//     fn from(e: MBQLError) -> Self {
+//         Self::MBQL(Box::new(e))
+//     }
+// }
 
 impl From<mindbase_util::Error> for Error {
     fn from(e: mindbase_util::Error) -> Self {

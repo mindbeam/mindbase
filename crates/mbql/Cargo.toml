@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-mindbase-kgraph = { path="../kgraph" }
+mindbase-symbol = { path="../symbol" }
 itertools = "0.9"
 pest = "2.1.3"
 pest_derive = "2.1.0"

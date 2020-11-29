@@ -1,12 +1,14 @@
 [workspace]
 members = [
+    "crates/artifact",
     "crates/core",
+    "crates/claim",
     "crates/mbql",
     "crates/crypto",
     "crates/util",
     "crates/mbcli",
     "crates/genesis",
-    "crates/kgraph",
+    "crates/symbol",
     "crates/store"
 ]
 

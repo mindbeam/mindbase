@@ -7,7 +7,7 @@ use crate::{
     Position, Query,
 };
 
-// use mindbase_kgraph::{AgentId, Analogy, ArtifactId, Symbol};
+// use mindbase_symbol::{AgentId, Analogy, ArtifactId, Symbol};
 
 use super::error::MBQLErrorKind;
 use pest::iterators::Pair;

@@ -4,7 +4,7 @@ use super::{
     Position,
 };
 use crate::search::SearchContext;
-use mindbase_kgraph as kg;
+use mindbase_symbol as sy;
 
 use std::{collections::BTreeMap, io::Cursor, sync::Mutex};
 
