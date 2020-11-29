@@ -76,7 +76,7 @@ where
                         (Side::Right, Side::Right) => &mut rr_bucket,
                         (Side::Left, Side::Right) => &mut lr_bucket,
                         (Side::Right, Side::Left) => &mut rl_bucket,
-                        _ => unimplemented!("Not clear on how/if categorical analogies mix with sided"),
+                        // _ => unimplemented!("Not clear on how/if categorical analogies mix with sided"),
                     };
 
                     bucket.degree += match_degree;

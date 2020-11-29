@@ -7,7 +7,6 @@ pub mod fuzzyset;
 pub mod symbol;
 
 pub trait Entity: Clone + std::fmt::Display + std::cmp::Ord {}
-pub trait Artifact {}
 
 pub mod testing;
 

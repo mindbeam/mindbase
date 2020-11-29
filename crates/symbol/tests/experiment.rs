@@ -1,4 +1,4 @@
-use mindbase_kgraph::{
+use mindbase_symbol::{
     analogy::{associative::AssociativeAnalogyMember, query::AnalogyQuery},
     fuzzyset::FuzzySet,
     prelude::*,
