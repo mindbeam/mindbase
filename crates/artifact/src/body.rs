@@ -1,23 +1,34 @@
+use mindbase_crypto::AgentId;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+
+use crate::{ArtifactId, NodeType};
+
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum Artifact {
+pub enum Artifact<T>
+where
+    T: NodeType,
+{
     Agent(AgentId),
     Url(Url),
     FlatText(Text),
-    DataGraph(DataGraph),
-    DataNode(DataNode),
+    DataGraph(DataGraph<T>),
+    DataNode(DataNode<T>),
 }
 
-impl Artifact {
+use sha2::{Digest, Sha512Trunc256};
+impl<T> Artifact<T>
+where
+    T: NodeType,
+{
     pub fn id(&self) -> ArtifactId {
         let mut hasher = Sha512Trunc256::new();
 
         // TODO 5 switch to CapnProto or similar. Artifact storage and wire representation should be identical
         // Therefore we should hash that
-        let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
+        let encoded: Vec<u8> = bincode::serialize(self).unwrap();
         hasher.update(&encoded);
-
         let result = hasher.finalize();
-
         ArtifactId(result.into())
     }
 
@@ -34,7 +45,10 @@ impl Artifact {
     }
 }
 
-impl fmt::Display for Artifact {
+impl<T> std::fmt::Display for Artifact<T>
+where
+    T: NodeType,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Agent(_a) => unimplemented!(),
@@ -51,8 +65,11 @@ pub struct Url {
     pub url: String,
 }
 
-impl Into<Artifact> for Url {
-    fn into(self) -> Artifact {
+impl<T> Into<Artifact<T>> for Url
+where
+    T: NodeType,
+{
+    fn into(self) -> Artifact<T> {
         Artifact::Url(self)
     }
 }
@@ -83,14 +100,20 @@ impl fmt::Display for Text {
     }
 }
 
-impl Into<Artifact> for Text {
-    fn into(self) -> Artifact {
+impl<T> Into<Artifact<T>> for Text
+where
+    T: NodeType,
+{
+    fn into(self) -> Artifact<T> {
         Artifact::FlatText(self)
     }
 }
 
-impl Into<Artifact> for &str {
-    fn into(self) -> Artifact {
+impl<T> Into<Artifact<T>> for &str
+where
+    T: NodeType,
+{
+    fn into(self) -> Artifact<T> {
         Artifact::FlatText(Text::new(self))
     }
 }
@@ -98,39 +121,48 @@ impl Into<Artifact> for &str {
 // Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
 // This can be used to store XML or JSON documents, or other application specific formats
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct DataGraph {
-    pub graph_type: Symbol,
+pub struct DataGraph<T> {
+    pub graph_type: T,
     pub bytes: u32, // Optional
     /// Must contain all unreachable nodes. Optionally reachable nodes may be present
-    pub nodes: Vec<ClaimId>,
+    pub nodes: Vec<ArtifactId>,
 }
 
-impl Into<Artifact> for DataGraph {
-    fn into(self) -> Artifact {
+impl<T> Into<Artifact<T>> for DataGraph<T>
+where
+    T: NodeType,
+{
+    fn into(self) -> Artifact<T> {
         Artifact::DataGraph(self)
     }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct DataNode {
-    pub data_type: Symbol,
+pub struct DataNode<T> {
+    pub data_type: T,
     pub data: Option<Vec<u8>>,
 }
 
-impl Into<Artifact> for DataNode {
-    fn into(self) -> Artifact {
+impl<T> Into<Artifact<T>> for DataNode<T>
+where
+    T: NodeType,
+{
+    fn into(self) -> Artifact<T> {
         Artifact::DataNode(self)
     }
 }
 
-impl Into<Artifact> for AgentId {
-    fn into(self) -> Artifact {
+impl<T> Into<Artifact<T>> for AgentId
+where
+    T: NodeType,
+{
+    fn into(self) -> Artifact<T> {
         Artifact::Agent(self)
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DataNodeRelation {
-    pub to: ClaimId,
-    pub relation_type: Symbol,
+pub struct DataNodeRelation<T> {
+    pub to: ArtifactId,
+    pub relation_type: T,
 }
