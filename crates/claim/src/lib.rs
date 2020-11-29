@@ -1,7 +1,9 @@
-use crate::{
+mod body;
+
+use mindbase_symbol::{
     analogy::Analogy,
     symbol::{Symbol, SymbolMember},
-    Artifact, AssociativeAnalogy, CategoricalAnalogy, Entity,
+    AssociativeAnalogy, CategoricalAnalogy, Entity,
 };
 
 use mindbase_crypto::{AgentId, AgentKey, Signature};
@@ -9,6 +11,10 @@ use mindbase_util::Error;
 use rusty_ulid::generate_ulid_bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use crate::artifact::Artifact;
+
+use self::body::ClaimBody;
 #[derive(Clone, Serialize, Deserialize, Ord, Eq, PartialOrd, PartialEq)]
 pub struct ClaimId(
     #[serde(
@@ -35,18 +41,18 @@ impl ClaimId {
         base64::encode_config(&self.0, STANDARD_NO_PAD)
     }
 
-    /// Create a "Narrow" Symbol which refers exclusively to this Allegation
-    /// As a general rule, we should avoid using narrow symbols whenever possible
-    /// This is because we want to be convergent with our neighbors. I am not an island.
-    /// Narrow symbols should be created ONLY when referring to some other entities we just
-    /// created, and no clustering is possible
-    pub fn subjective(&self) -> Symbol {
-        unimplemented!("should probably remove this")
-        // Symbol {
-        //     atoms: vec![Atom::up(self.clone())],
-        //     spread_factor: 0.0,
-        // }
-    }
+    // /// Create a "Narrow" Symbol which refers exclusively to this Allegation
+    // /// As a general rule, we should avoid using narrow symbols whenever possible
+    // /// This is because we want to be convergent with our neighbors. I am not an island.
+    // /// Narrow symbols should be created ONLY when referring to some other entities we just
+    // /// created, and no clustering is possible
+    // pub fn subjective<E> (&self) -> Symbol<Entity> {
+    //     unimplemented!("should probably remove this")
+    //     // Symbol {
+    //     //     atoms: vec![Atom::up(self.clone())],
+    //     //     spread_factor: 0.0,
+    //     // }
+    // }
 
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
@@ -79,15 +85,12 @@ impl fmt::Debug for ClaimId {
     }
 }
 
-pub mod convenience {
-    use crate::artifact::ArtifactId;
+impl std::convert::TryFrom<&[u8]> for ClaimId {
+    type Error = Error;
 
-    use super::Body;
-
-    impl From<ArtifactId> for Body {
-        fn from(id: ArtifactId) -> Self {
-            Body::Artifact(id)
-        }
+    fn try_from(ivec: &[u8]) -> Result<Self, Error> {
+        use std::convert::TryInto;
+        Ok(Self((&ivec[..]).try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?))
     }
 }
 
@@ -125,12 +128,16 @@ pub mod convenience {
 /// See [`mindbase::symbol::Symbol`][Symbol] for more details
 
 // #[derive(Serialize, Deserialize)]
-pub struct Claim<E> {
+pub struct Claim<E>
+where
+    E: Entity,
+    A: Artifact,
+{
     /// TODO 3 - Consider renaming "Allegation*" to "Symbol*"
     pub id: ClaimId,
     pub agent_id: AgentId,
     // TODO 3 - Context (Date, time, place, etc)
-    pub body: Body,
+    pub body: ClaimBody<E, Artifact>,
     pub signature: Signature,
 }
 
@@ -244,43 +251,5 @@ impl std::convert::AsRef<[u8]> for ClaimId {
 impl fmt::Display for Claim<E, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.id, self.body)
-    }
-}
-
-// #[derive(Serialize, Deserialize)]
-pub enum Body<E: Entity, A: Artifact> {
-    /// A Unit Claim a globally unique entity with no payload
-    Unit,
-
-    /// An Agent Claim is a globally unique entity which references to an actual Agent
-    /// one could construct other Claims which were distinct in their identity, but reference the same AgentId
-    AssociativeAnalogy(AssociativeAnalogy<E>),
-    CategoricalAnalogy(CategoricalAnalogy<E>),
-    Artifact(A),
-}
-
-impl std::convert::TryFrom<&[u8]> for ClaimId {
-    type Error = Error;
-
-    fn try_from(ivec: &[u8]) -> Result<Self, Error> {
-        use std::convert::TryInto;
-        Ok(Self((&ivec[..]).try_into().map_err(|_| mindbase_util::Error::TryFromSlice)?))
-    }
-}
-
-// impl mindbase_util::AsBytes for &Body {
-//     fn as_bytes(&self) -> Vec<u8> {
-//         bincode::serialize(self).unwrap()
-//     }
-// }
-
-impl<E, A> fmt::Display for Body<E, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Body::Unit => write!(f, "Unit()"),
-            Body::AssociativeAnalogy(a) => write!(f, "Assoc({})", a),
-            Body::CategoricalAnalogy(c) => write!(f, "Cat({})", c),
-            Body::Artifact(a) => write!(f, "Artifact({})", a),
-        }
     }
 }
