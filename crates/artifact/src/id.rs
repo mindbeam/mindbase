@@ -2,14 +2,7 @@ use core::fmt;
 use mindbase_util::Error;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord)]
-pub struct ArtifactId(
-    #[serde(
-        serialize_with = "mindbase_util::serde_helper::as_base64",
-        deserialize_with = "mindbase_util::serde_helper::from_base64_32"
-    )]
-    pub(crate) [u8; 32],
-);
+use crate::ArtifactId;
 
 impl fmt::Display for ArtifactId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
