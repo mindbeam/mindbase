@@ -1,6 +1,8 @@
 use std::collections::{btree_map::Entry, BTreeMap};
 
-use artifact::{artifact::DataGraph, artifact::DataNode, artifact::DataRelation, Artifact, ArtifactId, NodeInstance, NodeType};
+use mindbase_artifact::{
+    artifact::DataGraph, artifact::DataNode, artifact::DataRelation, Artifact, ArtifactId, NodeInstance, NodeType,
+};
 use serde::Serialize;
 use serde_json::Value;
 
