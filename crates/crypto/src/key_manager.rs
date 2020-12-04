@@ -75,6 +75,16 @@ where
     }
 }
 
+impl<T> Default for KeyManager<T>
+where
+    T: Store + Default,
+{
+    fn default() -> Self {
+        KeyManager::new(Default::default())
+            .expect("should not fail for store which implements default")
+    }
+}
+
 #[cfg(test)]
 mod test {
     use mindbase_store::MemoryStore;
@@ -90,7 +100,14 @@ mod test {
         keymanager.put_agent_key(agentkey)?;
         keymanager.set_current_agent(id.clone())?;
 
-        assert_eq!(keymanager.current_agent_key().expect("is good").expect("is some").id(), id);
+        assert_eq!(
+            keymanager
+                .current_agent_key()
+                .expect("is good")
+                .expect("is some")
+                .id(),
+            id
+        );
 
         Ok(())
     }
