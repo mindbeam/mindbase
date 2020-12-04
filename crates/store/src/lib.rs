@@ -4,9 +4,11 @@ pub mod memory;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod sled;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::sled::SledStore;
+
 use std::fmt::Debug;
 
-pub use self::sled::SledStore;
 pub use error::Error;
 pub use memory::MemoryStore;
 
