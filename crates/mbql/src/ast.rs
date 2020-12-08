@@ -1,7 +1,7 @@
 pub mod artifact;
 
 use crate::{
-    error::MBQLError,
+    error::Error,
     parse::{self, Rule},
     search::SearchNode,
     Position, Query,
@@ -9,7 +9,7 @@ use crate::{
 
 // use mindbase_symbol::{AgentId, Analogy, ArtifactId, Symbol};
 
-use super::error::MBQLErrorKind;
+use super::error::ErrorKind;
 use pest::iterators::Pair;
 
 use std::rc::Rc;
@@ -22,7 +22,7 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn parse(element: Pair<Rule>, query: &mut crate::mbql::Query, position: &Position) -> Result<(), MBQLError> {
+    pub fn parse(element: Pair<Rule>, query: &mut Query, position: &Position) -> Result<(), Error> {
         let me = match element.as_rule() {
             Rule::EOI => return Ok(()), // Comment or blank line
             Rule::artifactstatement => Statement::Artifact(ArtifactStatement::parse(element, position)?),
@@ -49,7 +49,7 @@ impl Statement {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<(), MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<(), Error> {
         match self {
             Statement::Artifact(s) => {
                 // Ignore this artifact_id because it's being stored inside the apply.
@@ -87,7 +87,7 @@ enum DiagElement {
 }
 
 impl DiagStatement {
-    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::diagstatement);
 
         let mut items = pair.into_inner();
@@ -142,7 +142,7 @@ impl DiagStatement {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<(), MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<(), Error> {
         use std::fmt::Write;
 
         let mut out = String::new();
@@ -158,9 +158,9 @@ impl DiagStatement {
                     if let Some(artifact_id) = query.get_artifact_var(&var.var)? {
                         out.push_str(&format!("{} = {}", var, artifact_id));
                     } else {
-                        return Err(MBQLError {
+                        return Err(Error {
                             position: var.position.clone(),
-                            kind: MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() },
+                            kind: ErrorKind::ArtifactVarNotFound { var: var.var.clone() },
                         });
                     }
                 }
@@ -169,9 +169,9 @@ impl DiagStatement {
                         write!(out, "{} = ", v).unwrap();
                         symbol.contents_buf(query.mb, &mut out, *depth)?;
                     } else {
-                        return Err(MBQLError {
+                        return Err(Error {
                             position: v.position.clone(),
-                            kind: MBQLErrorKind::SymbolVarNotFound { var: v.var.clone() },
+                            kind: ErrorKind::SymbolVarNotFound { var: v.var.clone() },
                         });
                     }
                 }
@@ -205,7 +205,7 @@ pub struct BindStatement {
 }
 
 impl BindStatement {
-    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::bindstatement);
 
         let mut inner = pair.into_inner();
@@ -244,7 +244,7 @@ pub struct ArtifactVar {
 }
 
 impl ArtifactVar {
-    fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::artifactvar);
         Ok(Self {
             var: pair.into_inner().next().unwrap().as_str().to_string(),
@@ -271,7 +271,7 @@ pub struct SymbolVar {
 }
 
 impl SymbolVar {
-    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::symbolvar);
         Ok(Self {
             var: pair.into_inner().next().unwrap().as_str().to_string(),
@@ -288,13 +288,13 @@ impl SymbolVar {
         self.var.clone()
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, Error> {
         if let Some(symbol) = query.get_symbol_for_var(&self.var)? {
             Ok(symbol)
         } else {
-            return Err(MBQLError {
+            return Err(Error {
                 position: self.position.clone(),
-                kind: MBQLErrorKind::SymbolVarNotFound { var: self.var.clone() },
+                kind: ErrorKind::SymbolVarNotFound { var: self.var.clone() },
             });
         }
     }
@@ -317,7 +317,7 @@ pub struct ArtifactStatement {
 }
 
 impl ArtifactStatement {
-    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::artifactstatement);
 
         let mut pairs = pair.into_inner();
@@ -340,7 +340,7 @@ impl ArtifactStatement {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<ArtifactId, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<ArtifactId, Error> {
         let artifact_id = self.artifact.apply(query)?;
         query.stash_artifact_for_var(&self.var, artifact_id.clone())?;
         Ok(artifact_id)
@@ -355,7 +355,7 @@ pub struct SymbolStatement {
 }
 
 impl SymbolStatement {
-    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::symbolstatement);
 
         let mut pairs = pair.into_inner();
@@ -393,7 +393,7 @@ impl SymbolStatement {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<(), MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<(), Error> {
         let symbol = self.symz.apply(query)?;
 
         if let Some(var) = &self.var {
@@ -416,7 +416,7 @@ pub struct Ground {
 }
 
 impl Ground {
-    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::ground);
 
         let mut inner = pair.into_inner();
@@ -459,7 +459,7 @@ impl Ground {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, Error> {
         let mut search_node = SearchNode::search(query, &self.symbolizable)?;
 
         match search_node.symbol() {
@@ -469,9 +469,9 @@ impl Ground {
                     search_node.stash_bindings(query)?;
                     Ok(search_node.symbol().unwrap())
                 } else {
-                    Err(MBQLError {
+                    Err(Error {
                         position: self.position.clone(),
-                        kind: MBQLErrorKind::GSymNotFound,
+                        kind: ErrorKind::GSymNotFound,
                     })
                 }
             }
@@ -491,7 +491,7 @@ pub struct Allege {
 }
 
 impl Allege {
-    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::allege);
 
         let mut symbol_pair = pair.into_inner().next().unwrap().into_inner();
@@ -526,7 +526,7 @@ impl Allege {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, Error> {
         let left = self.left.apply(query)?;
         let right = self.right.apply(query)?;
 
@@ -541,7 +541,7 @@ pub struct Symbolize {
     position: Position,
 }
 impl Symbolize {
-    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::symbolize);
         Ok(Symbolize {
             symbolizable: Rc::new(Symbolizable::parse(pair.into_inner().next().unwrap(), position)?),
@@ -562,7 +562,7 @@ impl Symbolize {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, Error> {
         self.symbolizable.apply(query)
     }
 }
@@ -577,7 +577,7 @@ pub enum Symbolizable {
 }
 
 impl Symbolizable {
-    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         // because of left-recursion issues, we had to construct symbolizable in a slightly odd way
         // which necessitates allege and ground to support symbol_pair AND symbolizable as potential child elements
         // So we are handling symbol_pair if they were symbolizable
@@ -632,7 +632,7 @@ impl Symbolizable {
         Ok(())
     }
 
-    pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<Symbol, Error> {
         let symbol = match self {
             Symbolizable::Artifact(a) => {
                 let artifact_id = a.apply(query)?;
@@ -670,7 +670,7 @@ pub enum GSymbolizable {
 }
 
 impl GSymbolizable {
-    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         let s = match pair.as_rule() {
             Rule::ground_symbol_pair => {
                 let mut inner = pair.into_inner();
@@ -730,7 +730,7 @@ impl GSymbolizable {
         Ok(())
     }
 
-    // pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+    // pub fn apply(&self, query: &Query) -> Result<Symbol, Error> {
     //     let symbol = match self {
     //         GroundSymbolizable::Artifact(a) => query.mb.get_ground_symbol(a)?,
     //         GroundSymbolizable::GroundPair(a) => a.apply(query),
@@ -760,7 +760,7 @@ pub struct GPair {
 }
 
 impl GPair {
-    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::allege);
 
         let mut ground_symbol_pair = pair.into_inner().next().unwrap().into_inner();
@@ -794,7 +794,7 @@ impl GPair {
     pub fn position(&self) -> &Position {
         &self.position
     }
-    // pub fn apply(&self, query: &Query) -> Result<Symbol, MBQLError> {
+    // pub fn apply(&self, query: &Query) -> Result<Symbol, Error> {
     //     unimplemented!()
     // }
 }
@@ -822,7 +822,7 @@ impl Artifact {
         Ok(())
     }
 
-    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, MBQLError> {
+    pub fn parse(pair: Pair<parse::Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::artifact);
         let child = pair.into_inner().next().unwrap();
 
@@ -839,7 +839,7 @@ impl Artifact {
         Ok(a)
     }
 
-    pub fn apply(&self, query: &Query) -> Result<ArtifactId, MBQLError> {
+    pub fn apply(&self, query: &Query) -> Result<ArtifactId, Error> {
         let artifact_id = match self {
             Artifact::Agent(agent) => query.mb.put_artifact(agent.get_agent_id(query.mb)?)?,
             Artifact::Url(url) => query.mb.put_artifact(crate::artifact::Url { url: url.url.clone() })?,
@@ -854,9 +854,9 @@ impl Artifact {
             // Artifact::DataRelation(relation) => relation.write(writer)?,
             Artifact::ArtifactVar(var) => match query.get_artifact_var(&var.var)? {
                 None => {
-                    return Err(MBQLError {
+                    return Err(Error {
                         position: var.position.clone(),
-                        kind: MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() },
+                        kind: ErrorKind::ArtifactVarNotFound { var: var.var.clone() },
                     })
                 }
                 Some(a) => a,
@@ -886,7 +886,7 @@ pub struct Agent {
 }
 
 impl Agent {
-    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         assert_eq!(pair.as_rule(), Rule::agent);
         Ok(Agent {
             ident: pair.into_inner().next().unwrap().as_str().to_string(),
@@ -918,7 +918,7 @@ pub struct Url {
 }
 
 impl Url {
-    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         let pair = pair.into_inner().next().unwrap();
         Ok(Self {
             url: pair.as_str().replace("\\\"", "\""),
@@ -939,7 +939,7 @@ pub struct Text {
 }
 
 impl Text {
-    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         let qs = pair.into_inner().next().unwrap();
         let s = qs.into_inner().next().unwrap();
 
@@ -968,7 +968,7 @@ pub struct DataNode {
 }
 
 impl DataNode {
-    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         let mut inner = pair.into_inner();
         let data_type = Symbolizable::parse(inner.next().unwrap(), position)?;
 
@@ -1013,7 +1013,7 @@ pub struct DataRelation {
 }
 
 impl DataRelation {
-    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, MBQLError> {
+    fn parse(pair: Pair<Rule>, position: &Position) -> Result<Self, Error> {
         let mut inner = pair.into_inner();
 
         let relation_type = Symbolizable::parse(inner.next().unwrap(), position)?;

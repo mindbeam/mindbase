@@ -1,13 +1,13 @@
 #[derive(Debug)]
-pub struct MBQLError {
+pub struct Error {
     pub position: Position,
-    pub kind: MBQLErrorKind,
+    pub kind: ErrorKind,
 }
 
 use crate::{ast, Position};
 
 #[derive(Debug)]
-pub enum MBQLErrorKind {
+pub enum ErrorKind {
     IOError {
         error: std::io::Error,
     },
@@ -47,39 +47,39 @@ pub enum MBQLErrorKind {
 //     fn from(error: MBError) -> Self {
 //         MBQLError {
 //             position: Position::none(),
-//             kind: MBQLErrorKind::MBError(Box::new(error)),
+//             kind: ErrorKind::MBError(Box::new(error)),
 //         }
 //     }
 // }
 
-impl std::convert::From<MBQLError> for std::io::Error {
-    fn from(error: MBQLError) -> Self {
+impl std::convert::From<Error> for std::io::Error {
+    fn from(error: Error) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
     }
 }
 
-impl std::fmt::Display for MBQLError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.kind {
-            MBQLErrorKind::IOError { error } => f.write_fmt(format_args!("IO Error: {}", error)),
-            MBQLErrorKind::InvalidLine { input } => f.write_fmt(format_args!("Invalid row at {}: {}", self.position.row, input)),
-            MBQLErrorKind::ParseRow { pest_err, .. } => {
+            ErrorKind::IOError { error } => f.write_fmt(format_args!("IO Error: {}", error)),
+            ErrorKind::InvalidLine { input } => f.write_fmt(format_args!("Invalid row at {}: {}", self.position.row, input)),
+            ErrorKind::ParseRow { pest_err, .. } => {
                 // TODO - fix line numbers
                 f.write_fmt(format_args!("Failed to parse row {}: {}", self.position.row, pest_err))
             }
-            MBQLErrorKind::InvalidCommand { .. } => f.write_str("meow"),
-            MBQLErrorKind::UnknownCommand { .. } => f.write_str("meow"),
-            MBQLErrorKind::CommandParse { .. } => f.write_str("meow"),
-            // MBQLErrorKind::MBError(e) => write!(f, "{:?}", e),
-            MBQLErrorKind::ArtifactVarNotFound { var } => {
+            ErrorKind::InvalidCommand { .. } => f.write_str("meow"),
+            ErrorKind::UnknownCommand { .. } => f.write_str("meow"),
+            ErrorKind::CommandParse { .. } => f.write_str("meow"),
+            // ErrorKind::MBError(e) => write!(f, "{:?}", e),
+            ErrorKind::ArtifactVarNotFound { var } => {
                 write!(f, "Artifact Variable `{}` not found at row {}", var, self.position.row)
             }
-            MBQLErrorKind::SymbolVarNotFound { var } => {
+            ErrorKind::SymbolVarNotFound { var } => {
                 write!(f, "Symbol Variable `{}` not found at row {}", var, self.position.row)
             }
-            MBQLErrorKind::GSymNotFound => write!(f, "Ground Symbol not found at row {}", self.position.row),
+            ErrorKind::GSymNotFound => write!(f, "Ground Symbol not found at row {}", self.position.row),
 
-            MBQLErrorKind::SymbolVarBindingFailed { bound_to } => write!(
+            ErrorKind::SymbolVarBindingFailed { bound_to } => write!(
                 f,
                 "Symbol binding failed at row {}. Already bound to row {}",
                 self.position.row,

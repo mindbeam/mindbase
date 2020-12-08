@@ -1,18 +1,19 @@
 use super::SearchContext;
 use crate::{
-    analogy::Analogy,
-    artifact::ArtifactId,
-    claim::{Claim, ClaimId},
-    error::MBError,
-    mbql::{
-        ast,
-        error::{MBQLError, MBQLErrorKind},
-        query::BindResult,
-        Query,
-    },
+    ast,
+    error::{Error, ErrorKind},
+    query::BindResult,
     symbol::Symbol,
+    Query,
 };
+
+
+use analogy::Analogy,
+use artifact::ArtifactId,
+use claim::{Claim, ClaimId},
+
 use std::rc::Rc;
+
 
 pub enum SearchNode {
     Artifact {

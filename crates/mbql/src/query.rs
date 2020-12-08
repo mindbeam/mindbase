@@ -1,9 +1,13 @@
 use super::{
     ast,
-    error::{MBQLError, MBQLErrorKind},
+    error::{Error, ErrorKind},
     Position,
 };
 use crate::search::SearchContext;
+
+use mindbase_artifact::Artifact;
+use mindbase_claim::Claim;
+use mindbase_graph::Graph;
 use mindbase_symbol as sy;
 
 use std::{collections::BTreeMap, io::Cursor, sync::Mutex};
@@ -36,12 +40,12 @@ use std::rc::Rc;
 //     }
 // }
 
-pub struct Query<'a> {
+pub struct Query<'a, S: Store> {
     pub statements: Vec<ast::Statement>,
     artifact_var_map: Mutex<BTreeMap<String, ArtifactVarMapItem>>,
     symbol_var_map: Mutex<BTreeMap<String, SymbolVarMapItem>>,
     pub search_context: Mutex<SearchContext<'a>>,
-    pub mb: &'a MindBase,
+    pub graph: &'a Graph<S, Artifact, Claim>,
 }
 
 pub enum BindResult {
@@ -50,20 +54,20 @@ pub enum BindResult {
 }
 
 impl<'a> Query<'a> {
-    pub fn new<T: std::io::BufRead>(mb: &'a MindBase, reader: T) -> Result<Self, MBQLError> {
+    pub fn new<T: std::io::BufRead>(graph: &'a Graph, reader: T) -> Result<Self, Error> {
         let mut query = Query {
             statements: Vec::new(),
             artifact_var_map: Mutex::new(BTreeMap::new()),
             symbol_var_map: Mutex::new(BTreeMap::new()),
             search_context: Mutex::new(SearchContext::new(mb)),
-            mb,
+            graph,
         };
         super::parse::parse(reader, &mut query)?;
 
         Ok(query)
     }
 
-    pub fn from_str(mb: &'a MindBase, mbql_string: &str) -> Result<Self, MBQLError> {
+    pub fn from_str(mb: &'a Graph, mbql_string: &str) -> Result<Self, Error> {
         let cur = Cursor::new(mbql_string);
         Self::new(mb, cur)
     }
@@ -109,12 +113,12 @@ impl<'a> Query<'a> {
     }
 
     // Have to be able to write independently, as Artifact variables may be evaluated recursively
-    pub fn stash_artifact_for_var(&self, var: &ast::ArtifactVar, artifact_id: ArtifactId) -> Result<(), MBQLError> {
+    pub fn stash_artifact_for_var(&self, var: &ast::ArtifactVar, artifact_id: ArtifactId) -> Result<(), Error> {
         match self.artifact_var_map.lock().unwrap().get_mut(&var.var) {
             None => {
-                return Err(MBQLError {
+                return Err(Error {
                     position: var.position.clone(),
-                    kind: MBQLErrorKind::ArtifactVarNotFound { var: var.var.clone() },
+                    kind: ErrorKind::ArtifactVarNotFound { var: var.var.clone() },
                 })
             }
             Some(v) => v.id = Some(artifact_id),
@@ -146,12 +150,12 @@ impl<'a> Query<'a> {
 
     // pub fn get_symbolizable_for_var{}
 
-    pub fn stash_symbol_for_var(&self, var: &ast::SymbolVar, symbol: Symbol) -> Result<(), MBQLError> {
+    pub fn stash_symbol_for_var(&self, var: &ast::SymbolVar, symbol: Symbol) -> Result<(), Error> {
         match self.symbol_var_map.lock().unwrap().get_mut(&var.var) {
             None => {
-                return Err(MBQLError {
+                return Err(Error {
                     position: var.position.clone(),
-                    kind: MBQLErrorKind::SymbolVarNotFound { var: var.var.clone() },
+                    kind: ErrorKind::SymbolVarNotFound { var: var.var.clone() },
                 })
             }
             Some(v) => v.symbol = Some(symbol),
@@ -226,8 +230,8 @@ impl<'a> Query<'a> {
         Ok(())
     }
 
-    pub fn apply(&self) -> Result<(), MBQLError> {
-        // TODO 2 - Validate all possible MBQLErrors at query creation time so that all remaining errors are MBErrors
+    pub fn apply(&self) -> Result<(), Error> {
+        // TODO 2 - Validate all possible Errors at query creation time so that all remaining errors are MBErrors
         // and then change this to return Result<(),MBError>
 
         // iterate over all artifact statements and store

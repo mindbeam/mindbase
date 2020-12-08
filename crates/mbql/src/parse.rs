@@ -1,20 +1,19 @@
 use crate::{
     ast,
-    error::{MBQLError, MBQLErrorKind},
+    error::{Error, ErrorKind},
     Position,
 };
-
 use pest::Parser;
 
 #[derive(Parser)]
 #[grammar = "mbql.pest"]
 pub struct MBQLParser;
 
-pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result<(), MBQLError> {
+pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result<(), Error> {
     for (line_number, line) in reader.lines().enumerate() {
-        let line_str: String = line.map_err(|error| MBQLError {
+        let line_str: String = line.map_err(|error| Error {
             position: Position { row: line_number },
-            kind: MBQLErrorKind::IOError { error },
+            kind: ErrorKind::IOError { error },
         })?;
 
         parse_line(line_number + 1, &line_str, query)?;
@@ -23,10 +22,10 @@ pub fn parse<T: std::io::BufRead>(reader: T, query: &mut super::Query) -> Result
     Ok(())
 }
 
-fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), MBQLError> {
-    let mut line = MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| MBQLError {
+fn parse_line(row: usize, input: &str, query: &mut super::Query) -> Result<(), Error> {
+    let mut line = MBQLParser::parse(Rule::statement, &input).map_err(|pest_err| Error {
         position: Position { row },
-        kind: MBQLErrorKind::ParseRow {
+        kind: ErrorKind::ParseRow {
             input: input.to_string(),
             pest_err,
         },

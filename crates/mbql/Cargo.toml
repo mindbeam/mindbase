@@ -8,6 +8,12 @@ edition = "2018"
 
 [dependencies]
 mindbase-symbol = { path="../symbol" }
+mindbase-artifact = { path="../artifact" }
+mindbase-claim = { path="../claim" }
+mindbase-graph = { path="../graph" }
+
 itertools = "0.9"
 pest = "2.1.3"
 pest_derive = "2.1.0"
+inverted-index-util = "0.0.5"
+typenum = "1.12"
