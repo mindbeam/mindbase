@@ -41,7 +41,7 @@ where
     Agent(mindbase_crypto::AgentId),
     Url(artifact::Url),
     FlatText(artifact::Text),
-    Graph(artifact::DataGraph<T, E>),
+    Graph(artifact::SubGraph<T, E>),
     Node(artifact::DataNode<T>),
     Relation(artifact::DataRelation<T, E>),
 }

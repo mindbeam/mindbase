@@ -1,7 +1,7 @@
 use std::collections::{btree_map::Entry, BTreeMap};
 
 use mindbase_artifact::{
-    artifact::DataGraph, artifact::DataNode, artifact::DataRelation, Artifact, ArtifactId, NodeInstance, NodeType,
+    artifact::DataNode, artifact::DataRelation, artifact::SubGraph, Artifact, ArtifactId, NodeInstance, NodeType,
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -66,7 +66,7 @@ fn colors() -> Result<(), std::io::Error> {
     let mut graph = Graph::default();
     let root = walk_json(&mut graph, v);
 
-    let document = graph.instantiate(DataGraph {
+    let document = graph.put_artifact(SubGraph {
         graph_type: JNT::Document,
         nodes: vec![root],
     });

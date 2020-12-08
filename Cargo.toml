@@ -1,15 +1,16 @@
 [workspace]
 members = [
     "crates/artifact",
-    "crates/core",
     "crates/claim",
-    "crates/mbql",
+    "crates/core",
     "crates/crypto",
-    "crates/util",
-    "crates/mbcli",
     "crates/genesis",
+    "crates/graph",
+    "crates/mbcli",
+    "crates/mbql",
+    "crates/store",
     "crates/symbol",
-    "crates/store"
+    "crates/util"
 ]
 
 [profile.dev.package."*"]

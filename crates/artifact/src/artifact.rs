@@ -1,10 +1,10 @@
-use crate::NodeInstance;
 use mindbase_crypto::AgentId;
+use mindbase_graph::traits::{NodeInstance, NodeType};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 use std::fmt;
 
-use crate::{Artifact, ArtifactId, NodeType};
+use crate::{Artifact, ArtifactId};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Url {
@@ -20,14 +20,14 @@ pub struct Text {
 // Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
 // This can be used to store XML or JSON documents, or other application specific formats
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct DataGraph<T, E>
+pub struct SubGraph<T, I>
 where
     T: NodeType,
-    E: NodeInstance,
+    I: NodeInstance,
 {
     pub graph_type: T,
     /// Must contain all unreachable nodes. Optionally reachable nodes may be present
-    pub nodes: Vec<E>,
+    pub nodes: Vec<I>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -151,7 +151,7 @@ where
     }
 }
 
-impl<T, E> Into<Artifact<T, E>> for DataGraph<T, E>
+impl<T, E> Into<Artifact<T, E>> for SubGraph<T, E>
 where
     T: NodeType,
     E: NodeInstance,
