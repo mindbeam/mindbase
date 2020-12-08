@@ -1,20 +1,23 @@
 mod body;
+mod traits;
 
 use mindbase_symbol::{
     analogy::Analogy,
     symbol::{Symbol, SymbolMember},
-    AssociativeAnalogy, CategoricalAnalogy, Entity,
+    traits::Entity,
+    AssociativeAnalogy, CategoricalAnalogy,
 };
 
 use mindbase_crypto::{AgentId, AgentKey, Signature};
 use mindbase_util::Error;
+
 use rusty_ulid::generate_ulid_bytes;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use traits::Artifact;
 
-use crate::artifact::Artifact;
+use self::body::Body;
 
-use self::body::ClaimBody;
 #[derive(Clone, Serialize, Deserialize, Ord, Eq, PartialOrd, PartialEq)]
 pub struct ClaimId(
     #[serde(
@@ -41,7 +44,7 @@ impl ClaimId {
         base64::encode_config(&self.0, STANDARD_NO_PAD)
     }
 
-    // /// Create a "Narrow" Symbol which refers exclusively to this Allegation
+    // /// Create a "Narrow" Symbol which refers exclusively to this claim
     // /// As a general rule, we should avoid using narrow symbols whenever possible
     // /// This is because we want to be convergent with our neighbors. I am not an island.
     // /// Narrow symbols should be created ONLY when referring to some other entities we just
@@ -81,7 +84,7 @@ impl fmt::Display for ClaimId {
 }
 impl fmt::Debug for ClaimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "AllegationId:{}", base64::encode(&self.0))
+        write!(f, "ClaimId:{}", base64::encode(&self.0))
     }
 }
 
@@ -98,21 +101,21 @@ impl std::convert::TryFrom<&[u8]> for ClaimId {
 /// An allogation is kind of like an "Atom" of meaning. In the same way that you typically interact with molecules rather than
 /// atoms in the physical world, so to do you interact with "Symbols" in the ontological world. These
 /// molecules/symbols don't simply spring into existence however. Molecules must be built of atoms, and Symbols must be built of
-/// Allegations.
+/// Claims.
 ///
-/// NOMENCLATURE QUESTION: Symbol/Symbol/Allegation/Atom etc?
+/// NOMENCLATURE QUESTION: Symbol/Symbol/Claim/Atom etc?
 /// There must be a bifurcation between the Subjective and the Intersubjective.
 /// The Subjective is actually more than just according to a person or agent.
 /// It's also according to a context – A time, A place, A frame of mind, An intention.
-/// As such, these subjective elements are really more like events. In this sense, the term Allegation is nice, because it implies
-/// that provenance is involved. The question is: Is "Symbol" a nicer term for Allegation? In some sense its nicer, because it
+/// As such, these subjective elements are really more like events. In this sense, the term Claim is nice, because it implies
+/// that provenance is involved. The question is: Is "Symbol" a nicer term for Claim? In some sense its nicer, because it
 /// symbolizes some occurrent. Unfortunately it also muddies the idea of a Symbol. A symbol is also kind of a symbol, because it
 /// symbolizes an "idea" (Some ontologists quibble about Symbols being bad, as "Symbol" implies that it's a thought about a
 /// thing rather than a symbol of that thing)
 ///
 /// For this reason, I've been thinking about nomenclature like:
-///    Proto-Symbol (Allegation) and Symbol (Symbol)
-///       * Unfortunately this is muddy, because both allegations and symbols are symbols
+///    Proto-Symbol (Claim) and Symbol (Symbol)
+///       * Unfortunately this is muddy, because both claims and symbols are symbols
 /// or Subjective-Symbol and Intersubjective Symbol
 ///       * unfortunately this is muddy, because Subjectivity might be wrongly taken to mean "Person"-al, rather than situational.
 ///
@@ -122,40 +125,41 @@ impl std::convert::TryFrom<&[u8]> for ClaimId {
 ///
 /// So whatever shall we do to make sense of the world?
 ///
-/// In MindBase an Allegation is essentially an opinion of, or measurement about the world which is attributable to a specific
-/// Agent. Agents may then form `Symbols` from a collection of allegations which are believed to one degree of confidence or
+/// In MindBase an Claim is essentially an opinion of, or measurement about the world which is attributable to a specific
+/// Agent. Agents may then form `Symbols` from a collection of claims which are believed to one degree of confidence or
 /// another to be referring to approximately the "same" thing
 /// See [`mindbase::symbol::Symbol`][Symbol] for more details
 
 // #[derive(Serialize, Deserialize)]
-pub struct Claim<E>
+pub struct Claim<E, A>
+where
+    E: Entity,
+    A: traits::Artifact,
+{
+    /// TODO 3 - Consider renaming "Claim*" to "Symbol*"
+    pub id: ClaimId,
+    pub agent_id: AgentId,
+    // TODO 3 - Context (Date, time, place, etc)
+    pub body: Body<E, A>,
+    pub signature: Signature,
+}
+
+pub enum ArtifactList<'a, A: traits::Artifact> {
+    None,
+    One(&'a A),
+    Many(Vec<A>),
+}
+
+trait ClaimStore<E: Entity> {}
+
+impl<E, A> Claim<E, A>
 where
     E: Entity,
     A: Artifact,
 {
-    /// TODO 3 - Consider renaming "Allegation*" to "Symbol*"
-    pub id: ClaimId,
-    pub agent_id: AgentId,
-    // TODO 3 - Context (Date, time, place, etc)
-    pub body: ClaimBody<E, Artifact>,
-    pub signature: Signature,
-}
-
-pub enum ArtifactList<'a> {
-    None,
-    One(&'a ArtifactId),
-    Many(Vec<ArtifactId>),
-}
-
-trait ClaimStore {}
-
-impl<E> Claim<E>
-where
-    E: Entity,
-{
     pub fn new<T>(agentkey: &AgentKey, body: T) -> Result<Self, Error>
     where
-        T: Into<Body>,
+        T: Into<Body<E, A>>,
     {
         let body: Body = body.into();
         let id = ClaimId::new();
@@ -171,12 +175,12 @@ where
         })
     }
 
-    /// Create a "Narrow" Symbol which refers exclusively to this Allegation
+    /// Create a "Narrow" Symbol which refers exclusively to this Claim
     /// As a general rule, we should avoid using narrow symbols whenever possible
     /// This is because we want to be convergent with our neighbors. I am not an island.
     /// Narrow symbols should be created ONLY when referring to some other entities we just
     /// created, and no clustering is possible
-    pub fn subjective(&self) -> Symbol {
+    pub fn subjective(&self) -> Symbol<E> {
         unimplemented!()
         // should probably remove this
 
@@ -190,10 +194,10 @@ where
         &self.id
     }
 
-    // Get all artifacts referenced by this allegation
-    pub fn referenced_artifacts<CS>(&self, cs: CS) -> Result<ArtifactList, Error>
+    // Get all artifacts referenced by this claim
+    pub fn referenced_artifacts<AS>(&self, cs: SS) -> Result<ArtifactList<A>, Error>
     where
-        AS: ClaimStore<E>,
+        CS: ClaimStore<A>,
     {
         match self.body {
             Body::Artifact(ref artifact_id) => Ok(ArtifactList::One(artifact_id)),
@@ -206,33 +210,33 @@ where
 
                 // Forward
                 for atom in analogy.left.atoms.iter() {
-                    match mb.get_allegation(atom.id())? {
-                        Some(allegation) => {
+                    match mb.get_claim(atom.id())? {
+                        Some(claim) => {
                             // TODO 1 - need to put some upper bound on how much we want to recurse here
                             // QUESTION: What are the consequences of this uppper bound enforcement?
                             // TODO 2 - Encode in the number of levels removed?
                             // What about the trust score / weight of the agents who alledged them?
-                            // NOTE: I think we may only need to include those allegations which are authored by ground symbol
+                            // NOTE: I think we may only need to include those claims which are authored by ground symbol
                             // agents
-                            match allegation.referenced_artifacts(mb)? {
+                            match claim.referenced_artifacts(mb)? {
                                 ArtifactList::None => {}
                                 ArtifactList::One(id) => v.push(id.clone()),
                                 ArtifactList::Many(many) => v.extend(many),
                             }
                         }
-                        None => return Err(MBError::AllegationNotFound),
+                        None => return Err(MBError::ClaimNotFound),
                     }
                 }
 
                 // Backward
                 for atom in analogy.right() {
                     match mb.get_claim(atom.id())? {
-                        Some(allegation) => match allegation.referenced_artifacts(mb)? {
+                        Some(claim) => match claim.referenced_artifacts(mb)? {
                             ArtifactList::None => {}
                             ArtifactList::One(id) => v.push(id.clone()),
                             ArtifactList::Many(many) => v.extend(many),
                         },
-                        None => return Err(MBError::AllegationNotFound),
+                        None => return Err(MBError::ClaimNotFound),
                     }
                 }
                 Ok(ArtifactList::Many(v))

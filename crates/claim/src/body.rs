@@ -1,11 +1,11 @@
 use std::fmt;
 
-use mindbase_symbol::{AssociativeAnalogy, CategoricalAnalogy, Entity};
+use mindbase_symbol::{traits::Entity, AssociativeAnalogy, CategoricalAnalogy};
 
-use crate::artifact::ArtifactId;
-pub trait Artifact {}
+use crate::traits;
+
 // #[derive(Serialize, Deserialize)]
-pub enum ClaimBody<E: Entity, A: Artifact> {
+pub enum Body<E: Entity, A: traits::Artifact> {
     /// A Unit Claim a globally unique entity with no payload
     Unit,
 
@@ -22,19 +22,22 @@ pub enum ClaimBody<E: Entity, A: Artifact> {
 //     }
 // }
 
-impl<E, A> From<ArtifactId> for ClaimBody<E, A> {
-    fn from(id: ArtifactId) -> Self {
-        ClaimBody::Artifact(id)
+impl<E, A> From<A> for Body<E, A>
+where
+    A: traits::Artifact,
+{
+    fn from(id: A) -> Self {
+        Body::Artifact(id)
     }
 }
 
-impl<E, A> fmt::Display for ClaimBody<E, A> {
+impl<E, A> fmt::Display for Body<E, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ClaimBody::Unit => write!(f, "Unit()"),
-            ClaimBody::AssociativeAnalogy(a) => write!(f, "Assoc({})", a),
-            ClaimBody::CategoricalAnalogy(c) => write!(f, "Cat({})", c),
-            ClaimBody::Artifact(a) => write!(f, "Artifact({})", a),
+            Body::Unit => write!(f, "Unit()"),
+            Body::AssociativeAnalogy(a) => write!(f, "Assoc({})", a),
+            Body::CategoricalAnalogy(c) => write!(f, "Cat({})", c),
+            Body::Artifact(a) => write!(f, "Artifact({})", a),
         }
     }
 }
