@@ -6,7 +6,7 @@ pub enum Error {
     AgentHandleNotFound,
     SignatureError,
     Base64Error,
-    AllegationNotFound,
+    ClaimNotFound,
     // MBQL(Box<mindbase_mbql::error::MBQLError>),
     TraversalFailed,
     UnboundSymbol,
@@ -14,6 +14,7 @@ pub enum Error {
     SymbolVarAlreadyBound,
     NullSymbol,
     Other,
+    Store(mindbase_store::Error),
     Util(mindbase_util::Error),
 }
 
@@ -28,6 +29,12 @@ impl std::fmt::Display for Error {
 //         Self::MBQL(Box::new(e))
 //     }
 // }
+
+impl From<mindbase_store::Error> for Error {
+    fn from(e: mindbase_store::Error) -> Self {
+        Self::Store(e)
+    }
+}
 
 impl From<mindbase_util::Error> for Error {
     fn from(e: mindbase_util::Error) -> Self {
