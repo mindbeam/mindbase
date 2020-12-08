@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::{
     fuzzyset::{self as fs, FuzzySet},
-    Entity,
+    traits::Entity,
 };
 
 // QUESTION:

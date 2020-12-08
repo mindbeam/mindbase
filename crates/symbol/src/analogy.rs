@@ -2,7 +2,7 @@ pub mod associative;
 pub mod categorical;
 pub mod query;
 
-use crate::Entity;
+use crate::traits::Entity;
 
 use self::{associative::AssociativeAnalogy, categorical::CategoricalAnalogy};
 

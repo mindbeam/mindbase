@@ -1,6 +1,7 @@
 use crate::{
     analogy::associative::{AssociativeAnalogyMember, Side},
-    fuzzyset as fs, Entity,
+    fuzzyset as fs,
+    traits::Entity,
 };
 use crate::{
     fuzzyset::FuzzySet,

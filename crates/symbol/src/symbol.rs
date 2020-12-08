@@ -1,6 +1,6 @@
 use crate::{
     fuzzyset::{self as fs, FuzzySet},
-    Entity,
+    traits::Entity,
 };
 
 use std::cmp::Ordering;

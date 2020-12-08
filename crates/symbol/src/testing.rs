@@ -1,4 +1,4 @@
-use crate::Entity;
+use crate::traits::Entity;
 
 // Different allegations which would normally both be associated to the same artifact "Cat" should be differentiated with a number
 // like "Cat1" and "Cat2" to signify that they are different instances of "Cat"

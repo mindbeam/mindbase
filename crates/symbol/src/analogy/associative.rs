@@ -14,7 +14,7 @@ use std::cmp::Ordering;
 use crate::{
     fuzzyset::{self as fs, FuzzySet},
     symbol::SymbolMember,
-    Entity,
+    traits::Entity,
 };
 
 pub struct AssociativeAnalogy<E>

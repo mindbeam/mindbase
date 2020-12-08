@@ -1,5 +1,6 @@
 use crate::{
-    analogy::associative::AssociativeAnalogyMember, analogy::associative::Side, fuzzyset::FuzzySet, AssociativeAnalogy, Entity,
+    analogy::associative::AssociativeAnalogyMember, analogy::associative::Side, fuzzyset::FuzzySet, traits::Entity,
+    AssociativeAnalogy,
 };
 
 pub struct AnalogyQuery<E>
