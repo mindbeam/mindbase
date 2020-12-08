@@ -1,4 +1,5 @@
 use crate::{Error, Store, Tree};
+#[derive(Clone)]
 pub struct SledStore {
     db: sled::Db,
 }

@@ -12,7 +12,7 @@ use std::fmt::Debug;
 pub use error::Error;
 pub use memory::MemoryStore;
 
-pub trait Store {
+pub trait Store: Clone {
     type Tree: self::Tree;
     fn open_tree<V: AsRef<[u8]>>(&self, name: V) -> Result<Self::Tree, Error>;
 }
