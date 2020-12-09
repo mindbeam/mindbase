@@ -9,11 +9,11 @@ pub mod traits;
 // use traits::NodeInstance;
 
 #[derive(Default, Debug)]
-struct Graph<S, A, I>
+pub struct Graph<S, A, I>
 where
     S: Store,
     A: traits::Artifact,
-    I: traits::ArtifactInstance,
+    I: traits::ArtifactInstance<A>,
 {
     _store: S,
     artifacts: S::Tree,
@@ -35,9 +35,9 @@ impl<S, A, I> Graph<S, A, I>
 where
     S: Store,
     A: traits::Artifact,
-    I: traits::ArtifactInstance,
+    I: traits::ArtifactInstance<A>,
 {
-    fn new(store: S) -> Result<Self, Error> {
+    pub fn new(store: S) -> Result<Self, Error> {
         let artifacts = store.open_tree("graph::artifacts")?;
 
         fn write_once(
@@ -63,20 +63,20 @@ where
             _i: PhantomData,
         })
     }
-    fn put_artifact<T: Into<A>>(&mut self, artifact: T) -> Result<A::ID, Error> {
+    pub fn put_artifact<T: Into<A>>(&mut self, artifact: T) -> Result<I, Error> {
         let artifact: A = artifact.into();
 
-        let artifact_id = artifact.id();
+        let (artifact_id, bytes) = artifact.get_id_and_bytes();
         // Only store it if we haven't seen this one before
+        let instance = I::instantiate(&artifact_id);
 
-        self.artifacts.merge(artifact_id, artifact);
+        self.artifacts.merge(artifact_id, bytes)?;
 
         // either way we want to create an instance
 
-        // LEFT OFF HERE
-        // let instance = A::new(artifact_id);
-        // self.instances.insert(instance.id, instance.clone());
+        let (instance_id, bytes) = instance.get_id_and_bytes();
+        self.instances.insert(instance_id.as_ref(), bytes)?;
 
-        instance
+        Ok(instance)
     }
 }
