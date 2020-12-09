@@ -1,10 +1,9 @@
 use mindbase_crypto::AgentId;
-use mindbase_graph::traits::{NodeInstance, NodeType};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 use std::fmt;
 
-use crate::{Artifact, ArtifactId};
+use crate::{Artifact, ArtifactId, NodeInstance, NodeType};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Url {
@@ -54,52 +53,6 @@ where
 // pub enum RelationAmendment{
 //     Remove
 // }
-
-impl<T, E> Artifact<T, E>
-where
-    T: NodeType,
-    E: NodeInstance,
-{
-    pub fn id(&self) -> ArtifactId {
-        let mut hasher = Sha512Trunc256::new();
-
-        // TODO 5 switch to CapnProto or similar. Artifact storage and wire representation should be identical
-        // Therefore we should hash that
-        let encoded: Vec<u8> = bincode::serialize(self).unwrap();
-        hasher.update(&encoded);
-        let result = hasher.finalize();
-        ArtifactId(result.into())
-    }
-
-    /// Might as well Serialize and hash in one go. Remove this when switching to CapnProto
-    pub fn get_id_and_bytes(&self) -> (ArtifactId, Vec<u8>) {
-        let mut hasher = Sha512Trunc256::new();
-
-        let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
-        hasher.update(&encoded);
-
-        let result = hasher.finalize();
-
-        (ArtifactId(result.into()), encoded)
-    }
-}
-
-impl<T, E> std::fmt::Display for Artifact<T, E>
-where
-    T: NodeType,
-    E: NodeInstance,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Agent(_a) => unimplemented!(),
-            Self::Url(_u) => unimplemented!(),
-            Self::FlatText(t) => write!(f, "Artifact({})", t),
-            Self::Graph(_d) => unimplemented!(),
-            Self::Node(_n) => unimplemented!(),
-            Artifact::Relation(_r) => unimplemented!(),
-        }
-    }
-}
 
 impl<T, E> Into<Artifact<T, E>> for Url
 where
