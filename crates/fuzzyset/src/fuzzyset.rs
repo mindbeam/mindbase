@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::traits::Member;
+
 // use itertools::{EitherOrBoth, Itertools};
 // use colorful::{Color, Colorful};
 
@@ -16,40 +18,11 @@ where
     pub member: M,
 }
 
-pub trait Member: Sized + Clone {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering;
-    fn invert(&mut self) -> bool {
-        // Member did not handle the inversion
-        false
-    }
-    fn display_fmt(&self, item: &Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "(Member,{:0.1})", item.degree)
-    }
-    fn display_fmt_set(set: &FuzzySet<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO - consider removing this. We don't need Fuzzysets to format
-        // themselves differently based on their member type
-
-        write!(f, "{{")?;
-        let mut first = true;
-        for item in set.iter() {
-            if !first {
-                write!(f, " ")?;
-                item.member.display_fmt(&item, f)?;
-            } else {
-                first = false;
-                item.member.display_fmt(&item, f)?;
-            }
-        }
-        write!(f, "}}")?;
-        Ok(())
-    }
-}
-
 impl<M> Item<M>
 where
     M: Member,
 {
-    pub fn invert(&mut self) {
+    pub fn invert_degree(&mut self) {
         //did the member handle the inversion?
         if !self.member.invert() {
             // No, therefore we will invert its degree
@@ -189,7 +162,7 @@ where
         unimplemented!()
     }
 
-    pub fn invert(&mut self) {
+    pub fn invert_degree(&mut self) {
         let new = Self::new();
         for item in self.0.iter_mut() {
             item.invert()
@@ -285,7 +258,7 @@ mod test {
 
         // Fully negative degree set
         let mut fs2 = fs1.clone();
-        fs2.invert();
+        fs2.invert_degree();
         assert_eq!(format!("{:?}", fs2), "{(1,-1.0) (2,-1.0) (3,-1.0)}");
 
         // Yes, it's strange, but when we take the union of the two sets, every member should be fully positive and fully negative
