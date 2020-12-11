@@ -4,6 +4,7 @@ members = [
     "crates/claim",
     "crates/core",
     "crates/crypto",
+    "crates/fuzzyset",
     "crates/genesis",
     "crates/graph",
     "crates/mbcli",
