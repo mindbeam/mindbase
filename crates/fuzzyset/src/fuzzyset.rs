@@ -23,11 +23,16 @@ where
     M: Member,
 {
     pub fn invert_degree(&mut self) {
-        //did the member handle the inversion?
-        if !self.member.invert() {
-            // No, therefore we will invert its degree
-            self.degree *= -1.0;
-        }
+        self.degree *= -1.0;
+    }
+}
+
+impl<M> std::fmt::Display for Item<M>
+where
+    M: Member,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}~{:0.2})", self.member, self.degree)
     }
 }
 
@@ -165,7 +170,7 @@ where
     pub fn invert_degree(&mut self) {
         let new = Self::new();
         for item in self.0.iter_mut() {
-            item.invert()
+            item.invert_degree()
         }
     }
 }
@@ -213,10 +218,17 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::fmt::Display;
+
     use super::{FuzzySet, Item};
 
     #[derive(Clone)]
     struct TestMember(usize);
+    impl Display for TestMember {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
     impl super::Member for TestMember {
         fn cmp(&self, other: &Self) -> std::cmp::Ordering {
             self.0.cmp(&other.0)
