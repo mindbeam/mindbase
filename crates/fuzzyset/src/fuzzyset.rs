@@ -7,7 +7,7 @@ use crate::traits::Member;
 
 const MEMBER_CULL_DEGREE: f32 = 0.01;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Item<M>
 where
     M: Member,
@@ -32,12 +32,12 @@ where
     M: Member,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}~{:0.2})", self.member, self.degree)
+        write!(f, "({}^{:0.2})", self.member, self.degree)
     }
 }
 
 // Fuzzy set where membership may be negative or positive
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct FuzzySet<M>(Vec<Item<M>>)
 where
     M: Member + Clone;
