@@ -357,41 +357,112 @@ mod test {
     use super::{PolarFuzzySet, Polarity};
 
     #[test]
-    fn polar_fuzzy_set() {
-        let mut x = FuzzySet::new();
-        let mut y = PolarFuzzySet::new();
-
-        // For simplicity, lets say these are all the analogies in the system
-        let candidates: [PolarFuzzySet<SimpleMember>; 3] = [
-            PolarFuzzySet::from_left_right(
-                &[("Hot1", 1.0), ("Hot2", 1.0), ("Heated1", 1.0)],
-                &[("Mild1", 1.0), ("Mild2", 1.0), ("Cold3", 1.0)],
-            ),
-            PolarFuzzySet::from_left_right(&[("Hot3", 1.0)], &[("Cold1", 1.0), ("Cold2", 1.0)]),
-            PolarFuzzySet::from_left_right(&[("Cold3", 1.0)], &[("Hot3", 1.0)]),
+    fn polar_inference() {
+        let subjects: [PolarFuzzySet<SimpleMember>; 4] = [
+            PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]),      // hot vs cold
+            PolarFuzzySet::from_left_right(&["Caliente"], &["Fria"]), // hot vs cold
+            PolarFuzzySet::from_left_right(&["Hot"], &["Caliente"]),  // hot things
+            PolarFuzzySet::from_left_right(&["Cold"], &["Fria"]),     // cold things
         ];
 
-        // Imagine we looked up the Entities for all Claims related to Artifacts "Hot" and "Cold"
-        let query: PolarFuzzySet<SimpleMember> = PolarFuzzySet::from_left_right(
-            &[("Hot1", 1.0), ("Hot2", 1.0), ("Hot3", 1.0)],
-            &[("Cold1", 1.0), ("Cold2", 1.0), ("Cold3", 1.0)],
-        );
-        println!("Query is: {}", query);
+        // Hot : Cold :: Calliente : ?
+        let a = PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]);
+        let blank: [SimpleMember; 0] = [];
+        let b = PolarFuzzySet::from_left_right(&["Calliente"], &blank);
 
-        for candidate in &candidates {
-            let v = query.interrogate(candidate).expect("All of the above should match");
-            println!("v is {}", v);
-
-            // QUESTION: should the union of the resultant query output sets (for each candidate analogy) bear equal weight in the
-            // output set? That seems screwy! Presumably It should be some sort of a weighted union across all candidate
-            // analogies, but how do we do this?
-            x.union(v.left());
-
-            y.union(v);
+        let mut alpha = PolarFuzzySet::new();
+        let mut beta = PolarFuzzySet::new();
+        for subject in &subjects {
+            if let Some(result) = a.interrogate(subject) {
+                println!("Alpha {} >>> {}", subject, result);
+                alpha.union(result)
+            }
+        }
+        for subject in &subjects {
+            if let Some(result) = b.interrogate(subject) {
+                println!("Beta {} >>> {}", subject, result);
+                beta.union(result);
+            }
         }
 
-        println!("symbol x is: {}", x);
-        println!("symbol y is: {}", y);
+        let foo = alpha.interrogate(&beta).unwrap();
+
+        println!("foo: {}", foo);
+    }
+    #[test]
+    fn polar_fuzzy_set() {
+        let mut left_result = FuzzySet::new();
+        let mut result = PolarFuzzySet::new();
+
+        // Imagine we wanted to look up all the Entities for Claims related to Artifacts "Hot" and "Cold"
+        let query: PolarFuzzySet<SimpleMember> =
+            PolarFuzzySet::from_left_right(&["Hot1", "Hot2", "Hot3"], &["Cold1", "Cold2", "Cold3"]);
+        println!("Query is: {}", query);
+
+        // For simplicity, lets say these are all the analogies in the system
+        let candidates: [PolarFuzzySet<SimpleMember>; 2] = [
+            PolarFuzzySet::from_left_right(&["Hot1", "Hot2", "Heated1"], &["Mild1", "Mild2", "Cold3"]),
+            //               NORMAL to query     ^2/3 Match                          ^1/3 match
+            PolarFuzzySet::from_left_right(&[("Cold1", 1.0), ("Cold2", 1.0)], &[("Hot3", 1.0)]),
+            //               INVERSE to query    ^ 2/3 match                              ^ 1/3 match
+            // PolarFuzzySet::from_left_right(&[("Cold3", 1.0)], &[("Hot3", 1.0)]),
+            //               INVERSE to query    ^1/3  match   ^ 1/3 Match
+        ];
+
+        for candidate in &candidates {
+            let v = query.interrogate(&candidate).expect("All of the above should match");
+            println!("Interrogate {} >>> {}", candidate, v);
+
+            // TODO 3 - QUESTION: should the union of the resultant query output sets (for each candidate analogy) bear equal weight in the
+            // output set? That seems screwy! Presumably It should be some sort of a weighted union across all candidate
+            // analogies, but how do we do this?
+            left_result.union(v.left());
+
+            result.union(v);
+        }
+
+        println!("Result is: {}", result);
+
+        println!("Union of left results is: {}", left_result);
+        let result_left = FuzzySet::from_list(result.left());
+        println!("Left of union results is: {}", result_left);
+        assert_eq!(left_result, result_left);
+
+        // assert_eq!(format!("{}", y), "");
+    }
+
+    #[test]
+    fn lesser_weights_through_imperfect_analogy() {
+        // Notice this analogy is inverse tom
+        let a = PolarFuzzySet::from_left_right(&["X", "F"], &["A", "B", "Q"]);
+        println!("Set A: {}", a);
+
+        let q = PolarFuzzySet::from_left_right(&["A", "B", "C", "D"], &["X", "Y", "Z"]);
+        println!("Set Q: {}", q);
+
+        // interrogate the first analogy with the second
+        let mut b = a.interrogate(&q).unwrap();
+        println!("Interrogated set: {}", q);
+
+        // Resultant set is scaled based on the common members and their degree
+        // and also inverted to match the sidedness of the query analogy
+        assert_eq!(format!("{}", b), "[+X^0.67 :  -A^0.50 -B^0.50]");
+
+        // TODO 2 - Continue authoring this test case meaningfully
+        // // So, We've interrogated a1 with a2 and gotten some "naturally" members with < 1 weights.
+        // // How do we clean up this scenario to be more realistic?
+        // // "interrogation" only makes sense in the context of a query – Not just blindly rubbing two analogies together
+        // // How do we formulate a query using a corpus of prior analogies?
+
+        // There exists some catagory which is descibable with all of the following terms, modulo any potential mistakes
+        // let c1 = Analogy::categorical("c1", &["doughnut", "bun", "pastry", "cruller", "sweet roll"]);
+
+        // let a3 = Analogy::associative("a2", sym!["Q", "R"], sym!["F", "G"]);
+        // // let c = b.interrogate(&a3).unwrap();
+        // // This does not work, because interrogation (rightly) does not return an analogy. Someone would have to claim that analogy on
+        // // the basis of some prior query
+
+        // let Analogy::from_left_right("a2", sym!["Q", "R"], sym!["F", "G"]);
 
         // TODO 1 - Validate this test case
     }
