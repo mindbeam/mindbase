@@ -174,11 +174,22 @@ where
             })
     }
 
-    /// TODO 1 - rewrite this description
-    /// identify the subset of this analogy's fuzzy-set which intersect the comparison set
-    /// and conditionally invert the sidedness of the resultant set to match the comparison set
-    pub fn interrogate(&self, other: &PolarFuzzySet<M>) -> Option<PolarFuzzySet<M>> {
-        let mut iter = other.0.iter().merge_join_by(self.0.iter(), |a, b| a.member.cmp(&b.member));
+    /// # interrogate
+    ///
+    /// Interrogate the subject PolarFuzzySet such that members from the interrogating set which are common to the
+    /// subject set may be used to discover and infer new members of the subject set which posess some polar relationship
+    /// to the known members of the interrogating set.
+    ///
+    /// Hot(1) : Cold :: Calliente : ?
+    ///
+    /// The result members of each polarity are scaled based the percentage match of the members of the opposing polarity.
+    /// If a majority of common members between the two sets match with inverse polarity, all members of the subject set
+    /// are inverted to conform to the polarity of the interrogating set.
+    pub fn interrogate(&self, subject: &PolarFuzzySet<M>) -> Option<PolarFuzzySet<M>> {
+        // self is the interrogator.
+        // Polarities of the result set will be conformed to the interrogating set
+
+        let mut iter = subject.0.iter().merge_join_by(self.0.iter(), |a, b| a.member.cmp(&b.member));
 
         #[derive(Default)]
         struct Bucket {
