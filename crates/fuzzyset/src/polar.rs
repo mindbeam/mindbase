@@ -97,11 +97,12 @@ where
     pub fn new() -> Self {
         Self(FuzzySet::new())
     }
-    pub fn from_left_right<Left, Right, IntoItem>(left: Left, right: Right) -> Self
+    pub fn from_left_right<Left, Right, IntoItemLeft, IntoItemRight>(left: Left, right: Right) -> Self
     where
-        Left: IntoIterator<Item = IntoItem>,
-        Right: IntoIterator<Item = IntoItem>,
-        IntoItem: Into<fs::Item<M>>,
+        Left: IntoIterator<Item = IntoItemLeft>,
+        Right: IntoIterator<Item = IntoItemRight>,
+        IntoItemLeft: Into<fs::Item<M>>,
+        IntoItemRight: Into<fs::Item<M>>,
     {
         let mut set = FuzzySet::new();
 
@@ -298,10 +299,10 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let polarity = match self.polarity {
-            Polarity::Left => "˱",
-            Polarity::Right => "˲",
+            Polarity::Left => "+",
+            Polarity::Right => "-",
         };
-        write!(f, "{}{}", self.member, polarity)
+        write!(f, "{}{}", polarity, self.member)
     }
 }
 
@@ -314,10 +315,10 @@ where
         let mut first = true;
         for item in self.0.iter().filter(|a| a.member.polarity == Polarity::Left) {
             if !first {
-                write!(f, " {}~{:0.2}", item.member, item.degree)?;
+                write!(f, " {}^{:0.2}", item.member, item.degree)?;
             } else {
                 first = false;
-                write!(f, "{}~{:0.2}", item.member, item.degree)?;
+                write!(f, "{}^{:0.2}", item.member, item.degree)?;
             }
         }
 
@@ -326,10 +327,10 @@ where
         let mut seen = false;
         for item in self.0.iter().filter(|a| a.member.polarity == Polarity::Right) {
             if !first {
-                write!(f, " {}~{:0.2}", item.member, item.degree)?;
+                write!(f, " {}^{:0.2}", item.member, item.degree)?;
             } else {
                 first = false;
-                write!(f, "{}~{:0.2}", item.member, item.degree)?;
+                write!(f, "{}^{:0.2}", item.member, item.degree)?;
             }
         }
 

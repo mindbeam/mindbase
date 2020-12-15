@@ -10,6 +10,10 @@ impl Member for SimpleMember {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.id.cmp(other.id)
     }
+
+    fn display_fmt(&self, item: &crate::fuzzyset::Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}^{:0.1}", item.member, item.degree)
+    }
 }
 
 impl std::fmt::Display for SimpleMember {
@@ -45,6 +49,18 @@ where
         crate::fuzzyset::Item {
             member: tuple.0.clone().into(),
             degree: tuple.1,
+        }
+    }
+}
+
+impl<T> From<&T> for crate::fuzzyset::Item<SimpleMember>
+where
+    T: Into<SimpleMember> + Clone,
+{
+    fn from(member: &T) -> Self {
+        crate::fuzzyset::Item {
+            member: member.clone().into(),
+            degree: 1.0,
         }
     }
 }
