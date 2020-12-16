@@ -47,6 +47,8 @@ use crate::{
 /// Elements of such a statement describing a love-hate relationship may _feel_ polar from a human perspective,
 /// but it's not logically polar because these sub statements have different senses which capture the attributes
 /// that are liked and the attributes that are not liked.
+
+#[derive(Clone, Debug)]
 pub struct PolarFuzzySet<M>(FuzzySet<PolarMember<M>>)
 where
     M: Member;
@@ -369,37 +371,50 @@ mod test {
     use super::{PolarFuzzySet, Polarity};
 
     #[test]
-    fn polar_inference() {
-        let subjects: [PolarFuzzySet<SimpleMember>; 4] = [
-            PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]),      // hot vs cold
-            PolarFuzzySet::from_left_right(&["Caliente"], &["Fria"]), // hot vs cold
-            PolarFuzzySet::from_left_right(&["Hot"], &["Caliente"]),  // hot things
-            PolarFuzzySet::from_left_right(&["Cold"], &["Fria"]),     // cold things
-        ];
-
-        // Hot : Cold :: Calliente : ?
-        let a = PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]);
+    fn minimal_polar_inference() {
         let blank: [SimpleMember; 0] = [];
-        let b = PolarFuzzySet::from_left_right(&["Calliente"], &blank);
+        let subject = PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]);
+        let query = PolarFuzzySet::from_left_right(&["Hot"], &blank);
 
-        let mut alpha = PolarFuzzySet::new();
-        let mut beta = PolarFuzzySet::new();
-        for subject in &subjects {
-            if let Some(result) = a.interrogate(subject) {
-                println!("Alpha {} >>> {}", subject, result);
-                alpha.union(result)
-            }
-        }
-        for subject in &subjects {
-            if let Some(result) = b.interrogate(subject) {
-                println!("Beta {} >>> {}", subject, result);
-                beta.union(result);
-            }
-        }
+        let result = query.interrogate(&subject).unwrap();
 
-        let foo = alpha.interrogate(&beta).unwrap();
+        println!("result: {}", result);
+
+        assert_eq!(result.right().next().unwrap().member.text, "Cold");
+    }
+    #[test]
+    fn recursive_polar_inference() {
+        let blank: [SimpleMember; 0] = [];
+        let subject = PolarFuzzySet::from_left_right(
+            &[("left", PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]))],
+            &[("right", PolarFuzzySet::from_left_right(&["Caliente"], &["Fria"]))],
+        );
+
+        let query = PolarFuzzySet::from_left_right(
+            &[("left", PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]))],
+            &[("right", PolarFuzzySet::from_left_right(&["Caliente"], &blank))],
+        );
+
+        // TODO 1 - recurse
+        let foo = query.interrogate(&subject).unwrap();
 
         println!("foo: {}", foo);
+
+        // And make this less bad
+        assert_eq!(
+            foo.right()
+                .next()
+                .unwrap()
+                .member
+                .set
+                .unwrap()
+                .right()
+                .next()
+                .unwrap()
+                .member
+                .text,
+            "Fria"
+        );
     }
     #[test]
     fn polar_fuzzy_set() {
@@ -476,6 +491,6 @@ mod test {
 
         // let Analogy::from_left_right("a2", sym!["Q", "R"], sym!["F", "G"]);
 
-        // TODO 1 - Validate this test case
+        // println!("{}", c);
     }
 }
