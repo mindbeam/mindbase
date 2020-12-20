@@ -61,33 +61,32 @@ pub struct PolarMember<M: Member> {
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Polarity {
-    Left,
-    Right,
+    Negative,
+    Positive,
 }
 
 impl<M> PolarMember<M>
 where
     M: Member,
 {
-    pub fn invert_polarity(&mut self) -> bool {
+    pub fn invert_polarity(&mut self) {
         match self.polarity {
-            Polarity::Left => {
-                self.polarity = Polarity::Right;
+            Polarity::Negative => {
+                self.polarity = Polarity::Positive;
             }
-            Polarity::Right => {
-                self.polarity = Polarity::Left;
+            Polarity::Positive => {
+                self.polarity = Polarity::Negative;
             }
         }
-        true
     }
 
     pub fn transmute_left(mut self) -> Self {
-        self.polarity = Polarity::Left;
+        self.polarity = Polarity::Negative;
         self
     }
 
     pub fn transmute_right(mut self) -> Self {
-        self.polarity = Polarity::Right;
+        self.polarity = Polarity::Positive;
         self
     }
 }
@@ -99,31 +98,50 @@ where
     pub fn new() -> Self {
         Self(FuzzySet::new())
     }
-    pub fn from_left_right<Left, Right, IntoItemLeft, IntoItemRight>(left: Left, right: Right) -> Self
+    pub fn from_dipole<IterN, IterP, IntoN, IntoP>(negative: IterN, positive: IterP) -> Self
     where
-        Left: IntoIterator<Item = IntoItemLeft>,
-        Right: IntoIterator<Item = IntoItemRight>,
-        IntoItemLeft: Into<fs::Item<M>>,
-        IntoItemRight: Into<fs::Item<M>>,
+        IterN: IntoIterator<Item = IntoN>,
+        IterP: IntoIterator<Item = IntoP>,
+        IntoN: Into<fs::Item<M>>,
+        IntoP: Into<fs::Item<M>>,
     {
         let mut set = FuzzySet::new();
 
-        for item in left.into_iter() {
+        for item in negative.into_iter() {
             let item = item.into();
             set.insert(fs::Item {
                 member: PolarMember {
                     member: item.member,
-                    polarity: Polarity::Left,
+                    polarity: Polarity::Negative,
                 },
                 degree: item.degree,
             });
         }
-        for item in right.into_iter() {
+        for item in positive.into_iter() {
             let item = item.into();
             set.insert(fs::Item {
                 member: PolarMember {
                     member: item.member,
-                    polarity: Polarity::Right,
+                    polarity: Polarity::Positive,
+                },
+                degree: item.degree,
+            });
+        }
+        PolarFuzzySet(set)
+    }
+    pub fn from_monopole<IterN, IntoN>(negative: IterN) -> Self
+    where
+        IterN: IntoIterator<Item = IntoN>,
+        IntoN: Into<fs::Item<M>>,
+    {
+        let mut set = FuzzySet::new();
+
+        for item in negative.into_iter() {
+            let item = item.into();
+            set.insert(fs::Item {
+                member: PolarMember {
+                    member: item.member,
+                    polarity: Polarity::Negative,
                 },
                 degree: item.degree,
             });
@@ -141,11 +159,11 @@ where
             self.insert(item)
         }
     }
-    pub fn scale_lr(&mut self, left_scale_factor: f32, right_scale_factor: f32) {
+    pub fn scale_np(&mut self, n_scale_factor: f32, p_scale_factor: f32) {
         for item in self.0.iter_mut() {
             match item.member.polarity {
-                Polarity::Left => item.degree *= left_scale_factor,
-                Polarity::Right => item.degree *= right_scale_factor,
+                Polarity::Negative => item.degree *= n_scale_factor,
+                Polarity::Positive => item.degree *= p_scale_factor,
             }
         }
     }
@@ -154,11 +172,26 @@ where
             item.member.invert_polarity();
         }
     }
+    pub fn invert_polarity_and_scale_np(&mut self, n_scale_factor: f32, p_scale_factor: f32) {
+        for item in self.0.iter_mut() {
+            // item.member.invert_polarity();
+            match item.member.polarity {
+                Polarity::Negative => {
+                    item.member.polarity = Polarity::Positive;
+                    item.degree *= p_scale_factor;
+                }
+                Polarity::Positive => {
+                    item.member.polarity = Polarity::Negative;
+                    item.degree *= n_scale_factor;
+                }
+            }
+        }
+    }
     /// Return an iterator over over Left-polarized members within the PolarFuzzySet
     pub fn left<'a>(&'a self) -> impl Iterator<Item = fs::Item<M>> + 'a {
         self.0
             .iter()
-            .filter(|a| a.member.polarity == Polarity::Left)
+            .filter(|a| a.member.polarity == Polarity::Negative)
             .map(|a| fs::Item {
                 member: a.member.member.clone(),
                 degree: a.degree,
@@ -169,7 +202,7 @@ where
     pub fn right<'a>(&'a self) -> impl Iterator<Item = fs::Item<M>> + 'a {
         self.0
             .iter()
-            .filter(|a| a.member.polarity == Polarity::Right)
+            .filter(|a| a.member.polarity == Polarity::Positive)
             .map(|a| fs::Item {
                 member: a.member.member.clone(),
                 degree: a.degree,
@@ -187,11 +220,11 @@ where
     /// The result members of each polarity are scaled based the percentage match of the members of the opposing polarity.
     /// If a majority of common members between the two sets match with inverse polarity, all members of the subject set
     /// are inverted to conform to the polarity of the interrogating set.
-    pub fn interrogate(&self, subject: &PolarFuzzySet<M>) -> Option<PolarFuzzySet<M>> {
+    pub fn interrogate_with(&self, query: &PolarFuzzySet<M>) -> Option<PolarFuzzySet<M>> {
         // self is the interrogator.
         // Polarities of the result set will be conformed to the interrogating set
 
-        let mut iter = subject.0.iter().merge_join_by(self.0.iter(), |a, b| a.member.cmp(&b.member));
+        let iter = self.0.iter().merge_join_by(query.0.iter(), |a, b| a.member.cmp(&b.member));
 
         #[derive(Default)]
         struct Bucket {
@@ -200,56 +233,75 @@ where
         };
 
         // We need to sum up the degrees, and the count of each matching item
-        // The first letter is the analogy item side, and the second is the query item side
-        let mut ll_bucket: Bucket = Default::default();
-        let mut rr_bucket: Bucket = Default::default();
-        let mut lr_bucket: Bucket = Default::default();
-        let mut rl_bucket: Bucket = Default::default();
+        // The polarity of which is according to the query
+        let mut n_bucket: Bucket = Default::default();
+        let mut p_bucket: Bucket = Default::default();
+        let mut n_inverse_bucket: Bucket = Default::default();
+        let mut p_inverse_bucket: Bucket = Default::default();
 
-        // We also need to count the non-matching count
-        let mut nonmatching_left_count = 0u32;
-        let mut nonmatching_right_count = 0u32;
+        // Count the corpus expansions
+        let mut ce_left_count = 0u32;
+        let mut ce_right_count = 0u32;
 
-        let mut out = PolarFuzzySet::new();
+        // We also need to count the query expansions
+        let mut qe_left_count = 0u32;
+        let mut qe_right_count = 0u32;
+
+        let mut matching_corpus = PolarFuzzySet::new();
+
+        let mut corpus_expansion = Vec::new();
+
+        // This never gets inverted
+        let mut query_expansion = Vec::new();
 
         use itertools::{EitherOrBoth, Itertools};
         for either in iter {
             match either {
-                EitherOrBoth::Right(other_item) => {
-                    // Present in query, but not present in analogy
-                    match &other_item.member.polarity {
-                        Polarity::Left => nonmatching_left_count += 1,
-                        Polarity::Right => nonmatching_right_count += 1,
+                EitherOrBoth::Left(my_item) => {
+                    //
+                    println!("MY ITEM ONLY {}", my_item);
+                    match &my_item.member.polarity {
+                        Polarity::Negative => ce_left_count += 1,
+                        Polarity::Positive => ce_right_count += 1,
                     }
+                    corpus_expansion.push(my_item.clone());
                 }
-                EitherOrBoth::Both(other_item, my_item) => {
+                EitherOrBoth::Right(query_item) => {
+                    println!("QUERY ITEM ONLY {}", query_item);
+                    // Present in the set, but not present in query
+                    match &query_item.member.polarity {
+                        Polarity::Negative => qe_left_count += 1,
+                        Polarity::Positive => qe_right_count += 1,
+                    }
+                    query_expansion.push(query_item.clone());
+                }
+                EitherOrBoth::Both(my_item, query_item) => {
                     // We've got a hit
-
+                    println!("BOTH {}", my_item);
                     // Scale the degree of the matching item by that of the query
-                    let match_degree = other_item.degree * my_item.degree;
+                    let match_degree = query_item.degree * my_item.degree;
 
-                    let bucket = match (&other_item.member.polarity, &my_item.member.polarity) {
-                        (Polarity::Left, Polarity::Left) => &mut ll_bucket,
-                        (Polarity::Right, Polarity::Right) => &mut rr_bucket,
-                        (Polarity::Left, Polarity::Right) => &mut lr_bucket,
-                        (Polarity::Right, Polarity::Left) => &mut rl_bucket,
+                    let bucket = match (&query_item.member.polarity, &my_item.member.polarity) {
+                        (Polarity::Negative, Polarity::Negative) => &mut n_bucket,
+                        (Polarity::Positive, Polarity::Positive) => &mut p_bucket,
+                        (Polarity::Negative, Polarity::Positive) => &mut n_inverse_bucket,
+                        (Polarity::Positive, Polarity::Negative) => &mut p_inverse_bucket,
                         // _ => unimplemented!("Not clear on how/if categorical analogies mix with sided"),
                     };
 
                     bucket.degree += match_degree;
                     bucket.count += 1;
 
-                    let mut output_item = other_item.clone();
+                    let mut output_item = my_item.clone();
                     output_item.degree = match_degree;
 
-                    out.insert(output_item);
+                    matching_corpus.insert(output_item);
                 }
                 _ => {}
             };
 
             // TODO 2:
             // * How does this compose across multiple levels of Associative analogy? Eg ("Smile" : "Mouth") : ("Wink" : "Eye")
-            // * How do we represent this partial matching. Presumably via some scoring mechanism
         }
 
         // Now we have a set of matching items
@@ -257,40 +309,43 @@ where
         // We are not guaranteed to have a clear affinity, or inverse-affinity for the query set
         // It could be mixed - so we have to vote!
 
-        // If ALL of the matches from one side is zero, then the other side is irrelevant
-        // let direct_degree = ll_bucket.degree * rr_bucket.degree;
-        // let inverse_degree = lr_bucket.degree * rl_bucket.degree;
-
-        // Count up all the hits by
-        let direct_count = rr_bucket.count + ll_bucket.count;
-        let inverse_count = rl_bucket.count + lr_bucket.count;
-
-        let total_right_count = nonmatching_right_count + rr_bucket.count + rl_bucket.count;
-        let total_left_count = nonmatching_left_count + ll_bucket.count + lr_bucket.count;
+        // Count up all the hits
+        let direct_count = p_bucket.count + n_bucket.count;
+        let inverse_count = p_inverse_bucket.count + n_inverse_bucket.count;
 
         // If nothing matches, then we're done here
-        if direct_count == 0 && inverse_count == 0 {
+        if direct_count + inverse_count == 0 {
             return None;
+        }
+
+        corpus_expansion.into_iter().for_each(|i| matching_corpus.insert(i));
+
+        // Queries may include additional members which do not match the corpus. These are considered expansions of the symbols
+        // the nonreductive counts include expansions AND bucketed matches by query polarity
+        let nonreductive_n_count = qe_left_count + n_bucket.count + n_inverse_bucket.count;
+        let nonreductive_p_count = qe_right_count + p_bucket.count + p_inverse_bucket.count;
+
+        // TODO 1 - handle monopole queries
+        let n_scale_factor = (p_bucket.degree + p_inverse_bucket.degree) / nonreductive_p_count as f32;
+        let p_scale_factor = (n_bucket.degree + n_inverse_bucket.degree) / nonreductive_n_count as f32;
+
+        if inverse_count > direct_count {
+            matching_corpus.invert_polarity();
+
+            // Do not invert the query expansion, because it's always the correct polarity
+            query_expansion.into_iter().for_each(|i| matching_corpus.insert(i));
+
+            matching_corpus.scale_np(p_scale_factor, n_scale_factor);
+        } else {
+            query_expansion.into_iter().for_each(|i| matching_corpus.insert(i));
+            matching_corpus.scale_np(n_scale_factor, p_scale_factor);
         }
 
         // Gotta have at least one member on each side, or we're done
-        if total_right_count == 0 || total_left_count == 0 {
-            return None;
-        }
-
-        // Scale *both* sides based on the opposing match_degree
-        // Remember first letter of the bucket is the input analogy item side
-        let left_scale_factor = (rr_bucket.degree + rl_bucket.degree) / total_right_count as f32;
-        let right_scale_factor = (ll_bucket.degree + lr_bucket.degree) / total_left_count as f32;
-
-        out.scale_lr(left_scale_factor, right_scale_factor);
-
-        // Our output set has a stronger affinity than anti-affinity, so we _do not_ invert it
-        if inverse_count > direct_count {
-            out.invert_polarity()
-        }
-
-        Some(out)
+        // if total_right_count == 0 || total_left_count == 0 {
+        //     return None;
+        // }
+        Some(matching_corpus)
     }
 }
 
@@ -312,8 +367,8 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let polarity = match self.polarity {
-            Polarity::Left => "+",
-            Polarity::Right => "-",
+            Polarity::Negative => "-",
+            Polarity::Positive => "+",
         };
         write!(f, "{}{}", polarity, self.member)
     }
@@ -326,7 +381,7 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
         let mut first = true;
-        for item in self.0.iter().filter(|a| a.member.polarity == Polarity::Left) {
+        for item in self.0.iter().filter(|a| a.member.polarity == Polarity::Negative) {
             if !first {
                 write!(f, " {}^{:0.2}", item.member, item.degree)?;
             } else {
@@ -335,16 +390,9 @@ where
             }
         }
 
-        write!(f, " : ")?;
-
-        let mut seen = false;
-        for item in self.0.iter().filter(|a| a.member.polarity == Polarity::Right) {
-            if !first {
-                write!(f, " {}^{:0.2}", item.member, item.degree)?;
-            } else {
-                first = false;
-                write!(f, "{}^{:0.2}", item.member, item.degree)?;
-            }
+        write!(f, " :")?;
+        for item in self.0.iter().filter(|a| a.member.polarity == Polarity::Positive) {
+            write!(f, " {}^{:0.2}", item.member, item.degree)?;
         }
 
         write!(f, "]")?;
@@ -370,33 +418,111 @@ mod test {
 
     use super::{PolarFuzzySet, Polarity};
 
+    // The goal is to EXPAND my symbols such that they correlate to diverse ontologies.
+
+    // Note: In these test cases, we are using SimpleMember, which makes it easier to manage enumerated entities.
+    // Eg Hot1 and Hot2 are different identities, both with the text payload of "Hot"
+    // This maps loosely to the notion of Artifacts "Hot" and entities "Hot1", "Hot2" so as to deconflate labels with concepts.
+
+    #[test]
+    fn perfect_analogy_with_expansive_corpus() {
+        let mut c = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold", "Fria"]);
+        let mut q = PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]);
+
+        // WEIRD - the corpus is MORE specific than our query, and yet we are fully confident in the outcome??
+        // Hot1,Hot2 compared to Hot1 should be LESS confident, I think
+        // What are the network dynamics of this under symbol set size constraint?
+        // Presumably we want a set of canonical symbols to emerge, which posess with an optimal network of hops between said cano
+
+        // Corpus symbols are a perfect superset of query symbols. Result is expanded with full confidence
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-Calliente^1.00 -Hot^1.00 : +Cold^1.00 +Fria^1.00]"
+        );
+
+        // Polarity is determined by the query, not the corpus
+        q.invert_polarity();
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-Cold^1.00 -Fria^1.00 : +Calliente^1.00 +Hot^1.00]"
+        );
+
+        c.invert_polarity();
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-Cold^1.00 -Fria^1.00 : +Calliente^1.00 +Hot^1.00]"
+        );
+    }
+    #[test]
+    fn perfect_analogy_with_reductive_corpus() {
+        let mut c = PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]);
+        let mut q = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold", "Fria"]);
+
+        // THE CORPUS IS LESS SPECIFIC THAN WE'RE ASKING FOR, AND YET WE HAVE LESSER CONFIDENCE?
+
+        // Corpus symbols are a subset of query symbols on both poles.
+        // Confidence reduction is applied to *both* poles by their opposite
+        // because both poles represent reductive matches
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-Calliente^0.50 -Hot^0.50 : +Cold^0.50 +Fria^0.50]"
+        );
+
+        // Polarity is determined by the query, not the corpus
+        q.invert_polarity();
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-Cold^0.50 -Fria^0.50 : +Calliente^0.50 +Hot^0.50]"
+        );
+
+        c.invert_polarity();
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-Cold^0.50 -Fria^0.50 : +Calliente^0.50 +Hot^0.50]"
+        );
+    }
+
+    #[test]
+    fn perfect_analogy_with_half_reductive_corpus() {
+        // Corpus symbols intersect query symbols, but ONE side is a subset
+        let c = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold"]);
+        let q = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold", "Fria"]);
+
+        // Result should be expanded, but with *partial* confidence on the OPPOSING pole
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-Calliente^0.50 -Hot^0.50 : +Cold^1.00 +Fria^1.00]"
+        );
+    }
+
     #[test]
     fn minimal_polar_inference() {
-        let blank: [SimpleMember; 0] = [];
-        let subject = PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]);
-        let query = PolarFuzzySet::from_left_right(&["Hot"], &blank);
+        let subject = PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]);
+        let query = PolarFuzzySet::from_monopole(&["Hot"]);
 
-        let result = query.interrogate(&subject).unwrap();
+        let result = subject.interrogate_with(&query).unwrap();
 
-        println!("result: {}", result);
+        // When the left side fully matches, so does the right, even if our query stated nothing for it
+        assert_eq!(format!("{}", result), "[-Hot^1.00 :  +Cold^1.00]");
 
-        assert_eq!(result.right().next().unwrap().member.text, "Cold");
+        // println!("result: {}", result);
+        // assert_eq!(result.right().next().unwrap().member.text, "Cold");
     }
     #[test]
     fn recursive_polar_inference() {
         let blank: [SimpleMember; 0] = [];
-        let subject = PolarFuzzySet::from_left_right(
-            &[("left", PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]))],
-            &[("right", PolarFuzzySet::from_left_right(&["Caliente"], &["Fria"]))],
+        let subject = PolarFuzzySet::from_dipole(
+            &[("left", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
+            &[("right", PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))],
         );
 
-        let query = PolarFuzzySet::from_left_right(
-            &[("left", PolarFuzzySet::from_left_right(&["Hot"], &["Cold"]))],
-            &[("right", PolarFuzzySet::from_left_right(&["Caliente"], &blank))],
+        let query = PolarFuzzySet::from_dipole(
+            &[("left", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
+            &[("right", PolarFuzzySet::from_dipole(&["Caliente"], &blank))],
         );
 
         // TODO 1 - recurse
-        let foo = query.interrogate(&subject).unwrap();
+        let foo = subject.interrogate_with(&query).unwrap();
 
         println!("foo: {}", foo);
 
@@ -416,6 +542,15 @@ mod test {
             "Fria"
         );
     }
+
+    #[test]
+    fn expansive_then_convergent_network() {
+        // Model a scenario with several agents
+        // each has some symbolic commonality with immediate neighbors, but little or no commonality with others
+        // under this scenario, all agents should converge at least partially (full convergence on a canonical symbol may actually be undesirable)
+
+        todo!()
+    }
     #[test]
     fn polar_fuzzy_set() {
         let mut left_result = FuzzySet::new();
@@ -423,21 +558,21 @@ mod test {
 
         // Imagine we wanted to look up all the Entities for Claims related to Artifacts "Hot" and "Cold"
         let query: PolarFuzzySet<SimpleMember> =
-            PolarFuzzySet::from_left_right(&["Hot1", "Hot2", "Hot3"], &["Cold1", "Cold2", "Cold3"]);
+            PolarFuzzySet::from_dipole(&["Hot1", "Hot2", "Hot3"], &["Cold1", "Cold2", "Cold3"]);
         println!("Query is: {}", query);
 
         // For simplicity, lets say these are all the analogies in the system
         let candidates: [PolarFuzzySet<SimpleMember>; 2] = [
-            PolarFuzzySet::from_left_right(&["Hot1", "Hot2", "Heated1"], &["Mild1", "Mild2", "Cold3"]),
+            PolarFuzzySet::from_dipole(&["Hot1", "Hot2", "Heated1"], &["Mild1", "Mild2", "Cold3"]),
             //               NORMAL to query     ^2/3 Match                          ^1/3 match
-            PolarFuzzySet::from_left_right(&[("Cold1", 1.0), ("Cold2", 1.0)], &[("Hot3", 1.0)]),
+            PolarFuzzySet::from_dipole(&[("Cold1", 1.0), ("Cold2", 1.0)], &[("Hot3", 1.0)]),
             //               INVERSE to query    ^ 2/3 match                              ^ 1/3 match
             // PolarFuzzySet::from_left_right(&[("Cold3", 1.0)], &[("Hot3", 1.0)]),
             //               INVERSE to query    ^1/3  match   ^ 1/3 Match
         ];
 
         for candidate in &candidates {
-            let v = query.interrogate(&candidate).expect("All of the above should match");
+            let v = candidate.interrogate_with(&query).expect("All of the above should match");
             println!("Interrogate {} >>> {}", candidate, v);
 
             // TODO 3 - QUESTION: should the union of the resultant query output sets (for each candidate analogy) bear equal weight in the
@@ -460,20 +595,23 @@ mod test {
 
     #[test]
     fn lesser_weights_through_imperfect_analogy() {
-        // Notice this analogy is inverse tom
-        let a = PolarFuzzySet::from_left_right(&["X", "F"], &["A", "B", "Q"]);
+        // Royalty
+        let a = PolarFuzzySet::from_dipole(&["Woman", "Girl"], &["Queen", "Princess"]);
+        // let a = PolarFuzzySet::from_left_right(&["X", "F"], &["A", "B", "Q"]);
         println!("Set A: {}", a);
 
-        let q = PolarFuzzySet::from_left_right(&["A", "B", "C", "D"], &["X", "Y", "Z"]);
+        // Monarch
+        let q = PolarFuzzySet::from_dipole(&["Man", "Woman"], &["Queen", "King"]); // order is irrelevant
         println!("Set Q: {}", q);
 
         // interrogate the first analogy with the second
-        let mut b = a.interrogate(&q).unwrap();
+        let mut b = a.interrogate_with(&q).unwrap();
         println!("Interrogated set: {}", q);
 
         // Resultant set is scaled based on the common members and their degree
         // and also inverted to match the sidedness of the query analogy
-        assert_eq!(format!("{}", b), "[+X^0.67 :  -A^0.50 -B^0.50]");
+        // left match is .5, right match is .5
+        assert_eq!(format!("{}", b), "[-Woman^0.50 : +Queen^0.50]");
 
         // TODO 2 - Continue authoring this test case meaningfully
         // // So, We've interrogated a1 with a2 and gotten some "naturally" members with < 1 weights.
