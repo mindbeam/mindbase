@@ -20,12 +20,12 @@ use crate::{
 /// A wrapper around a FuzzySet<M> which wraps each member to include a specific polarity representing
 /// the directionality of association/implication. For example, consider the following trivial PolarFuzzySet
 /// containing four members: [Small, Tiny : Big, Large]
-/// Two of these members have a "left" polarization, and the other two have a "right" polarization.
-/// Because the intention here is easy invertability, the selection of which is "left" and which is
-/// "right" is immaterial, so long as that selection is consistent within each individual PolarFuzzySet.
+/// Two of these members have a "negative" polarization, and the other two have a "positive" polarization.
+/// Because the intention here is easy invertability, the selection of which is "negative" and which is
+/// "positive" is immaterial, so long as that selection is consistent within each individual PolarFuzzySet.
 ///
 /// A PolarFuzzySet could alternately be conceptualized as *two* wrapped FuzzySets - one corresponding to
-/// Left, and one corresponding to Right, each with two members in the above example. The reason we do not
+/// negative, and one corresponding to positive, each with two members in the above example. The reason we do not
 /// actually want to represent this with two nonpolar-fuzzysets is because we have to compare and merge
 /// _all_ PolarFuzzySet members (regardless of polarity) pairwise when we are comparing to other
 /// PolarFuzzySets. We will selectively permute the polarity of all output members based on the strongest
@@ -35,13 +35,13 @@ use crate::{
 /// # Note on PolarFuzzySet membership upon an anti-polar insertion:
 /// We believe each sub-member should be unique within the polar set, but some question
 /// remains as to how to handle the addition of a conflicting polarity, and how that might
-/// come about. For example, given an explicit contraction like "I like turtles" AND not("I like turtles"),
+/// come about. For example, given an explicit contradiction like "I like turtles" AND not("I like turtles"),
 /// This might be expressed as two set members with opposing polarity.
-/// Eg: `polarset.insert([T-Left, T-Right])` (pseudocode)
+/// Eg: `polarset.insert([-T, +T])` (pseudocode)
 /// So, what should the final PolarFuzzySet contain? Should it be a null set? [],
-/// or polarity preserving [T-Left], or polarity overwriting [T-Right], or somehow [T-Center]?
-/// Perhaps Left should be represented as -1.0 and Right as 1.0, then averagge the two to get 0.0.
-/// Arguably null set and Center/0.0 are funtionally identical, so this
+/// or polarity preserving [-T], or polarity overwriting [+T], or somehow neither - nor + [~T]?
+/// Perhaps negative should be represented as -1.0 and positive as 1.0, then averagge the two to get 0.0.
+/// Arguably null set and middle/0.0 are funtionally identical, so this
 ///
 /// NOTE(!) this is decidedly different from a statement such as "I like Bob, but I don't like Bob"
 /// Elements of such a statement describing a love-hate relationship may _feel_ polar from a human perspective,
@@ -80,12 +80,12 @@ where
         }
     }
 
-    pub fn transmute_left(mut self) -> Self {
+    pub fn transmute_n(mut self) -> Self {
         self.polarity = Polarity::Negative;
         self
     }
 
-    pub fn transmute_right(mut self) -> Self {
+    pub fn transmute_p(mut self) -> Self {
         self.polarity = Polarity::Positive;
         self
     }
@@ -187,8 +187,8 @@ where
             }
         }
     }
-    /// Return an iterator over over Left-polarized members within the PolarFuzzySet
-    pub fn left<'a>(&'a self) -> impl Iterator<Item = fs::Item<M>> + 'a {
+    /// Return an iterator over over negative-polarized members within the PolarFuzzySet
+    pub fn negative<'a>(&'a self) -> impl Iterator<Item = fs::Item<M>> + 'a {
         self.0
             .iter()
             .filter(|a| a.member.polarity == Polarity::Negative)
@@ -198,8 +198,8 @@ where
             })
     }
 
-    /// Return an iterator over Right-polarized members within the PolarFuzzySet
-    pub fn right<'a>(&'a self) -> impl Iterator<Item = fs::Item<M>> + 'a {
+    /// Return an iterator over positive-polarized members within the PolarFuzzySet
+    pub fn positive<'a>(&'a self) -> impl Iterator<Item = fs::Item<M>> + 'a {
         self.0
             .iter()
             .filter(|a| a.member.polarity == Polarity::Positive)
@@ -367,10 +367,6 @@ where
             matching_corpus.scale_np(n_scale_factor, p_scale_factor);
         }
 
-        // Gotta have at least one member on each side, or we're done
-        // if total_right_count == 0 || total_left_count == 0 {
-        //     return None;
-        // }
         Some(matching_corpus)
     }
 }
@@ -494,7 +490,10 @@ mod test {
         let result = c.interrogate_with(&q).unwrap();
         assert_eq!(format!("{}", result), "[-hot^1.00 -picante^1.00 : +mild^1.00 +suave^1.00]");
 
-        assert_eq!(format!("{}", FuzzySet::from_list(result.right())), "{mild^1.00 suave^1.00}");
+        assert_eq!(
+            format!("{}", FuzzySet::from_list(result.positive())),
+            "{mild^1.00 suave^1.00}"
+        );
     }
     #[test]
     fn analogy_with_half_expansive_corpus() {
@@ -565,13 +564,13 @@ mod test {
     #[test]
     fn recursive_polar_inference() {
         let subject = PolarFuzzySet::from_dipole(
-            &[("left", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
-            &[("right", PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))],
+            &[("n", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
+            &[("p", PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))],
         );
 
         let query = PolarFuzzySet::from_dipole(
-            &[("left", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
-            &[("right", PolarFuzzySet::from_monopole(&["Caliente"]))],
+            &[("n", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
+            &[("p", PolarFuzzySet::from_monopole(&["Caliente"]))],
         );
 
         // TODO 1 - recurse
@@ -613,7 +612,7 @@ mod test {
             // TODO 3 - QUESTION: should the union of the resultant query output sets (for each candidate analogy) bear equal weight in the
             // output set? That seems screwy! Presumably It should be some sort of a weighted union across all candidate
             // analogies, but how do we do this?
-            left_result.union(v.left());
+            left_result.union(v.negative());
 
             result.union(v);
         }
@@ -621,7 +620,7 @@ mod test {
         println!("Result is: {}", result);
 
         println!("Union of left results is: {}", left_result);
-        let result_left = FuzzySet::from_list(result.left());
+        let result_left = FuzzySet::from_list(result.negative());
         println!("Left of union results is: {}", result_left);
         assert_eq!(left_result, result_left);
 
@@ -632,7 +631,6 @@ mod test {
     fn lesser_weights_through_imperfect_analogy() {
         // Feminine Royalty
         let a = PolarFuzzySet::from_dipole(&["Woman", "Girl"], &["Queen", "Princess"]);
-        // let a = PolarFuzzySet::from_left_right(&["X", "F"], &["A", "B", "Q"]);
         println!("Set A: {}", a);
 
         // Monarch
