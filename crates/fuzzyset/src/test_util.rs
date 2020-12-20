@@ -32,7 +32,7 @@ impl Member for SimpleMember {
     }
 
     fn display_fmt(&self, item: &crate::fuzzyset::Item<Self>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}^{:0.1}", item.member, item.degree)
+        write!(f, "{}^{:0.2}", item.member, item.degree)
     }
 }
 

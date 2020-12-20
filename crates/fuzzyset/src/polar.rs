@@ -244,8 +244,8 @@ where
         let mut ce_p_bucket: Bucket = Default::default();
 
         // We also need to count the query expansions
-        let mut qe_left_count = 0u32;
-        let mut qe_right_count = 0u32;
+        let mut qe_n_bucket: Bucket = Default::default();
+        let mut qe_p_bucket: Bucket = Default::default();
 
         let mut matching_corpus = PolarFuzzySet::new();
 
@@ -259,7 +259,7 @@ where
             match either {
                 EitherOrBoth::Left(my_item) => {
                     //
-                    println!("MY ITEM ONLY {}", my_item);
+                    // println!("Corpus Only {}", my_item);
                     let bucket: &mut Bucket = match &my_item.member.polarity {
                         Polarity::Negative => &mut ce_n_bucket,
                         Polarity::Positive => &mut ce_p_bucket,
@@ -270,17 +270,20 @@ where
                     corpus_expansion.push(my_item.clone());
                 }
                 EitherOrBoth::Right(query_item) => {
-                    println!("QUERY ITEM ONLY {}", query_item);
+                    // println!("Query Only {}", query_item);
                     // Present in the set, but not present in query
-                    match &query_item.member.polarity {
-                        Polarity::Negative => qe_left_count += 1,
-                        Polarity::Positive => qe_right_count += 1,
-                    }
+                    let bucket: &mut Bucket = match &query_item.member.polarity {
+                        Polarity::Negative => &mut qe_n_bucket,
+                        Polarity::Positive => &mut qe_p_bucket,
+                    };
+                    bucket.count += 1;
+                    bucket.degree += query_item.degree;
+
                     query_expansion.push(query_item.clone());
                 }
                 EitherOrBoth::Both(my_item, query_item) => {
                     // We've got a hit
-                    println!("BOTH {}", my_item);
+                    // println!("Match {}", my_item);
                     // Scale the degree of the matching item by that of the query
                     let match_degree = query_item.degree * my_item.degree;
 
@@ -300,7 +303,6 @@ where
 
                     matching_corpus.insert(output_item);
                 }
-                _ => {}
             };
 
             // TODO 2:
@@ -321,15 +323,37 @@ where
             return None;
         }
 
+        // Members which were in the corpus, and we did not match but will include
         corpus_expansion.into_iter().for_each(|i| matching_corpus.insert(i));
 
         // Queries may include additional members which do not match the corpus. These are considered expansions of the symbols
         // the nonreductive counts include expansions AND bucketed matches by query polarity
-        let total_n_count = ce_n_bucket.count + qe_left_count + n_bucket.count + n_inverse_bucket.count;
-        let total_p_count = ce_p_bucket.count + qe_right_count + p_bucket.count + p_inverse_bucket.count;
 
-        let n_scale_factor = (ce_p_bucket.degree + p_bucket.degree + p_inverse_bucket.degree) / total_p_count as f32;
-        let p_scale_factor = (ce_n_bucket.degree + n_bucket.degree + n_inverse_bucket.degree) / total_n_count as f32;
+        let ce_buckets = if inverse_count > direct_count {
+            (ce_p_bucket, ce_n_bucket)
+        } else {
+            (ce_n_bucket, ce_p_bucket)
+        };
+
+        // Todo selectively invert the ce part of this
+        let total_n_count = ce_buckets.0.count + qe_n_bucket.count + n_bucket.count + n_inverse_bucket.count;
+        let total_p_count = ce_buckets.1.count + qe_p_bucket.count + p_bucket.count + p_inverse_bucket.count;
+
+        let query_n_count = qe_n_bucket.count + n_bucket.count + n_inverse_bucket.count;
+        let query_p_count = qe_p_bucket.count + p_bucket.count + p_inverse_bucket.count;
+
+        let n_scale_factor = if query_p_count == 0 {
+            1.0
+        } else {
+            (qe_p_bucket.degree + p_bucket.degree + p_inverse_bucket.degree) / total_p_count as f32
+        };
+        let p_scale_factor = if query_n_count == 0 {
+            1.0
+        } else {
+            (qe_n_bucket.degree + n_bucket.degree + n_inverse_bucket.degree) / total_n_count as f32
+        };
+
+        //not trying to match one one side at all means the opposing side scale factor is 1.0
 
         if inverse_count > direct_count {
             matching_corpus.invert_polarity();
@@ -457,7 +481,7 @@ mod test {
     }
     #[test]
     fn minimal_polar_inference() {
-        let c = PolarFuzzySet::from_dipole(&["hot", "picante"], &["mild", "suave"]);
+        let mut c = PolarFuzzySet::from_dipole(&["hot", "picante"], &["mild", "suave"]);
         let q = PolarFuzzySet::from_monopole(&["hot", "picante"]);
 
         let result = c.interrogate_with(&q).unwrap();
@@ -465,10 +489,12 @@ mod test {
         // Our query has no P to detract from the N so they both strongly match
         assert_eq!(format!("{}", result), "[-hot^1.00 -picante^1.00 : +mild^1.00 +suave^1.00]");
 
-        // assert_eq!(
-        //     format!("{}", FuzzySet::from(result.right().map(|m| m.member))),
-        //     "[mild^1.00 suave^1.00]"
-        // );
+        // Output should be robust against the corpus being inverted
+        c.invert_polarity();
+        let result = c.interrogate_with(&q).unwrap();
+        assert_eq!(format!("{}", result), "[-hot^1.00 -picante^1.00 : +mild^1.00 +suave^1.00]");
+
+        assert_eq!(format!("{}", FuzzySet::from_list(result.right())), "{mild^1.00 suave^1.00}");
     }
     #[test]
     fn analogy_with_half_expansive_corpus() {
@@ -479,7 +505,7 @@ mod test {
         // Result should be expanded, but with *partial* confidence on the OPPOSING pole
         assert_eq!(
             format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-hot^0.50 -picante^0.50 : +mild^0.50 +suave^0.50]"
+            "[-hot^0.50 -picante^0.50 : +mild^1.00 +suave^1.00]"
         );
     }
     #[test]
@@ -501,13 +527,13 @@ mod test {
         q.invert_polarity();
         assert_eq!(
             format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-Cold^0.50 -Fria^0.50 : +Calliente^0.50 +Hot^0.50]"
+            "[-mild^1.00 -templado^1.00 : +calido^1.00 +hot^1.00]"
         );
 
         c.invert_polarity();
         assert_eq!(
             format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-Cold^0.50 -Fria^0.50 : +Calliente^0.50 +Hot^0.50]"
+            "[-mild^1.00 -templado^1.00 : +calido^1.00 +hot^1.00]"
         );
     }
 
@@ -519,7 +545,7 @@ mod test {
 
         // a dog isn't very royal
         corpus.push(PolarFuzzySet::from_dipole(&["dog"], &[("royal", 0.1)]));
-        // a cat isn't very royal, but somehow posesses more "royalness" than a dog
+        // a cat isn't very royal either, but somehow posesses more "royalness" than a dog
         corpus.push(PolarFuzzySet::from_dipole(&["cat"], &[("royal", 0.3)]));
         // a queen is very royal
         corpus.push(PolarFuzzySet::from_dipole(&["queen"], &[("royal", 0.99)]));
@@ -538,7 +564,6 @@ mod test {
     }
     #[test]
     fn recursive_polar_inference() {
-        let blank: [SimpleMember; 0] = [];
         let subject = PolarFuzzySet::from_dipole(
             &[("left", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
             &[("right", PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))],
@@ -546,29 +571,11 @@ mod test {
 
         let query = PolarFuzzySet::from_dipole(
             &[("left", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
-            &[("right", PolarFuzzySet::from_dipole(&["Caliente"], &blank))],
+            &[("right", PolarFuzzySet::from_monopole(&["Caliente"]))],
         );
 
         // TODO 1 - recurse
         let foo = subject.interrogate_with(&query).unwrap();
-
-        println!("foo: {}", foo);
-
-        // And make this less bad
-        assert_eq!(
-            foo.right()
-                .next()
-                .unwrap()
-                .member
-                .set
-                .unwrap()
-                .right()
-                .next()
-                .unwrap()
-                .member
-                .text,
-            "Fria"
-        );
     }
 
     #[test]
@@ -590,12 +597,12 @@ mod test {
         println!("Query is: {}", query);
 
         // For simplicity, lets say these are all the analogies in the system
-        let candidates: [PolarFuzzySet<SimpleMember>; 2] = [
+        let candidates: [PolarFuzzySet<SimpleMember>; 3] = [
             PolarFuzzySet::from_dipole(&["Hot1", "Hot2", "Heated1"], &["Mild1", "Mild2", "Cold3"]),
             //               NORMAL to query     ^2/3 Match                          ^1/3 match
             PolarFuzzySet::from_dipole(&[("Cold1", 1.0), ("Cold2", 1.0)], &[("Hot3", 1.0)]),
             //               INVERSE to query    ^ 2/3 match                              ^ 1/3 match
-            // PolarFuzzySet::from_left_right(&[("Cold3", 1.0)], &[("Hot3", 1.0)]),
+            PolarFuzzySet::from_dipole(&[("Cold3", 1.0)], &[("Hot3", 1.0)]),
             //               INVERSE to query    ^1/3  match   ^ 1/3 Match
         ];
 
@@ -623,18 +630,18 @@ mod test {
 
     #[test]
     fn lesser_weights_through_imperfect_analogy() {
-        // Royalty
+        // Feminine Royalty
         let a = PolarFuzzySet::from_dipole(&["Woman", "Girl"], &["Queen", "Princess"]);
         // let a = PolarFuzzySet::from_left_right(&["X", "F"], &["A", "B", "Q"]);
         println!("Set A: {}", a);
 
         // Monarch
-        let q = PolarFuzzySet::from_dipole(&["Man", "Woman"], &["Queen", "King"]); // order is irrelevant
+        let mut q = PolarFuzzySet::from_dipole(&["Queen", "King"], &["Man", "Woman"]); // order is irrelevant
         println!("Set Q: {}", q);
 
-        // interrogate the first analogy with the second
+        // interrogate the first polar set with the second
         let mut b = a.interrogate_with(&q).unwrap();
-        println!("Interrogated set: {}", q);
+        println!("Interrogated set: {}", b);
 
         // Resultant set is scaled based on the common members and their degree
         // and also inverted to match the sidedness of the query analogy

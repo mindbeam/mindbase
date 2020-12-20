@@ -205,10 +205,10 @@ where
         let mut first = true;
         for item in self.iter() {
             if !first {
-                write!(f, " ({:?},{:0.1})", item.member, item.degree)?;
+                write!(f, " ({:?},{:0.2})", item.member, item.degree)?;
             } else {
                 first = false;
-                write!(f, "({:?},{:0.1})", item.member, item.degree)?;
+                write!(f, "({:?},{:0.2})", item.member, item.degree)?;
             }
         }
         write!(f, "}}")?;
