@@ -240,8 +240,8 @@ where
         let mut p_inverse_bucket: Bucket = Default::default();
 
         // Count the corpus expansions
-        let mut ce_left_count = 0u32;
-        let mut ce_right_count = 0u32;
+        let mut ce_n_bucket: Bucket = Default::default();
+        let mut ce_p_bucket: Bucket = Default::default();
 
         // We also need to count the query expansions
         let mut qe_left_count = 0u32;
@@ -260,10 +260,13 @@ where
                 EitherOrBoth::Left(my_item) => {
                     //
                     println!("MY ITEM ONLY {}", my_item);
-                    match &my_item.member.polarity {
-                        Polarity::Negative => ce_left_count += 1,
-                        Polarity::Positive => ce_right_count += 1,
-                    }
+                    let bucket: &mut Bucket = match &my_item.member.polarity {
+                        Polarity::Negative => &mut ce_n_bucket,
+                        Polarity::Positive => &mut ce_p_bucket,
+                    };
+                    bucket.count += 1;
+                    bucket.degree += my_item.degree;
+
                     corpus_expansion.push(my_item.clone());
                 }
                 EitherOrBoth::Right(query_item) => {
@@ -322,12 +325,11 @@ where
 
         // Queries may include additional members which do not match the corpus. These are considered expansions of the symbols
         // the nonreductive counts include expansions AND bucketed matches by query polarity
-        let nonreductive_n_count = qe_left_count + n_bucket.count + n_inverse_bucket.count;
-        let nonreductive_p_count = qe_right_count + p_bucket.count + p_inverse_bucket.count;
+        let total_n_count = ce_n_bucket.count + qe_left_count + n_bucket.count + n_inverse_bucket.count;
+        let total_p_count = ce_p_bucket.count + qe_right_count + p_bucket.count + p_inverse_bucket.count;
 
-        // TODO 1 - handle monopole queries
-        let n_scale_factor = (p_bucket.degree + p_inverse_bucket.degree) / nonreductive_p_count as f32;
-        let p_scale_factor = (n_bucket.degree + n_inverse_bucket.degree) / nonreductive_n_count as f32;
+        let n_scale_factor = (ce_p_bucket.degree + p_bucket.degree + p_inverse_bucket.degree) / total_p_count as f32;
+        let p_scale_factor = (ce_n_bucket.degree + n_bucket.degree + n_inverse_bucket.degree) / total_n_count as f32;
 
         if inverse_count > direct_count {
             matching_corpus.invert_polarity();
@@ -425,38 +427,65 @@ mod test {
     // This maps loosely to the notion of Artifacts "Hot" and entities "Hot1", "Hot2" so as to deconflate labels with concepts.
 
     #[test]
-    fn perfect_analogy_with_expansive_corpus() {
-        let mut c = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold", "Fria"]);
-        let mut q = PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]);
+    fn analogy_with_expansive_corpus() {
+        let mut c = PolarFuzzySet::from_dipole(&["hot", "picante"], &["mild", "suave"]);
+        let mut q = PolarFuzzySet::from_dipole(&["hot"], &["mild"]);
 
-        // WEIRD - the corpus is MORE specific than our query, and yet we are fully confident in the outcome??
-        // Hot1,Hot2 compared to Hot1 should be LESS confident, I think
-        // What are the network dynamics of this under symbol set size constraint?
-        // Presumably we want a set of canonical symbols to emerge, which posess with an optimal network of hops between said cano
+        // "hot" and "mild" are insufficiently specific in this case. What if the corpus were [hot, calido] : [mild,templado]?
+        // Each party starts by defining their own narrow symbols. We want to converge (and expand/clarify) those symbols
+        // by "triangulation", not just blind assumption.
 
-        // Corpus symbols are a perfect superset of query symbols. Result is expanded with full confidence
+        // Corpus symbols are a superset of query symbols.  Result is expanded with *partial*
+        // confidence reduction based on the match percentage of the *opposing* pole
         assert_eq!(
             format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-Calliente^1.00 -Hot^1.00 : +Cold^1.00 +Fria^1.00]"
+            "[-hot^0.50 -picante^0.50 : +mild^0.50 +suave^0.50]"
         );
 
         // Polarity is determined by the query, not the corpus
         q.invert_polarity();
         assert_eq!(
             format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-Cold^1.00 -Fria^1.00 : +Calliente^1.00 +Hot^1.00]"
+            "[-mild^0.50 -suave^0.50 : +hot^0.50 +picante^0.50]"
         );
 
         c.invert_polarity();
         assert_eq!(
             format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-Cold^1.00 -Fria^1.00 : +Calliente^1.00 +Hot^1.00]"
+            "[-mild^0.50 -suave^0.50 : +hot^0.50 +picante^0.50]"
         );
     }
     #[test]
-    fn perfect_analogy_with_reductive_corpus() {
-        let mut c = PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]);
-        let mut q = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold", "Fria"]);
+    fn minimal_polar_inference() {
+        let c = PolarFuzzySet::from_dipole(&["hot", "picante"], &["mild", "suave"]);
+        let q = PolarFuzzySet::from_monopole(&["hot", "picante"]);
+
+        let result = c.interrogate_with(&q).unwrap();
+        // When the N side fully matches, so does the P
+        // Our query has no P to detract from the N so they both strongly match
+        assert_eq!(format!("{}", result), "[-hot^1.00 -picante^1.00 : +mild^1.00 +suave^1.00]");
+
+        // assert_eq!(
+        //     format!("{}", FuzzySet::from(result.right().map(|m| m.member))),
+        //     "[mild^1.00 suave^1.00]"
+        // );
+    }
+    #[test]
+    fn analogy_with_half_expansive_corpus() {
+        // Corpus symbols intersect query symbols, but ONE side is a subset
+        let c = PolarFuzzySet::from_dipole(&["hot", "picante"], &["mild", "suave"]);
+        let q = PolarFuzzySet::from_dipole(&["hot", "picante"], &["mild"]);
+
+        // Result should be expanded, but with *partial* confidence on the OPPOSING pole
+        assert_eq!(
+            format!("{}", c.interrogate_with(&q).unwrap()),
+            "[-hot^0.50 -picante^0.50 : +mild^0.50 +suave^0.50]"
+        );
+    }
+    #[test]
+    fn analogy_with_reductive_corpus() {
+        let mut c = PolarFuzzySet::from_dipole(&["hot"], &["mild"]);
+        let mut q = PolarFuzzySet::from_dipole(&["hot", "calido"], &["mild", "templado"]);
 
         // THE CORPUS IS LESS SPECIFIC THAN WE'RE ASKING FOR, AND YET WE HAVE LESSER CONFIDENCE?
 
@@ -465,7 +494,7 @@ mod test {
         // because both poles represent reductive matches
         assert_eq!(
             format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-Calliente^0.50 -Hot^0.50 : +Cold^0.50 +Fria^0.50]"
+            "[-calido^1.00 -hot^1.00 : +mild^1.00 +templado^1.00]"
         );
 
         // Polarity is determined by the query, not the corpus
@@ -483,30 +512,29 @@ mod test {
     }
 
     #[test]
-    fn perfect_analogy_with_half_reductive_corpus() {
-        // Corpus symbols intersect query symbols, but ONE side is a subset
-        let c = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold"]);
-        let q = PolarFuzzySet::from_dipole(&["Hot", "Calliente"], &["Cold", "Fria"]);
+    fn royalty() {
+        let mut corpus = Vec::new();
 
-        // Result should be expanded, but with *partial* confidence on the OPPOSING pole
-        assert_eq!(
-            format!("{}", c.interrogate_with(&q).unwrap()),
-            "[-Calliente^0.50 -Hot^0.50 : +Cold^1.00 +Fria^1.00]"
-        );
-    }
+        // TODO 2 - construct these *without* directly specifying their degree
 
-    #[test]
-    fn minimal_polar_inference() {
-        let subject = PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]);
-        let query = PolarFuzzySet::from_monopole(&["Hot"]);
+        // a dog isn't very royal
+        corpus.push(PolarFuzzySet::from_dipole(&["dog"], &[("royal", 0.1)]));
+        // a cat isn't very royal, but somehow posesses more "royalness" than a dog
+        corpus.push(PolarFuzzySet::from_dipole(&["cat"], &[("royal", 0.3)]));
+        // a queen is very royal
+        corpus.push(PolarFuzzySet::from_dipole(&["queen"], &[("royal", 0.99)]));
 
-        let result = subject.interrogate_with(&query).unwrap();
+        let q = PolarFuzzySet::from_monopole(&["royal"]);
 
-        // When the left side fully matches, so does the right, even if our query stated nothing for it
-        assert_eq!(format!("{}", result), "[-Hot^1.00 :  +Cold^1.00]");
+        let mut result = PolarFuzzySet::new();
 
-        // println!("result: {}", result);
-        // assert_eq!(result.right().next().unwrap().member.text, "Cold");
+        for c in corpus {
+            // Not sure if union is right here
+            result.union(c.interrogate_with(&q).unwrap());
+        }
+
+        // FAILING TEST CASE
+        assert_eq!(format!("{}", result), "[-royal^1.0 : +cat^0.30 +dog^0.1 +queen^0.99]");
     }
     #[test]
     fn recursive_polar_inference() {
