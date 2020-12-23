@@ -75,11 +75,11 @@ impl From<&'static &'static str> for SimpleMember {
     }
 }
 
-impl<T> From<&(T, f32)> for crate::fuzzyset::Item<SimpleMember>
+impl<T> From<&(T, f64)> for crate::fuzzyset::Item<SimpleMember>
 where
     T: Into<SimpleMember> + Clone,
 {
-    fn from(tuple: &(T, f32)) -> Self {
+    fn from(tuple: &(T, f64)) -> Self {
         crate::fuzzyset::Item {
             member: tuple.0.clone().into(),
             degree: tuple.1,

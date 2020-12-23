@@ -5,7 +5,7 @@ use crate::traits::Member;
 // use itertools::{EitherOrBoth, Itertools};
 // use colorful::{Color, Colorful};
 
-const MEMBER_CULL_DEGREE: f32 = 0.01;
+const MEMBER_CULL_DEGREE: f64 = 0.001;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Item<M>
@@ -13,7 +13,7 @@ where
     M: Member,
 {
     /// The degree to which this member is applicable to the Fuzzy set
-    pub degree: f32,
+    pub degree: f64,
     /// The Member in question
     pub member: M,
 }
@@ -75,7 +75,7 @@ where
     /// Note that under certain circumstances this may actually result in the member being _removed_ from
     /// the set if it is negated by this item
     pub fn insert(&mut self, item: Item<M>) {
-        if item.degree < MEMBER_CULL_DEGREE {
+        if item.degree.abs() < MEMBER_CULL_DEGREE {
             return;
         }
 
@@ -109,7 +109,7 @@ where
                     degree = (existing.degree + item.degree) / 2.0;
                     existing.degree = degree;
                 }
-                if degree < MEMBER_CULL_DEGREE {
+                if degree.abs() < MEMBER_CULL_DEGREE {
                     self.0.remove(i);
                 }
             }
@@ -144,7 +144,29 @@ where
             self.insert(item)
         }
     }
+    pub fn euclidean_distance(&self, other: &Self) -> f64 {
+        use itertools::{EitherOrBoth, Itertools};
+        let iter = self.0.iter().merge_join_by(other.0.iter(), |a, b| a.member.cmp(&b.member));
 
+        let mut sum_of_squares: f64 = 0.0;
+        for either in iter {
+            // QUESTION - should we attempt to recurse?
+            // TODO 1 - Need a difinitive answer to the question of whether an Entity defining a set constitutes CONTAINMENT or something else
+
+            // QUESTION - is euclidean distance even valid if we're missing a data point?
+            match either {
+                EitherOrBoth::Both(l, r) => {
+                    let diff: f64 = l.degree - r.degree;
+                    sum_of_squares += diff.powi(2);
+                }
+                _ =>{}
+                // EitherOrBoth::Left(_l) => return None,
+                // EitherOrBoth::Right(_r) => return None,
+            };
+        }
+
+        sum_of_squares.sqrt()
+    }
     pub fn intersect(&mut self, other: &Self) {
         // Don't keep searching the front of the list over and over
         // TODO
@@ -254,24 +276,24 @@ mod test {
     fn identity() {
         // All members in this set are fully positive
         let mut fs1 = FuzzySet::from_list(vec![1, 2, 3]);
-        assert_eq!(format!("{:?}", fs1), "{(1,1.0) (2,1.0) (3,1.0)}");
+        assert_eq!(format!("{:?}", fs1), "{(1,1.00) (2,1.00) (3,1.00)}");
 
         // union with itself
         fs1.union(fs1.clone());
 
         // should be unchanged (??)
-        assert_eq!(format!("{:?}", fs1), "{(1,1.0) (2,1.0) (3,1.0)}");
+        assert_eq!(format!("{:?}", fs1), "{(1,1.00) (2,1.00) (3,1.00)}");
     }
     #[test]
     fn inverse() {
         // All members in this set are fully positive
         let mut fs1 = FuzzySet::from_list(vec![1, 2, 3]);
-        assert_eq!(format!("{:?}", fs1), "{(1,1.0) (2,1.0) (3,1.0)}");
+        assert_eq!(format!("{:?}", fs1), "{(1,1.00) (2,1.00) (3,1.00)}");
 
         // Fully negative degree set
         let mut fs2 = fs1.clone();
         fs2.invert_degree();
-        assert_eq!(format!("{:?}", fs2), "{(1,-1.0) (2,-1.0) (3,-1.0)}");
+        assert_eq!(format!("{:?}", fs2), "{(1,-1.00) (2,-1.00) (3,-1.00)}");
 
         // Yes, it's strange, but when we take the union of the two sets, every member should be fully positive and fully negative
         // In practice, this essentially means that the set is null, but the behaviors may be different under subsequent
@@ -284,5 +306,54 @@ mod test {
         // fs1.union(fs2);
         // assert_eq!(format!("{:?}", fs1), "{1+1.0-1.0, 2+1.0-1.0, 3+1.0-1.0}");
         // assert_eq!(format!("{:?}", fs1), "{(1,0.0), (2,0.0), (3,0.0)}");
+    }
+}
+
+impl<M> std::ops::Sub for &FuzzySet<M>
+where
+    M: Member + std::fmt::Debug + Clone,
+{
+    type Output = FuzzySet<M>;
+
+    fn sub(self, rhs: &FuzzySet<M>) -> Self::Output {
+        use itertools::{EitherOrBoth, Itertools};
+
+        let iter = self.0.iter().merge_join_by(rhs.0.iter(), |a, b| a.member.cmp(&b.member));
+        let mut out = FuzzySet::new();
+        for either in iter {
+            out.insert(match either {
+                EitherOrBoth::Both(l, r) => Item {
+                    degree: l.degree - r.degree,
+                    ..l.clone()
+                },
+                EitherOrBoth::Left(l) => l.clone(),
+                EitherOrBoth::Right(r) => r.clone(),
+            })
+        }
+        out
+    }
+}
+impl<M> std::ops::Add for &FuzzySet<M>
+where
+    M: Member + std::fmt::Debug + Clone,
+{
+    type Output = FuzzySet<M>;
+
+    fn add(self, rhs: &FuzzySet<M>) -> Self::Output {
+        use itertools::{EitherOrBoth, Itertools};
+
+        let iter = self.0.iter().merge_join_by(rhs.0.iter(), |a, b| a.member.cmp(&b.member));
+        let mut out = FuzzySet::new();
+        for either in iter {
+            out.insert(match either {
+                EitherOrBoth::Both(l, r) => Item {
+                    degree: l.degree + r.degree,
+                    ..l.clone()
+                },
+                EitherOrBoth::Left(l) => l.clone(),
+                EitherOrBoth::Right(r) => r.clone(),
+            })
+        }
+        out
     }
 }

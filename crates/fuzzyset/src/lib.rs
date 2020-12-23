@@ -1,5 +1,5 @@
 pub mod fuzzyset;
 pub mod polar;
-#[cfg(test)]
+// #[cfg(test)]
 pub mod test_util;
 pub mod traits;
