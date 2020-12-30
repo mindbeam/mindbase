@@ -436,6 +436,9 @@ where
 
 #[cfg(test)]
 mod test {
+    use mindbase_graph::Graph;
+    use mindbase_store::MemoryStore;
+
     use crate::{fuzzyset::FuzzySet, test_util::SimpleMember};
 
     use super::{PolarFuzzySet, Polarity};
@@ -543,10 +546,16 @@ mod test {
     }
 
     #[test]
-    fn recursive_polar_inference() {
+    fn recursive_polar_inference() -> Result<(), std::io::Error> {
+        let g = Graph::memory();
+
+        // Containment of Sets WITHIN SimpleMembers is simply not tenable due to cloning vs aliasing.
+        // We must deal with the grap claim vs artifact issue now in order to proceed with this case,
+        // and the fuzzyset basic vector space test
+
         let subject = PolarFuzzySet::from_dipole(
-            &[("n", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
-            &[("p", PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))],
+            &[("n", g.put_artifact(PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))?)],
+            &[("p", g.put_artifact(PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))?)],
         );
 
         let query = PolarFuzzySet::from_dipole(
@@ -556,6 +565,8 @@ mod test {
 
         // TODO 2 - recurse
         let foo = subject.interrogate_with(&query).unwrap();
+
+        Ok(())
     }
 
     // #[test]
