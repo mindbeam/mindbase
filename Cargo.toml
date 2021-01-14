@@ -6,7 +6,7 @@ members = [
     "crates/crypto",
     "crates/fuzzyset",
     "crates/genesis",
-    "crates/graph",
+    "crates/hypergraph",
     "crates/mbcli",
     "crates/mbql",
     "crates/store",

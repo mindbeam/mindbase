@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub enum Error {
     Store(mindbase_store::Error),
+    ArtifactNotFound,
 }
 
 impl From<mindbase_store::Error> for Error {

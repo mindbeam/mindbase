@@ -1,5 +1,5 @@
 [package]
-name = "mindbase-graph"
+name = "mindbase-hypergraph"
 version = "0.1.0"
 authors = ["Daniel Norman <daniel@danielnorman.net>"]
 edition = "2018"
@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 mindbase-store = {path = "../store" }
 
+petgraph = "0.5"
 serde = { version = "1.0", features = ["derive"] }
