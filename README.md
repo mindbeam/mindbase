@@ -59,7 +59,7 @@ So which language is "correct"? Obviously this is a ridiculous question, but it'
 1. The fragmentary nature of our storage and collaboration systems is reflected in our Ontologies. (See [Conway's Law](https://en.wikipedia.org/wiki/Conway%27s_law))
 2. Even if we had frictionlessly collaborative substrates, our data formats are too fragile. They naively strive for objectivity, but a vastly more potent target would be **convergent intersubjectivity.**  
 
-This is the goal of Mindbase – To serve as a powerful substrate for convergent intersubjectivity. The combination of fragmentary storage and collaboration systems and the naivete of objectivity serves as a critical barrier which we hope to surmount. With it, we may strive to build better personal and professional informatics systems. We may reduce the barriers between open and industrial datasets. We may parse and correlate academic papers. We may even make inroads into explainable AI, and AGI. Of course these are ambitious goals, for any system, but we are at least confident that they cannot be achieved with the old techniques.
+This is the goal of Mindbase – To serve as a powerful substrate for convergent intersubjectivity. The combination of fragmentary storage and collaboration systems and the naivete of objectivity serves as a critical barrier which we hope to surmount. With it, we may strive to build better personal and professional informatics systems. We may reduce the barriers between open and industrial datasets. We may parse and correlate academic papers. We may even make inroads into explainable AI, and AGI. Of course these are ambitious goals for any system, but we are at least confident that they cannot be achieved with the old techniques.
 
 ## The "Concept Problem"
 
