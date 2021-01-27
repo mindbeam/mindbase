@@ -45,7 +45,7 @@ We define new terms all the time. Both those with fleeting meaning, and those wh
 
 ## A world of Analogies
 
-Douglas Hofstadter famously explained that Analogy is the core of Cognition. Simply puy: Analogy is necessary to build connection between any two ideas. There can be no thought, or language, or understanding without it. So what does this have to do with Ontologies? In much the same way that translating between two languages requires analogy, so do ontologies.  
+Douglas Hofstadter famously explained that Analogy is the core of Cognition. Simply put: Analogy is necessary to build connection between any two ideas. There can be no thought, or language, or understanding without it. So what does this have to do with Ontologies? In much the same way that translating between two languages requires analogy, so do ontologies.  
 
 Some translations are easier than others:
 `Mi Casa`, `My House`, `Chez Moi` are all fairly cleanly _analagous_
