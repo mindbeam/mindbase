@@ -19,14 +19,11 @@ pub struct Text {
 // Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
 // This can be used to store XML or JSON documents, or other application specific formats
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct SubGraph<T, I>
+pub struct SubGraph<T>
 where
     T: NodeType,
-    I: NodeInstance,
 {
     pub graph_type: T,
-    /// Must contain all unreachable nodes. Optionally reachable nodes may be present
-    pub nodes: Vec<I>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -38,28 +35,11 @@ where
     pub data: Option<Vec<u8>>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct DataRelation<T, E>
+impl<T> Into<Artifact<T>> for Url
 where
     T: NodeType,
-    E: NodeInstance,
 {
-    pub relation_type: T,
-    pub from: E,
-    pub to: E,
-    //  pub amendment: RelationAmendment
-}
-
-// pub enum RelationAmendment{
-//     Remove
-// }
-
-impl<T, E> Into<Artifact<T, E>> for Url
-where
-    T: NodeType,
-    E: NodeInstance,
-{
-    fn into(self) -> Artifact<T, E> {
+    fn into(self) -> Artifact<T> {
         Artifact::Url(self)
     }
 }
@@ -84,61 +64,38 @@ impl fmt::Display for Text {
     }
 }
 
-impl<T, E> Into<Artifact<T, E>> for Text
+impl<T> Into<Artifact<T>> for Text
 where
     T: NodeType,
-    E: NodeInstance,
 {
-    fn into(self) -> Artifact<T, E> {
+    fn into(self) -> Artifact<T> {
         Artifact::FlatText(self)
     }
 }
 
-impl<T, E> Into<Artifact<T, E>> for &str
+impl<T> Into<Artifact<T>> for &str
 where
     T: NodeType,
-    E: NodeInstance,
 {
-    fn into(self) -> Artifact<T, E> {
+    fn into(self) -> Artifact<T> {
         Artifact::FlatText(Text::new(self))
     }
 }
 
-impl<T, E> Into<Artifact<T, E>> for SubGraph<T, E>
+impl<T> Into<Artifact<T>> for DataNode<T>
 where
     T: NodeType,
-    E: NodeInstance,
 {
-    fn into(self) -> Artifact<T, E> {
-        Artifact::Graph(self)
-    }
-}
-
-impl<T, E> Into<Artifact<T, E>> for DataNode<T>
-where
-    T: NodeType,
-    E: NodeInstance,
-{
-    fn into(self) -> Artifact<T, E> {
+    fn into(self) -> Artifact<T> {
         Artifact::Node(self)
     }
 }
-impl<T, E> Into<Artifact<T, E>> for DataRelation<T, E>
-where
-    T: NodeType,
-    E: NodeInstance,
-{
-    fn into(self) -> Artifact<T, E> {
-        Artifact::Relation(self)
-    }
-}
 
-impl<T, E> Into<Artifact<T, E>> for AgentId
+impl<T> Into<Artifact<T>> for AgentId
 where
     T: NodeType,
-    E: NodeInstance,
 {
-    fn into(self) -> Artifact<T, E> {
+    fn into(self) -> Artifact<T> {
         Artifact::Agent(self)
     }
 }

@@ -34,23 +34,19 @@ pub struct ArtifactId(
 );
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum Artifact<T, E>
+pub enum Artifact<T>
 where
     T: NodeType,
-    E: NodeInstance,
 {
     Agent(mindbase_crypto::AgentId),
     Url(body::Url),
     FlatText(body::Text),
-    Graph(body::SubGraph<T, E>),
     Node(body::DataNode<T>),
-    Relation(body::DataRelation<T, E>),
 }
 
-impl<T, E> Artifact<T, E>
+impl<T> Artifact<T>
 where
     T: NodeType,
-    E: NodeInstance,
 {
     pub fn id(&self) -> ArtifactId {
         let mut hasher = Sha512Trunc256::default();
@@ -64,33 +60,23 @@ where
     }
 }
 
-impl<T, E> mindbase_graph::traits::Artifact for Artifact<T, E>
+impl<T> mindbase_hypergraph::traits::Weight for Artifact<T>
 where
-    T: NodeType,
-    E: NodeInstance,
+    T: NodeType + Serialize + Deserialize,
 {
-    type ID = ArtifactId;
-
-    fn id(&self) -> Self::ID {
-        self.id()
-    }
-    /// Might as well Serialize and hash in one go. Remove this when switching to CapnProto
-    fn get_id_and_bytes(&self) -> (Self::ID, Vec<u8>) {
-        let mut hasher = Sha512Trunc256::new();
-
+    fn get_bytes(&self) -> Vec<u8> {
         let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
-        hasher.update(&encoded);
+        encoded
+    }
 
-        let result = hasher.finalize();
-
-        (ArtifactId(result.into()), encoded)
+    fn from_bytes(bytes: &[u8]) -> Self {
+        bincode::deserialize(bytes).unwrap()
     }
 }
 
-impl<T, E> std::fmt::Display for Artifact<T, E>
+impl<T> std::fmt::Display for Artifact<T>
 where
     T: NodeType,
-    E: NodeInstance,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

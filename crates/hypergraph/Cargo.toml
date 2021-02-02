@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 mindbase-store = {path = "../store" }
-
-petgraph = "0.5"
 serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.9"
+rusty_ulid = "0.10"
+bincode = "1.3"
