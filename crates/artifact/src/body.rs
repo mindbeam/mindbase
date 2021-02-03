@@ -1,7 +1,7 @@
 use mindbase_crypto::AgentId;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
-use std::fmt;
+use std::fmt::{self, Display};
 
 use crate::{Artifact, ArtifactId, NodeInstance, NodeType};
 
@@ -26,6 +26,15 @@ where
     pub graph_type: T,
 }
 
+impl<T> Display for SubGraph<T>
+where
+    T: NodeType + std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DataNode({:?})", self.graph_type,)
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNode<T>
 where
@@ -33,6 +42,19 @@ where
 {
     pub data_type: T,
     pub data: Option<Vec<u8>>,
+}
+impl<T> Display for DataNode<T>
+where
+    T: NodeType + std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "DataNode({:?}:{})",
+            self.data_type,
+            String::from_utf8_lossy(self.data.as_ref().map_or(b"", |d| &d[..]))
+        )
+    }
 }
 
 impl<T> Into<Artifact<T>> for Url

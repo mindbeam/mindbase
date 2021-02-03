@@ -1,6 +1,8 @@
 pub mod body;
 pub mod id;
 
+use std::fmt::Display;
+
 use body::SubGraph;
 pub use mindbase_util::Error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -78,15 +80,15 @@ where
 
 impl<T> std::fmt::Display for Artifact<T>
 where
-    T: NodeType,
+    T: NodeType + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Agent(_a) => unimplemented!(),
             Self::Url(_u) => unimplemented!(),
-            Self::FlatText(t) => write!(f, "Artifact({})", t),
-            Self::Node(_n) => unimplemented!(),
-            Self::SubGraph(_s) => unimplemented!(),
+            Self::FlatText(t) => write!(f, "Artifact::FlatText({})", t),
+            Self::Node(n) => write!(f, "Artifact::Node({})", n),
+            Self::SubGraph(s) => write!(f, "Artifact::Subgraph({})", s),
         }
     }
 }

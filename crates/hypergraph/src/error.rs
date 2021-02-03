@@ -2,7 +2,8 @@
 pub enum Error {
     Store(mindbase_store::Error),
     Bincode(bincode::Error),
-    ArtifactNotFound,
+    Io(std::io::Error),
+    NotFound,
 }
 
 impl From<mindbase_store::Error> for Error {
@@ -21,5 +22,11 @@ impl std::convert::From<Error> for std::io::Error {
 impl From<bincode::Error> for Error {
     fn from(e: bincode::Error) -> Self {
         Error::Bincode(e)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
     }
 }

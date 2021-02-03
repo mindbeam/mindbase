@@ -1,7 +1,10 @@
-use std::collections::{btree_map::Entry, BTreeMap};
+use std::{
+    collections::{btree_map::Entry, BTreeMap},
+    fmt::Display,
+};
 
 use mindbase_artifact::{body::DataNode, body::SubGraph, Artifact, ArtifactId, NodeInstance, NodeType};
-use mindbase_hypergraph::{hyperedge::directed, traits::Weight, HyperGraph};
+use mindbase_hypergraph::{hyperedge::directed, traits::Weight, EntityId, HyperGraph, VertexId};
 use mindbase_store::MemoryStore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -36,6 +39,7 @@ enum JSONType {
     Value,
     RootElement,
 }
+
 impl Weight for JSONType {
     fn get_bytes(&self) -> Vec<u8> {
         let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
@@ -90,7 +94,9 @@ fn colors() -> Result<(), std::io::Error> {
 
     graph.add_hyperedge(directed(JSONType::RootElement, [doc], [root_element]));
 
-    let out = std::io::stdout().lock();
+    let mut out = std::io::stdout();
+    graph.dump_vertexes(&mut out);
+    graph.dump_hyperedges(&mut out);
 
     // JSONRenderer::render(out, &mut graph, &document);
 
@@ -99,7 +105,7 @@ fn colors() -> Result<(), std::io::Error> {
 
 fn walk_json(
     graph: &HyperGraph<MemoryStore, Artifact<JSONType>, JSONType, ()>, v: Value,
-) -> Result<VertexId, mindbase_hypergraph::error::Error> {
+) -> Result<EntityId, mindbase_hypergraph::error::Error> {
     match v {
         Value::Null => graph.add_vertex(DataNode {
             data_type: JSONType::Null,
@@ -126,53 +132,52 @@ fn walk_json(
 
             // now recurse
 
-            let members = Vec::with_capacity(values.len());
+            let mut members: Vec<EntityId> = Vec::with_capacity(values.len());
             for (i, value) in values.into_iter().enumerate() {
                 let member = walk_json(graph, value)?;
 
                 // TODO1 - how does this work with symbolic types?
-                graph.add_hyperedge(directed(JSONType::ArrayOffset(i), [arr], [member]))?;
+                graph.add_hyperedge(directed(JSONType::ArrayOffset(i), [arr.clone()], [member.clone()]))?;
 
                 if i == 0 {
-                    graph.add_hyperedge(directed(JSONType::ArrHead, [arr], [member]))?;
+                    graph.add_hyperedge(directed(JSONType::ArrHead, [arr.clone()], [member.clone()]))?;
                 } else {
                     let prev = members.last().unwrap();
-                    graph.add_hyperedge(directed(JSONType::ArrNextMember, [prev], [member]))?;
-                    graph.add_hyperedge(directed(JSONType::ArrPrevMember, [member], [prev]))?;
+                    graph.add_hyperedge(directed(JSONType::ArrNextMember, [prev.clone()], [member.clone()]))?;
+                    graph.add_hyperedge(directed(JSONType::ArrPrevMember, [member.clone()], [prev.clone()]))?;
                 };
 
                 members.push(member);
             }
-
-            graph.add_hyperedge(directed(JSONType::ArrayMember, [arr], members))?;
-
             if let Some(tail) = members.last() {
-                graph.add_hyperedge(directed(JSONType::ArrTail, [arr], [tail]))?;
+                graph.add_hyperedge(directed(JSONType::ArrTail, [arr.clone()], [tail.clone()]))?;
             }
+
+            graph.add_hyperedge(directed(JSONType::ArrayMember, [arr.clone()], members))?;
 
             Ok(arr)
         }
         Value::Object(values) => {
             //First define the array node itself
-            let obj = graph
-                .add_vertex(DataNode {
-                    data_type: JSONType::Object,
-                    data: None,
-                })?
-                .into();
-            let members = Vec::with_capacity(values.len());
+            let obj = graph.add_vertex(DataNode {
+                data_type: JSONType::Object,
+                data: None,
+            })?;
+            let mut properties: Vec<EntityId> = Vec::with_capacity(values.len());
+            let mut members: Vec<EntityId> = Vec::with_capacity(values.len());
 
             // now recurse
             for (key, value) in values {
                 let member = walk_json(graph, value)?;
 
                 // TODO1 - reconcile HyperedgeWeight with symbolic types
-                graph.add_hyperedge(directed(JSONType::ObjectProperty(key), [obj], [member]))?;
+                let prop = graph.add_hyperedge(directed(JSONType::ObjectProperty(key), [obj.clone()], [member.clone()]))?;
 
                 members.push(member);
+                properties.push(prop);
             }
-            graph.add_hyperedge(directed(JSONType::ObjectMembers, [obj], members))?;
-            graph.add_hyperedge(directed(JSONType::ObjectProperties, [obj], members))?;
+            graph.add_hyperedge(directed(JSONType::ObjectMembers, [obj.clone()], members.clone()))?;
+            graph.add_hyperedge(directed(JSONType::ObjectProperties, [obj.clone()], members))?;
 
             Ok(obj)
         }

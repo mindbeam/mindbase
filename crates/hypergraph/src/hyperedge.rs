@@ -10,7 +10,7 @@ where
     pub(crate) inner: HyperedgeInner,
 }
 /// TODO1 - implement fuzzy membership
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub(crate) enum HyperedgeInner {
     Undirected(Vec<EntityId>),
     Directed(Vec<EntityId>, Vec<EntityId>),

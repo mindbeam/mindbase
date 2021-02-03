@@ -1,6 +1,20 @@
+use std::{fmt::Display, marker::PhantomData, unimplemented};
+
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 
+use crate::{hyperedge, traits, Error};
+
+use std::io::Write;
+
+use mindbase_store::{MemoryStore, Tree};
+use rusty_ulid::generate_ulid_bytes;
+
+use crate::{
+    entity::{HyperedgeId, VertexId},
+    hyperedge::HyperedgeInner,
+    EntityId, Hyperedge,
+};
 /// ?? Claims are sometimes artifact instances, but illegal instance values are possible to represent
 /// Mixed Hypergraph ( undirected edges are categories, directed are analogies? )
 
@@ -75,16 +89,16 @@ where
             hyperedge_by_weight_index,
         })
     }
-    pub fn add_vertex<IV: Into<V>>(&self, weight: IV) -> Result<VertexId, Error> {
+    pub fn add_vertex<IV: Into<V>>(&self, weight: IV) -> Result<EntityId, Error> {
         let w = self.put_vertex_weight(weight.into())?;
 
         let id_bytes = generate_ulid_bytes();
 
         self.vertex_storage.insert(id_bytes, bincode::serialize(&StoredVertex(w))?)?;
 
-        Ok(VertexId(id_bytes))
+        Ok(VertexId(id_bytes).into())
     }
-    pub fn add_hyperedge(&self, hyperedge: Hyperedge<H>) -> Result<HyperedgeId, Error> {
+    pub fn add_hyperedge(&self, hyperedge: Hyperedge<H>) -> Result<EntityId, Error> {
         let w = self.put_hyperedge_weight(hyperedge.weight)?;
 
         let id_bytes = generate_ulid_bytes();
@@ -92,7 +106,7 @@ where
         self.hyperedge_storage
             .insert(id_bytes, bincode::serialize(&StoredHyperEdge(w, hyperedge.inner))?)?;
 
-        Ok(HyperedgeId(id_bytes))
+        Ok(HyperedgeId(id_bytes).into())
     }
     fn put_vertex_weight<T: Into<V>>(&self, into_weight: T) -> Result<VertexWeightRef, Error> {
         let weight: V = into_weight.into();
@@ -132,28 +146,56 @@ where
 
         Ok(wr)
     }
-    // pub fn get_weight(&self, instance: WeightHandle) -> Result<W, Error> {
-    //     let artifact_id = instance.artifact_id();
-
-    //     match self.weight_storage.get(&artifact_id)? {
-    //         Some(bytes) => Ok(VertexWeight::from_id_and_bytes(artifact_id, bytes)),
-    //         None => return Err(Error::ArtifactNotFound),
-    //     }
-    // }
+    fn get_vertex_weight(&self, wr: VertexWeightRef) -> Result<V, Error> {
+        match wr {
+            VertexWeightRef::Inline(ref bytes) => Ok(V::from_bytes(bytes)),
+            VertexWeightRef::Remote(id) => match self.vertex_weight_storage.get(id.0)? {
+                Some(ref bytes) => Ok(V::from_bytes(bytes)),
+                None => return Err(Error::NotFound),
+            },
+        }
+    }
+    fn get_hyperedge_weight(&self, wr: HyperedgeWeightRef) -> Result<H, Error> {
+        match wr {
+            HyperedgeWeightRef::Inline(ref bytes) => Ok(H::from_bytes(bytes)),
+            HyperedgeWeightRef::Remote(id) => match self.hyperedge_weight_storage.get(id.0)? {
+                Some(ref bytes) => Ok(H::from_bytes(bytes)),
+                None => return Err(Error::NotFound),
+            },
+        }
+    }
+    pub fn dump_vertexes<W: Write>(&self, mut writer: W) -> Result<(), Error>
+    where
+        V: Display,
+    {
+        for vertex_rec in self.vertex_storage.iter() {
+            let (id_bytes, bytes) = vertex_rec?;
+            let vertex_id: VertexId = bincode::deserialize(&id_bytes)?;
+            let vertex: StoredVertex = bincode::deserialize(&bytes)?;
+            write!(writer, "{} = {}\n", vertex_id, self.get_vertex_weight(vertex.0)?)?;
+        }
+        Ok(())
+    }
+    pub fn dump_hyperedges<W: Write>(&self, mut writer: W) -> Result<(), Error>
+    where
+        H: std::fmt::Debug,
+    {
+        for hyperedge_rec in self.hyperedge_storage.iter() {
+            let (id_bytes, bytes) = hyperedge_rec?;
+            let hyperedge_id: VertexId = bincode::deserialize(&id_bytes)?;
+            let hyperedge: StoredHyperEdge = bincode::deserialize(&bytes)?;
+            write!(
+                writer,
+                "{} = {:?}: {:?}\n",
+                hyperedge_id,
+                self.get_hyperedge_weight(hyperedge.0)?,
+                hyperedge.1
+            )?;
+        }
+        Ok(())
+    }
 }
 
-use std::marker::PhantomData;
-
-use mindbase_store::{MemoryStore, Tree};
-use rusty_ulid::generate_ulid_bytes;
-use traits::Weight;
-
-use crate::{
-    entity::{HyperedgeId, VertexId},
-    error::Error,
-    hyperedge::HyperedgeInner,
-    traits, Hyperedge,
-};
 impl<V, H, P> HyperGraph<MemoryStore, V, H, P>
 where
     V: traits::Weight,
