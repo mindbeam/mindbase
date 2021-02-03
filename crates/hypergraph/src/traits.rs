@@ -10,3 +10,5 @@ pub trait Provenance {}
 //     fn get_id_and_bytes(&self) -> (Self::ID, Vec<u8>);
 //     fn from_id_and_bytes<B: AsRef<[u8]>>(id: Self::ID, bytes: B) -> Self;
 // }
+
+impl Provenance for () {}

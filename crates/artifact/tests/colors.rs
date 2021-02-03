@@ -1,11 +1,10 @@
 use std::collections::{btree_map::Entry, BTreeMap};
 
 use mindbase_artifact::{body::DataNode, body::SubGraph, Artifact, ArtifactId, NodeInstance, NodeType};
-use mindbase_hypergraph::{HyperGraph, Hyperedge};
+use mindbase_hypergraph::{hyperedge::directed, traits::Weight, HyperGraph};
 use mindbase_store::MemoryStore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use Hyperedge::directed;
 
 use std::sync::{Arc, Mutex};
 
@@ -16,7 +15,7 @@ lazy_static! {
     static ref INCREMENT: Arc<Mutex<u32>> = Arc::new(Mutex::new(0u32));
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 enum JSONType {
     Document,
     Null,
@@ -36,6 +35,16 @@ enum JSONType {
     ObjectMembers,
     Value,
     RootElement,
+}
+impl Weight for JSONType {
+    fn get_bytes(&self) -> Vec<u8> {
+        let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
+        encoded
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        bincode::deserialize(bytes).unwrap()
+    }
 }
 
 impl NodeType for JSONType {}
@@ -89,7 +98,7 @@ fn colors() -> Result<(), std::io::Error> {
 }
 
 fn walk_json(
-    graph: &mut HyperGraph<MemoryStore, Artifact<JSONType, JNE>, JNE>, v: Value,
+    graph: &HyperGraph<MemoryStore, Artifact<JSONType>, JSONType, ()>, v: Value,
 ) -> Result<VertexId, mindbase_hypergraph::error::Error> {
     match v {
         Value::Null => graph.add_vertex(DataNode {
@@ -127,8 +136,9 @@ fn walk_json(
                 if i == 0 {
                     graph.add_hyperedge(directed(JSONType::ArrHead, [arr], [member]))?;
                 } else {
-                    graph.add_hyperedge(directed(JSONType::ArrNextMember, [members[-1]], [member]))?;
-                    graph.add_hyperedge(directed(JSONType::ArrPrevMember, [member], [members[-1]]))?;
+                    let prev = members.last().unwrap();
+                    graph.add_hyperedge(directed(JSONType::ArrNextMember, [prev], [member]))?;
+                    graph.add_hyperedge(directed(JSONType::ArrPrevMember, [member], [prev]))?;
                 };
 
                 members.push(member);
@@ -136,18 +146,20 @@ fn walk_json(
 
             graph.add_hyperedge(directed(JSONType::ArrayMember, [arr], members))?;
 
-            if let Some(prev) = last {
-                graph.add_hyperedge(directed(JSONType::ArrTail, [arr], [prev]))?;
+            if let Some(tail) = members.last() {
+                graph.add_hyperedge(directed(JSONType::ArrTail, [arr], [tail]))?;
             }
 
             Ok(arr)
         }
         Value::Object(values) => {
             //First define the array node itself
-            let obj = graph.add_vertex(DataNode {
-                data_type: JSONType::Object,
-                data: None,
-            })?;
+            let obj = graph
+                .add_vertex(DataNode {
+                    data_type: JSONType::Object,
+                    data: None,
+                })?
+                .into();
             let members = Vec::with_capacity(values.len());
 
             // now recurse

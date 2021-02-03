@@ -90,6 +90,14 @@ where
         Artifact::Node(self)
     }
 }
+impl<T> Into<Artifact<T>> for SubGraph<T>
+where
+    T: NodeType,
+{
+    fn into(self) -> Artifact<T> {
+        Artifact::SubGraph(self)
+    }
+}
 
 impl<T> Into<Artifact<T>> for AgentId
 where

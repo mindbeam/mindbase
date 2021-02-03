@@ -1,8 +1,9 @@
 pub mod body;
 pub mod id;
 
+use body::SubGraph;
 pub use mindbase_util::Error;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 
 pub trait NodeType: Serialize {}
@@ -42,6 +43,7 @@ where
     Url(body::Url),
     FlatText(body::Text),
     Node(body::DataNode<T>),
+    SubGraph(body::SubGraph<T>),
 }
 
 impl<T> Artifact<T>
@@ -62,7 +64,7 @@ where
 
 impl<T> mindbase_hypergraph::traits::Weight for Artifact<T>
 where
-    T: NodeType + Serialize + Deserialize,
+    T: NodeType + Serialize + DeserializeOwned,
 {
     fn get_bytes(&self) -> Vec<u8> {
         let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
@@ -83,9 +85,8 @@ where
             Self::Agent(_a) => unimplemented!(),
             Self::Url(_u) => unimplemented!(),
             Self::FlatText(t) => write!(f, "Artifact({})", t),
-            Self::Graph(_d) => unimplemented!(),
             Self::Node(_n) => unimplemented!(),
-            Artifact::Relation(_r) => unimplemented!(),
+            Self::SubGraph(_s) => unimplemented!(),
         }
     }
 }
