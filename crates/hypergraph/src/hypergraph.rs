@@ -1,20 +1,19 @@
-use std::{fmt::Display, marker::PhantomData, unimplemented};
+use std::{fmt::Display, marker::PhantomData};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 
-use crate::{hyperedge, traits, Error};
+use crate::{
+    entity::{undirected, Entity, EntityInner},
+    traits, Error,
+};
 
 use std::io::Write;
 
 use mindbase_store::{MemoryStore, Tree};
 use rusty_ulid::generate_ulid_bytes;
 
-use crate::{
-    entity::{HyperedgeId, VertexId},
-    hyperedge::HyperedgeInner,
-    EntityId, Hyperedge,
-};
+use crate::entity::EntityId;
 /// ?? Claims are sometimes artifact instances, but illegal instance values are possible to represent
 /// Mixed Hypergraph ( undirected edges are categories, directed are analogies? )
 
@@ -30,86 +29,117 @@ use crate::{
 /// * indexed lookup of nodes and edges by weight
 /// * provenance (and filtration by same)
 #[derive(Debug)]
-pub struct HyperGraph<S, V, H, P = ()>
+pub struct HyperGraph<S, W, P = ()>
 where
     S: mindbase_store::Store,
-    V: traits::Weight,
-    H: traits::Weight,
+    W: traits::Weight,
     P: traits::Provenance,
 {
     // Need to store this due to RAI
     #[doc(hidden)]
     _store: S,
     /// Keyed on UUID for now, but this is ripe for optimization
-    vertex_storage: S::Tree,
-    /// Keyed on UUID for now, but this is ripe for optimization
-    hyperedge_storage: S::Tree,
+    entity_storage: S::Tree,
     /// Smaller weights may be stored directly in the hyper entity
     /// But larger weights should be stored separately
     /// Keyed by hash of weight
-    vertex_weight_storage: S::Tree,
-    hyperedge_weight_storage: S::Tree,
+    weight_storage: S::Tree,
 
     /// Index the raw weight value directly to the hyperedge
-    hyperedge_by_weight_index: S::Tree,
+    entity_by_weight_index: S::Tree,
 
-    _v: PhantomData<V>,
-    _h: PhantomData<H>,
+    _w: PhantomData<W>,
     _p: PhantomData<P>,
 }
 
-impl<S, V, H, P> HyperGraph<S, V, H, P>
+impl<S, W, P> HyperGraph<S, W, P>
 where
     S: mindbase_store::Store,
-    V: traits::Weight,
-    H: traits::Weight,
+    W: traits::Weight,
     P: traits::Provenance,
 {
     pub fn new(store: S) -> Result<Self, Error> {
-        // Separate out the weights to be stored
-        let vertex_weight_storage = store.open_tree("hypergraph::vertex_weight_storage")?;
-        vertex_weight_storage.set_merge_operator(op_write_once);
+        // Store weights separately from entities
+        let weight_storage = store.open_tree("hypergraph::weight_storage")?;
+        weight_storage.set_merge_operator(op_write_once);
 
-        let hyperedge_weight_storage = store.open_tree("hypergraph::hyperedge_weight_storage")?;
-        hyperedge_weight_storage.set_merge_operator(op_write_once);
-
-        let vertexes = store.open_tree("hypergraph::vertex_storage")?;
-        let hyperedges = store.open_tree("hypergraph::hyperedge_storage")?;
-        let hyperedge_by_weight_index = store.open_tree("hypergraph::hyperedge_by_weight_index")?;
+        let entity_storage = store.open_tree("hypergraph::entity_storage")?;
+        let entity_by_weight_index = store.open_tree("hypergraph::entity_by_weight_index")?;
 
         Ok(HyperGraph {
-            _v: PhantomData,
-            _h: PhantomData,
+            _w: PhantomData,
             _p: PhantomData,
             _store: store,
-            vertex_weight_storage,
-            hyperedge_weight_storage,
-            vertex_storage: vertexes,
-            hyperedge_storage: hyperedges,
-            hyperedge_by_weight_index,
+            weight_storage,
+            entity_storage,
+            entity_by_weight_index,
         })
     }
-    pub fn add_vertex<IV: Into<V>>(&self, weight: IV) -> Result<EntityId, Error> {
-        let w = self.put_vertex_weight(weight.into())?;
+    /// Insert an entity into the hypergraph
+    /// ```
+    /// use mindbase_hypergraph::{HyperGraph,entity,MemoryStore};
+    /// let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
+    /// graph.insert(entity::vertex("123")).unwrap()
+    /// ```
+    pub fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error> {
+        let w = self.put_weight(entity.weight)?;
 
         let id_bytes = generate_ulid_bytes();
 
-        self.vertex_storage.insert(id_bytes, bincode::serialize(&StoredVertex(w))?)?;
+        self.entity_storage
+            .insert(id_bytes, bincode::serialize(&StoredEntity(w, entity.inner))?)?;
 
-        Ok(VertexId(id_bytes).into())
+        Ok(EntityId(id_bytes).into())
     }
-    pub fn add_hyperedge(&self, hyperedge: Hyperedge<H>) -> Result<EntityId, Error> {
-        let w = self.put_hyperedge_weight(hyperedge.weight)?;
-
-        let id_bytes = generate_ulid_bytes();
-
-        self.hyperedge_storage
-            .insert(id_bytes, bincode::serialize(&StoredHyperEdge(w, hyperedge.inner))?)?;
-
-        Ok(HyperedgeId(id_bytes).into())
+    /// Convenience function, equivalent to
+    /// ```
+    /// # use mindbase_hypergraph::{HyperGraph,entity};
+    /// # let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
+    /// graph.insert(entity::vertex("123")).unwrap();
+    /// ```
+    pub fn insert_vertex<IW: Into<W>>(&self, weight: IW) -> Result<EntityId, Error> {
+        self.insert(crate::entity::vertex(weight))
     }
-    fn put_vertex_weight<T: Into<V>>(&self, into_weight: T) -> Result<VertexWeightRef, Error> {
-        let weight: V = into_weight.into();
+    ///
+    pub fn insert_directed<WI, F, T>(&self, weight: WI, from: F, to: T) -> Result<EntityId, Error>
+    where
+        WI: Into<W>,
+        F: Into<Vec<EntityId>>,
+        T: Into<Vec<EntityId>>,
+    {
+        self.insert(crate::entity::directed(weight, from, to))
+    }
+    pub fn insert_undirected<WI, M>(&self, weight: WI, members: M) -> Result<EntityId, Error>
+    where
+        WI: Into<W>,
+        M: Into<Vec<EntityId>>,
+    {
+        self.insert(crate::entity::undirected(weight, members))
+    }
+    pub fn get(&self, entity_id: &EntityId) -> Result<Entity<W>, Error> {
+        match self.entity_storage.get(entity_id.0)? {
+            Some(entity_bytes) => {
+                let sv: StoredEntity = bincode::deserialize(&entity_bytes)?;
+                Ok(Entity {
+                    weight: self.get_weight_by_ref(sv.0)?,
+                    inner: sv.1,
+                })
+            }
+            None => Err(Error::NotFound),
+        }
+    }
+    pub fn get_weight(&self, entity_id: &EntityId) -> Result<W, Error> {
+        match self.entity_storage.get(entity_id.0)? {
+            Some(entity_bytes) => {
+                let sv: StoredEntity = bincode::deserialize(&entity_bytes)?;
+                Ok(self.get_weight_by_ref(sv.0)?)
+            }
+            None => Err(Error::NotFound),
+        }
+    }
+
+    fn put_weight<T: Into<W>>(&self, into_weight: T) -> Result<WeightRef, Error> {
+        let weight: W = into_weight.into();
 
         let bytes = weight.get_bytes();
         let mut hasher = Sha512Trunc256::default();
@@ -117,89 +147,49 @@ where
         let hash = hasher.finalize();
 
         let wr = if bytes.len() < 32 {
-            VertexWeightRef::Inline(bytes.clone())
+            WeightRef::Inline(bytes.clone())
         } else {
-            VertexWeightRef::Remote(StoredWeightId(hash.into()))
+            WeightRef::Remote(StoredWeightId(hash.into()))
         };
 
         // Only store it if we haven't seen this one before
-        self.vertex_weight_storage.merge(hash, bytes)?;
+        self.weight_storage.merge(hash, bytes)?;
 
         Ok(wr)
     }
-    fn put_hyperedge_weight<T: Into<H>>(&self, into_weight: T) -> Result<HyperedgeWeightRef, Error> {
-        let weight: H = into_weight.into();
-
-        let bytes = weight.get_bytes();
-        let mut hasher = Sha512Trunc256::default();
-        hasher.update(&bytes);
-        let hash = hasher.finalize();
-
-        let wr = if bytes.len() < 32 {
-            HyperedgeWeightRef::Inline(bytes.clone())
-        } else {
-            HyperedgeWeightRef::Remote(StoredWeightId(hash.into()))
-        };
-
-        // Only store it if we haven't seen this one before
-        self.vertex_weight_storage.merge(hash, bytes)?;
-
-        Ok(wr)
-    }
-    fn get_vertex_weight(&self, wr: VertexWeightRef) -> Result<V, Error> {
+    fn get_weight_by_ref(&self, wr: WeightRef) -> Result<W, Error> {
         match wr {
-            VertexWeightRef::Inline(ref bytes) => Ok(V::from_bytes(bytes)),
-            VertexWeightRef::Remote(id) => match self.vertex_weight_storage.get(id.0)? {
-                Some(ref bytes) => Ok(V::from_bytes(bytes)),
+            WeightRef::Inline(ref bytes) => Ok(W::from_bytes(bytes)),
+            WeightRef::Remote(id) => match self.weight_storage.get(id.0)? {
+                Some(ref bytes) => Ok(W::from_bytes(bytes)),
                 None => return Err(Error::NotFound),
             },
         }
     }
-    fn get_hyperedge_weight(&self, wr: HyperedgeWeightRef) -> Result<H, Error> {
-        match wr {
-            HyperedgeWeightRef::Inline(ref bytes) => Ok(H::from_bytes(bytes)),
-            HyperedgeWeightRef::Remote(id) => match self.hyperedge_weight_storage.get(id.0)? {
-                Some(ref bytes) => Ok(H::from_bytes(bytes)),
-                None => return Err(Error::NotFound),
-            },
-        }
-    }
-    pub fn dump_vertexes<W: Write>(&self, mut writer: W) -> Result<(), Error>
+
+    pub fn dump_entities<O: Write>(&self, mut writer: O) -> Result<(), Error>
     where
-        V: Display,
+        W: std::fmt::Debug,
     {
-        for vertex_rec in self.vertex_storage.iter() {
-            let (id_bytes, bytes) = vertex_rec?;
-            let vertex_id: VertexId = bincode::deserialize(&id_bytes)?;
-            let vertex: StoredVertex = bincode::deserialize(&bytes)?;
-            write!(writer, "{} = {}\n", vertex_id, self.get_vertex_weight(vertex.0)?)?;
-        }
-        Ok(())
-    }
-    pub fn dump_hyperedges<W: Write>(&self, mut writer: W) -> Result<(), Error>
-    where
-        H: std::fmt::Debug,
-    {
-        for hyperedge_rec in self.hyperedge_storage.iter() {
-            let (id_bytes, bytes) = hyperedge_rec?;
-            let hyperedge_id: VertexId = bincode::deserialize(&id_bytes)?;
-            let hyperedge: StoredHyperEdge = bincode::deserialize(&bytes)?;
+        for entity_rec in self.entity_storage.iter() {
+            let (id_bytes, bytes) = entity_rec?;
+            let entity_id: EntityId = bincode::deserialize(&id_bytes)?;
+            let entity: StoredEntity = bincode::deserialize(&bytes)?;
             write!(
                 writer,
                 "{} = {:?}: {:?}\n",
-                hyperedge_id,
-                self.get_hyperedge_weight(hyperedge.0)?,
-                hyperedge.1
+                entity_id,
+                self.get_weight_by_ref(entity.0)?,
+                entity.1
             )?;
         }
         Ok(())
     }
 }
 
-impl<V, H, P> HyperGraph<MemoryStore, V, H, P>
+impl<W, P> HyperGraph<MemoryStore, W, P>
 where
-    V: traits::Weight,
-    H: traits::Weight,
+    W: traits::Weight,
     P: traits::Provenance,
 {
     pub fn memory() -> Self {
@@ -208,25 +198,16 @@ where
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct StoredVertex(pub(crate) VertexWeightRef);
+struct StoredEntity(WeightRef, EntityInner);
 
 #[derive(Serialize, Deserialize)]
-struct StoredHyperEdge(HyperedgeWeightRef, HyperedgeInner);
-
-#[derive(Serialize, Deserialize)]
-enum HyperedgeWeightRef {
+enum WeightRef {
     Inline(Vec<u8>),
     Remote(StoredWeightId),
 }
 /// The hash of the weight which was stored
 #[derive(Serialize, Deserialize)]
 pub(crate) struct StoredWeightId([u8; 32]);
-
-#[derive(Serialize, Deserialize)]
-pub(crate) enum VertexWeightRef {
-    Inline(Vec<u8>),
-    Remote(StoredWeightId),
-}
 
 fn op_write_once(
     _key: &[u8],               // the key being merged
@@ -236,5 +217,45 @@ fn op_write_once(
     match last_bytes {
         Some(_) => None,
         None => Some(op_bytes.to_vec()),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn insert() -> Result<(), std::io::Error> {
+        use crate::{entity, HyperGraph};
+        use mindbase_store::MemoryStore;
+        let graph = HyperGraph::<MemoryStore, String>::memory();
+
+        let a = graph.insert(entity::vertex(
+            "This is the weight associated with an entity to be created (of type vertex)",
+        ))?;
+        let b = graph.insert(entity::vertex(
+            "This is a different weight associated with a DIFFERENT entity to be created (of type vertex)",
+        ))?;
+        let c = graph.insert(entity::vertex("This weight is shared by multiple (vertex) entities"))?;
+        let d = graph.insert(entity::vertex("This weight is shared by multiple (vertex) entities"))?;
+
+        let x = graph.insert(entity::undirected(
+            "This weight is associated with an entity of type undirected (which is a hyperedege)",
+            [a, b, c, d],
+        ))?;
+        let y = graph.insert(entity::directed(
+            "This weight is associated with an entity of type directed (which is a hyperedege)",
+            [a, b], // This is the "From" side of the hyperedge
+            [c, d], // This is the "To" side of the hyperedge
+        ))?;
+
+        let _z = graph.insert(entity::directed(
+            "Crucially, hyperedges can also include other hyperedges",
+            [x, y],       // From some hyperedge entities
+            [a, b, c, d], // To some other entities
+        ))?;
+
+        // let mut out: Vec<u8> = Vec::new();
+        // graph.dump_entities(&mut out).unwrap();
+        // println!("{}", String::from_utf8(out).unwrap());
+        Ok(())
     }
 }
