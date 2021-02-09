@@ -1,10 +1,11 @@
-use std::{
-    collections::{btree_map::Entry, BTreeMap},
-    fmt::Display,
-};
+use std::{fmt::Display, unimplemented};
 
 use mindbase_artifact::{body::DataNode, body::SubGraph, Artifact, ArtifactId, NodeInstance, NodeType};
-use mindbase_hypergraph::{hyperedge::directed, traits::Weight, EntityId, HyperGraph, VertexId};
+use mindbase_hypergraph::{
+    entity::{directed, vertex},
+    traits::Weight,
+    EntityId, HyperGraph,
+};
 use mindbase_store::MemoryStore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -52,80 +53,81 @@ impl Weight for JSONType {
 }
 
 impl NodeType for JSONType {}
+#[derive(Serialize, Deserialize, Debug)]
+enum JSONWeight {
+    Artifact(Artifact<JSONType>),
+    Type(JSONType),
+}
+impl Weight for JSONWeight {
+    fn get_bytes(&self) -> Vec<u8> {
+        let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
+        encoded
+    }
 
-// impl mindbase_hypergraph::traits::Entity<Artifact<JSONType>> for JNE {
-//     type ID = [u8; 4];
+    fn from_bytes(bytes: &[u8]) -> Self {
+        bincode::deserialize(bytes).unwrap()
+    }
+}
 
-//     fn id(&self) -> Self::ID {
-//         self.id.to_ne_bytes()
-//     }
+impl<T> From<T> for JSONWeight
+where
+    T: Into<Artifact<JSONType>>,
+{
+    fn from(artifact: T) -> Self {
+        JSONWeight::Artifact(artifact.into())
+    }
+}
 
-//     fn get_id_and_bytes(&self) -> (Self::ID, Vec<u8>) {
-//         (self.id(), bincode::serialize(self).unwrap())
-//     }
-
-//     fn from_id_and_bytes<B: AsRef<u8>>(id: Self::ID, bytes: B) {
-//         todo!()
-//     }
-// }
-
-// impl JNE {
-//     pub fn new(artifact_id: ArtifactId) -> Self {
-//         let mut inc = INCREMENT.lock().unwrap();
-//         let id = *inc;
-//         *inc += 1;
-
-//         JNE { id, artifact_id }
-//     }
-// }
+impl Into<JSONWeight> for JSONType {
+    fn into(self) -> JSONWeight {
+        JSONWeight::Type(self)
+    }
+}
 
 /// Parse a simple JSON file into artifacts using a simple in-memory store
 #[test]
 fn colors() -> Result<(), std::io::Error> {
     let v: Value = serde_json::from_str(include_str!("./colors.json"))?;
 
-    let mut graph: HyperGraph<MemoryStore, Artifact<JSONType>, JSONType, ()> = HyperGraph::new(MemoryStore::new())?;
+    let mut graph: HyperGraph<MemoryStore, JSONWeight, ()> = HyperGraph::new(MemoryStore::new())?;
 
     let root_element = walk_json(&mut graph, v)?;
 
-    let doc = graph.add_vertex(SubGraph {
+    let json_document = graph.insert_vertex(SubGraph {
         graph_type: JSONType::Document,
     })?;
 
-    graph.add_hyperedge(directed(JSONType::RootElement, [doc], [root_element]));
+    graph.insert_directed(JSONType::RootElement, [json_document], [root_element])?;
 
     let mut out = std::io::stdout();
-    graph.dump_vertexes(&mut out);
-    graph.dump_hyperedges(&mut out);
+    graph.dump_entities(&mut out)?;
 
-    // JSONRenderer::render(out, &mut graph, &document);
+    JSONRenderer::render(out, &mut graph, &json_document)?;
 
     Ok(())
 }
 
-fn walk_json(
-    graph: &HyperGraph<MemoryStore, Artifact<JSONType>, JSONType, ()>, v: Value,
-) -> Result<EntityId, mindbase_hypergraph::error::Error> {
+fn walk_json(graph: &HyperGraph<MemoryStore, JSONWeight, ()>, v: Value) -> Result<EntityId, mindbase_hypergraph::error::Error> {
     match v {
-        Value::Null => graph.add_vertex(DataNode {
+        Value::Null => graph.insert_vertex(DataNode {
             data_type: JSONType::Null,
             data: None,
         }),
-        Value::Bool(b) => graph.add_vertex(DataNode {
+        Value::Bool(b) => graph.insert_vertex(DataNode {
             data_type: JSONType::Bool,
             data: Some(vec![b as u8]),
         }),
-        Value::Number(n) => graph.add_vertex(DataNode {
+        Value::Number(n) => graph.insert_vertex(DataNode {
             data_type: JSONType::Number,
             data: Some(n.as_i64().unwrap().to_ne_bytes().to_vec()),
         }),
-        Value::String(s) => graph.add_vertex(DataNode {
+        Value::String(s) => graph.insert_vertex(DataNode {
             data_type: JSONType::String,
             data: Some(s.as_bytes().to_vec()),
         }),
         Value::Array(values) => {
             //First define the array node itself
-            let arr = graph.add_vertex(DataNode {
+            let arr = graph.insert_vertex(DataNode {
                 data_type: JSONType::Array,
                 data: None,
             })?;
@@ -137,29 +139,29 @@ fn walk_json(
                 let member = walk_json(graph, value)?;
 
                 // TODO1 - how does this work with symbolic types?
-                graph.add_hyperedge(directed(JSONType::ArrayOffset(i), [arr.clone()], [member.clone()]))?;
+                graph.insert(directed(JSONType::ArrayOffset(i), [arr], [member]))?;
 
                 if i == 0 {
-                    graph.add_hyperedge(directed(JSONType::ArrHead, [arr.clone()], [member.clone()]))?;
+                    graph.insert(directed(JSONType::ArrHead, [arr], [member]))?;
                 } else {
-                    let prev = members.last().unwrap();
-                    graph.add_hyperedge(directed(JSONType::ArrNextMember, [prev.clone()], [member.clone()]))?;
-                    graph.add_hyperedge(directed(JSONType::ArrPrevMember, [member.clone()], [prev.clone()]))?;
+                    let prev = *members.last().unwrap();
+                    graph.insert_directed(JSONType::ArrNextMember, [prev], [member])?;
+                    graph.insert_directed(JSONType::ArrPrevMember, [member], [prev])?;
                 };
 
                 members.push(member);
             }
             if let Some(tail) = members.last() {
-                graph.add_hyperedge(directed(JSONType::ArrTail, [arr.clone()], [tail.clone()]))?;
+                graph.insert_directed(JSONType::ArrTail, [arr], [*tail])?;
             }
 
-            graph.add_hyperedge(directed(JSONType::ArrayMember, [arr.clone()], members))?;
+            graph.insert(directed(JSONType::ArrayMember, [arr], members))?;
 
             Ok(arr)
         }
         Value::Object(values) => {
             //First define the array node itself
-            let obj = graph.add_vertex(DataNode {
+            let obj = graph.insert_vertex(DataNode {
                 data_type: JSONType::Object,
                 data: None,
             })?;
@@ -171,67 +173,65 @@ fn walk_json(
                 let member = walk_json(graph, value)?;
 
                 // TODO1 - reconcile HyperedgeWeight with symbolic types
-                let prop = graph.add_hyperedge(directed(JSONType::ObjectProperty(key), [obj.clone()], [member.clone()]))?;
+                let prop = graph.insert_directed(JSONType::ObjectProperty(key), [obj], [member])?;
 
                 members.push(member);
                 properties.push(prop);
             }
-            graph.add_hyperedge(directed(JSONType::ObjectMembers, [obj.clone()], members.clone()))?;
-            graph.add_hyperedge(directed(JSONType::ObjectProperties, [obj.clone()], members))?;
+            graph.insert(directed(JSONType::ObjectMembers, [obj], members.clone()))?;
+            graph.insert(directed(JSONType::ObjectProperties, [obj], members))?;
 
             Ok(obj)
         }
     }
 }
 
-// struct JSONRenderer<A, I>
-// where
-//     A: mindbase_hypergraph::traits::Weight,
-//     I: mindbase_hypergraph::traits::Entity<A>,
-// {
-//     anticycle: Vec<I::ID>,
-// }
+struct JSONRenderer<'a, S, W>
+where
+    S: mindbase_store::Store,
+    W: std::io::Write,
+{
+    anticycle: Vec<EntityId>,
+    graph: &'a HyperGraph<S, JSONWeight, ()>,
+    output: W,
+}
 
-// impl<A, I> JSONRenderer<A, I>
-// where
-//     A: mindbase_hypergraph::traits::Weight,
-//     I: mindbase_hypergraph::traits::Entity<A>,
-// {
-//     pub fn render<W, S>(output: W, graph: &HyperGraph<S, A, I>, instance: &JNE) -> Result<(), std::io::Error>
-//     where
-//         W: std::io::Write,
-//         S: mindbase_store::Store,
-//     {
-//         //
-//         let mut renderer = JSONRenderer::<A, I> { anticycle: Vec::new() };
-//         renderer.recurse(output, graph, instance);
+impl<'a, S, W> JSONRenderer<'a, S, W>
+where
+    S: mindbase_store::Store,
+    W: std::io::Write,
+{
+    pub fn render(output: W, graph: &'a HyperGraph<S, JSONWeight, ()>, entity: &EntityId) -> Result<(), std::io::Error> {
+        let mut renderer = JSONRenderer {
+            anticycle: Vec::new(),
+            graph,
+            output,
+        };
+        renderer.recurse(entity);
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     fn anticycle_push(&mut self, instance_id: I::ID) -> bool {
-//         match self.anticycle.binary_search(&instance_id) {
-//             Ok(_) => false,
-//             Err(i) => {
-//                 self.anticycle.insert(i, instance_id.clone());
-//                 true
-//             }
-//         }
-//     }
-//     fn anticycle_pop(&mut self, instance_id: I::ID) {
-//         match self.anticycle.binary_search(&instance_id) {
-//             Ok(i) => {
-//                 self.anticycle.remove(i);
-//             }
-//             Err(i) => {}
-//         };
-//     }
+    fn anticycle_push(&mut self, entity: &EntityId) -> bool {
+        match self.anticycle.binary_search(entity) {
+            Ok(_) => false,
+            Err(i) => {
+                self.anticycle.insert(i, entity.clone());
+                true
+            }
+        }
+    }
+    fn anticycle_pop(&mut self, entity_id: &EntityId) {
+        match self.anticycle.binary_search(&entity_id) {
+            Ok(i) => {
+                self.anticycle.remove(i);
+            }
+            Err(i) => {}
+        };
+    }
 
-//     fn recurse<W, S>(&mut self, output: W, graph: &HyperGraph<S, A, I>, instance: &JNE) -> Result<(), std::io::Error>
-//     where
-//         W: std::io::Write,
-//         S: mindbase_store::Store,
-//     {
-//         let artifact = graph.get_weight(instance);
-//     }
-// }
+    fn recurse(&mut self, entity: &EntityId) -> Result<(), std::io::Error> {
+        let artifact = self.graph.get(entity)?;
+        unimplemented!()
+    }
+}
