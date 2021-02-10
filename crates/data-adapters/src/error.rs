@@ -1,16 +1,11 @@
 #[derive(Debug)]
 pub enum Error {
-    Store(mindbase_store::Error),
-    Bincode(bincode::Error),
+    Hypergraph(mindbase_hypergraph::Error),
+    SerdeJson(serde_json::Error),
     Io(std::io::Error),
     NotFound,
-    InvalidSlice,
-}
-
-impl From<mindbase_store::Error> for Error {
-    fn from(e: mindbase_store::Error) -> Self {
-        Self::Store(e)
-    }
+    CycleDetected,
+    Sanity,
 }
 
 impl std::convert::From<Error> for std::io::Error {
@@ -19,10 +14,14 @@ impl std::convert::From<Error> for std::io::Error {
         std::io::Error::new(ErrorKind::Other, format!("{:?}", error))
     }
 }
-
-impl From<bincode::Error> for Error {
-    fn from(e: bincode::Error) -> Self {
-        Error::Bincode(e)
+impl From<mindbase_hypergraph::Error> for Error {
+    fn from(e: mindbase_hypergraph::Error) -> Self {
+        Error::Hypergraph(e)
+    }
+}
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error::SerdeJson(e)
     }
 }
 

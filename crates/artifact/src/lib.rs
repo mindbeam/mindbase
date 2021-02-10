@@ -1,5 +1,6 @@
 pub mod body;
 pub mod id;
+pub mod test;
 
 use std::fmt::Display;
 
@@ -8,7 +9,7 @@ pub use mindbase_util::Error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 
-pub trait NodeType: Serialize {}
+pub trait NodeType: Serialize + DeserializeOwned {}
 pub trait NodeInstance: Clone + std::fmt::Display + std::cmp::Ord + Serialize {}
 
 ///! == Artifact subcrate
@@ -37,10 +38,7 @@ pub struct ArtifactId(
 );
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum Artifact<T>
-where
-    T: NodeType,
-{
+pub enum Artifact<T> {
     Agent(mindbase_crypto::AgentId),
     Url(body::Url),
     FlatText(body::Text),
@@ -64,19 +62,7 @@ where
     }
 }
 
-impl<T> mindbase_hypergraph::traits::Weight for Artifact<T>
-where
-    T: NodeType + Serialize + DeserializeOwned,
-{
-    fn get_bytes(&self) -> Vec<u8> {
-        let encoded: Vec<u8> = bincode::serialize(&self).unwrap();
-        encoded
-    }
-
-    fn from_bytes(bytes: &[u8]) -> Self {
-        bincode::deserialize(bytes).unwrap()
-    }
-}
+impl<T> mindbase_hypergraph::traits::Weight for Artifact<T> where T: NodeType {}
 
 impl<T> std::fmt::Display for Artifact<T>
 where

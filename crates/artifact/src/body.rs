@@ -19,10 +19,7 @@ pub struct Text {
 // Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
 // This can be used to store XML or JSON documents, or other application specific formats
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct SubGraph<T>
-where
-    T: NodeType,
-{
+pub struct SubGraph<T> {
     pub graph_type: T,
 }
 
@@ -36,10 +33,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct DataNode<T>
-where
-    T: NodeType,
-{
+pub struct DataNode<T> {
     pub data_type: T,
     pub data: Option<Vec<u8>>,
 }

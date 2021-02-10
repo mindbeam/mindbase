@@ -1,12 +1,21 @@
-use std::fmt::{Debug, Display};
+use std::{
+    convert::TryInto,
+    fmt::{Debug, Display},
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::traits::Weight;
+use crate::{traits::Weight, Error};
 
 /// HyperedgeId is a ULID
 #[derive(Serialize, Deserialize, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 pub struct EntityId(pub(crate) [u8; 16]);
+
+impl EntityId {
+    pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
+        Ok(EntityId(slice.try_into().map_err(|_| Error::InvalidSlice)?))
+    }
+}
 
 impl Display for EntityId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -27,7 +36,7 @@ pub struct Entity<W>
 where
     W: Weight,
 {
-    pub(crate) weight: W,
+    pub weight: W,
     pub(crate) inner: EntityInner,
 }
 /// TODO1 - implement fuzzy membership
@@ -47,10 +56,7 @@ where
 {
     Entity {
         weight: weight.into(),
-        inner: EntityInner::Directed(
-            from.into(),
-            to.into(),
-        ),
+        inner: EntityInner::Directed(from.into(), to.into()),
     }
 }
 pub fn undirected<'a, WI, W, M>(weight: WI, members: M) -> Entity<W>

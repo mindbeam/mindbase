@@ -1,7 +1,8 @@
 use std::{fmt::Display, marker::PhantomData};
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
+use traits::GraphInterface;
 
 use crate::{
     entity::{undirected, Entity, EntityInner},
@@ -29,7 +30,7 @@ use crate::entity::EntityId;
 /// * indexed lookup of nodes and edges by weight
 /// * provenance (and filtration by same)
 #[derive(Debug)]
-pub struct HyperGraph<S, W, P = ()>
+pub struct Hypergraph<S, W, P = ()>
 where
     S: mindbase_store::Store,
     W: traits::Weight,
@@ -52,7 +53,7 @@ where
     _p: PhantomData<P>,
 }
 
-impl<S, W, P> HyperGraph<S, W, P>
+impl<S, W, P> Hypergraph<S, W, P>
 where
     S: mindbase_store::Store,
     W: traits::Weight,
@@ -66,7 +67,7 @@ where
         let entity_storage = store.open_tree("hypergraph::entity_storage")?;
         let entity_by_weight_index = store.open_tree("hypergraph::entity_by_weight_index")?;
 
-        Ok(HyperGraph {
+        Ok(Hypergraph {
             _w: PhantomData,
             _p: PhantomData,
             _store: store,
@@ -74,59 +75,6 @@ where
             entity_storage,
             entity_by_weight_index,
         })
-    }
-    /// Insert an entity into the hypergraph
-    /// ```
-    /// use mindbase_hypergraph::{HyperGraph,entity,MemoryStore};
-    /// let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
-    /// graph.insert(entity::vertex("123")).unwrap()
-    /// ```
-    pub fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error> {
-        let w = self.put_weight(entity.weight)?;
-
-        let id_bytes = generate_ulid_bytes();
-
-        self.entity_storage
-            .insert(id_bytes, bincode::serialize(&StoredEntity(w, entity.inner))?)?;
-
-        Ok(EntityId(id_bytes).into())
-    }
-    /// Convenience function, equivalent to
-    /// ```
-    /// # use mindbase_hypergraph::{HyperGraph,entity};
-    /// # let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
-    /// graph.insert(entity::vertex("123")).unwrap();
-    /// ```
-    pub fn insert_vertex<IW: Into<W>>(&self, weight: IW) -> Result<EntityId, Error> {
-        self.insert(crate::entity::vertex(weight))
-    }
-    ///
-    pub fn insert_directed<WI, F, T>(&self, weight: WI, from: F, to: T) -> Result<EntityId, Error>
-    where
-        WI: Into<W>,
-        F: Into<Vec<EntityId>>,
-        T: Into<Vec<EntityId>>,
-    {
-        self.insert(crate::entity::directed(weight, from, to))
-    }
-    pub fn insert_undirected<WI, M>(&self, weight: WI, members: M) -> Result<EntityId, Error>
-    where
-        WI: Into<W>,
-        M: Into<Vec<EntityId>>,
-    {
-        self.insert(crate::entity::undirected(weight, members))
-    }
-    pub fn get(&self, entity_id: &EntityId) -> Result<Entity<W>, Error> {
-        match self.entity_storage.get(entity_id.0)? {
-            Some(entity_bytes) => {
-                let sv: StoredEntity = bincode::deserialize(&entity_bytes)?;
-                Ok(Entity {
-                    weight: self.get_weight_by_ref(sv.0)?,
-                    inner: sv.1,
-                })
-            }
-            None => Err(Error::NotFound),
-        }
     }
     pub fn get_weight(&self, entity_id: &EntityId) -> Result<W, Error> {
         match self.entity_storage.get(entity_id.0)? {
@@ -141,7 +89,7 @@ where
     fn put_weight<T: Into<W>>(&self, into_weight: T) -> Result<WeightRef, Error> {
         let weight: W = into_weight.into();
 
-        let bytes = weight.get_bytes();
+        let bytes = self.serialize(&weight)?;
         let mut hasher = Sha512Trunc256::default();
         hasher.update(&bytes);
         let hash = hasher.finalize();
@@ -159,9 +107,9 @@ where
     }
     fn get_weight_by_ref(&self, wr: WeightRef) -> Result<W, Error> {
         match wr {
-            WeightRef::Inline(ref bytes) => Ok(W::from_bytes(bytes)),
+            WeightRef::Inline(ref bytes) => Ok(self.deserialize(bytes)?),
             WeightRef::Remote(id) => match self.weight_storage.get(id.0)? {
-                Some(ref bytes) => Ok(W::from_bytes(bytes)),
+                Some(ref bytes) => Ok(self.deserialize(bytes)?),
                 None => return Err(Error::NotFound),
             },
         }
@@ -173,8 +121,8 @@ where
     {
         for entity_rec in self.entity_storage.iter() {
             let (id_bytes, bytes) = entity_rec?;
-            let entity_id: EntityId = bincode::deserialize(&id_bytes)?;
-            let entity: StoredEntity = bincode::deserialize(&bytes)?;
+            let entity_id = EntityId::from_slice(&id_bytes[0..16])?;
+            let entity: StoredEntity = self.deserialize(&bytes)?;
             write!(
                 writer,
                 "{} = {:?}: {:?}\n",
@@ -185,9 +133,51 @@ where
         }
         Ok(())
     }
+    fn serialize<T: Serialize>(&self, thing: &T) -> Result<Vec<u8>, Error> {
+        Ok(bincode::serialize(thing)?)
+    }
+    fn deserialize<T: DeserializeOwned>(&self, bytes: &[u8]) -> Result<T, Error> {
+        Ok(bincode::deserialize(bytes)?)
+    }
+}
+impl<S, W, P> GraphInterface<W> for Hypergraph<S, W, P>
+where
+    S: mindbase_store::Store,
+    W: traits::Weight,
+    P: traits::Provenance,
+{
+    /// Insert an entity into the hypergraph
+    /// ```
+    /// use mindbase_hypergraph::{HyperGraph,entity,MemoryStore};
+    /// let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
+    /// graph.insert(entity::vertex("123")).unwrap()
+    /// ```
+    fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error> {
+        let w = self.put_weight(entity.weight)?;
+
+        let id_bytes = generate_ulid_bytes();
+
+        self.entity_storage
+            .insert(id_bytes, bincode::serialize(&StoredEntity(w, entity.inner))?)?;
+
+        Ok(EntityId(id_bytes).into())
+    }
+
+    fn get(&self, entity_id: &EntityId) -> Result<Entity<W>, Error> {
+        match self.entity_storage.get(entity_id.0)? {
+            Some(entity_bytes) => {
+                let sv: StoredEntity = bincode::deserialize(&entity_bytes)?;
+                Ok(Entity {
+                    weight: self.get_weight_by_ref(sv.0)?,
+                    inner: sv.1,
+                })
+            }
+            None => Err(Error::NotFound),
+        }
+    }
 }
 
-impl<W, P> HyperGraph<MemoryStore, W, P>
+impl<W, P> Hypergraph<MemoryStore, W, P>
 where
     W: traits::Weight,
     P: traits::Provenance,
@@ -224,9 +214,10 @@ fn op_write_once(
 mod test {
     #[test]
     fn insert() -> Result<(), std::io::Error> {
-        use crate::{entity, HyperGraph};
+        use crate::{entity, Hypergraph};
         use mindbase_store::MemoryStore;
-        let graph = HyperGraph::<MemoryStore, String>::memory();
+        let graph = Hypergraph::<MemoryStore, String>::memory();
+        use crate::traits::GraphInterface;
 
         let a = graph.insert(entity::vertex(
             "This is the weight associated with an entity to be created (of type vertex)",
@@ -259,3 +250,29 @@ mod test {
         Ok(())
     }
 }
+
+// /// Convenience function, equivalent to
+// /// ```
+// /// # use mindbase_hypergraph::{HyperGraph,entity};
+// /// # let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
+// /// graph.insert(entity::vertex("123")).unwrap();
+// /// ```
+// pub fn insert_vertex<IW: Into<W>>(&self, weight: IW) -> Result<EntityId, Error> {
+//     self.insert(crate::entity::vertex(weight))
+// }
+// ///
+// pub fn insert_directed<WI, F, T>(&self, weight: WI, from: F, to: T) -> Result<EntityId, Error>
+// where
+//     WI: Into<W>,
+//     F: Into<Vec<EntityId>>,
+//     T: Into<Vec<EntityId>>,
+// {
+//     self.insert(crate::entity::directed(weight, from, to))
+// }
+// pub fn insert_undirected<WI, M>(&self, weight: WI, members: M) -> Result<EntityId, Error>
+// where
+//     WI: Into<W>,
+//     M: Into<Vec<EntityId>>,
+// {
+//     self.insert(crate::entity::undirected(weight, members))
+// }
