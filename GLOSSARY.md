@@ -26,9 +26,14 @@ Each Claim has a Payload.
 
 ## Concordance
 
-Noun. A declarative or final state in which elements or subgroups of a given cohort have become "sufficiently" aligned by whatever standard.
+Noun. The end state of some process where some specific data have become fully or sufficiently aligned by whatever relevant standard. A system is "concordant" when it is fully aligned across all of its parts.
 
-We may wish to use the dictionary-synonymous term "Converged" (Noun) to refer to this final state. However, caution should be exercised, given that it may be readily conflated with the continuous, aggregate process of [Convergence](./GLOSSARY.md#convergence).
+For Example: An eventual consistency database where all write traffic has ceased will become concordant after sufficient time.
+
+We define this term primarily as a way to differentiate and narrow the definition of another more important term [Convergence](./GLOSSARY.md#convergence), which is a continuous process with no end state.
+
+In common usage, the terms "converged" or "convergence" are frequently synonymous with "Concordance".
+For our purposes However, caution should be exercised, given that it may be readily conflated with the continuous, aggregate process of [Convergence](./GLOSSARY.md#convergence).
 
 ## Convergence
 
@@ -39,7 +44,7 @@ Convergence, Converging, Converge.
 ##### Definition
 
 1. Verb – Referring to a continuous process in which an open-ended subset of a given cohort become increasingly aligned in some fashion, while not necessarily concluding in their alignment.
-2. Noun – Referring to the process of Converging itself, and crucially: NOT a declarative or final state of "sufficiency". See [Concordance](./GLOSSARY.md#concordance)
+2. Noun – Referring to the process of Converging itself, and crucially: NOT a final state of "sufficiency". See [Concordance](./GLOSSARY.md#concordance)
 
 **Example**
 One example of convergence is a river going over a waterfall, insofar as all the river's water is headed to the same place. Yet it never concludes, and at least for as long as the river flows, it never reaches a final state of alignment, where all the water has arrived in the same place.  
