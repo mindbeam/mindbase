@@ -79,7 +79,7 @@ where
     pub fn get_weight(&self, entity_id: &EntityId) -> Result<W, Error> {
         match self.entity_storage.get(entity_id.0)? {
             Some(entity_bytes) => {
-                let sv: StoredEntity = bincode::deserialize(&entity_bytes)?;
+                let sv: StoredEntity = deserialize(&entity_bytes)?;
                 Ok(self.get_weight_by_ref(sv.0)?)
             }
             None => Err(Error::NotFound),
@@ -89,7 +89,7 @@ where
     fn put_weight<T: Into<W>>(&self, into_weight: T) -> Result<WeightRef, Error> {
         let weight: W = into_weight.into();
 
-        let bytes = self.serialize(&weight)?;
+        let bytes = serialize(&weight)?;
         let mut hasher = Sha512Trunc256::default();
         hasher.update(&bytes);
         let hash = hasher.finalize();
@@ -107,9 +107,9 @@ where
     }
     fn get_weight_by_ref(&self, wr: WeightRef) -> Result<W, Error> {
         match wr {
-            WeightRef::Inline(ref bytes) => Ok(self.deserialize(bytes)?),
+            WeightRef::Inline(ref bytes) => Ok(deserialize(bytes)?),
             WeightRef::Remote(id) => match self.weight_storage.get(id.0)? {
-                Some(ref bytes) => Ok(self.deserialize(bytes)?),
+                Some(ref bytes) => Ok(deserialize(bytes)?),
                 None => return Err(Error::NotFound),
             },
         }
@@ -122,7 +122,7 @@ where
         for entity_rec in self.entity_storage.iter() {
             let (id_bytes, bytes) = entity_rec?;
             let entity_id = EntityId::from_slice(&id_bytes[0..16])?;
-            let entity: StoredEntity = self.deserialize(&bytes)?;
+            let entity: StoredEntity = deserialize(&bytes)?;
             write!(
                 writer,
                 "{} = {:?}: {:?}\n",
@@ -133,13 +133,15 @@ where
         }
         Ok(())
     }
-    fn serialize<T: Serialize>(&self, thing: &T) -> Result<Vec<u8>, Error> {
-        Ok(bincode::serialize(thing)?)
-    }
-    fn deserialize<T: DeserializeOwned>(&self, bytes: &[u8]) -> Result<T, Error> {
-        Ok(bincode::deserialize(bytes)?)
-    }
 }
+
+fn serialize<T: Serialize>(thing: &T) -> Result<Vec<u8>, Error> {
+    Ok(bincode::serialize(thing)?)
+}
+fn deserialize<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
+    Ok(bincode::deserialize(bytes)?)
+}
+
 impl<S, W, P> GraphInterface<W> for Hypergraph<S, W, P>
 where
     S: mindbase_store::Store,

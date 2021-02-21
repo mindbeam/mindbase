@@ -1,26 +1,17 @@
-use std::fmt::Display;
-
-use json::JSONType;
-use mindbase_artifact::{body::DataNode, body::SubGraph, test::TestWeight, Artifact, ArtifactId, NodeType};
-use mindbase_data_adapters::json;
-use mindbase_hypergraph::{
-    entity::{directed, vertex},
-    traits::Weight,
-    EntityId, Hypergraph,
-};
-
-use std::sync::{Arc, Mutex};
+use json::test::TestJSONType;
+use mindbase_artifact::test::TestWeight;
+use mindbase_data_adapters::json::{self, JsonAdapter};
+use mindbase_hypergraph::Hypergraph;
 
 /// Parse a simple JSON file into artifacts using a simple in-memory store
 #[test]
 fn colors() -> Result<(), std::io::Error> {
     let v = include_str!("./colors.json");
+    let graph: Hypergraph<_, TestWeight<TestJSONType>> = Hypergraph::memory();
 
-    let mut graph: Hypergraph<_, TestWeight<JSONType>> = Hypergraph::memory();
+    let adapter = JsonAdapter::new(&graph, TestJSONType::typemap());
 
-    let adapter = json::JsonAdapter::new(&graph);
-
-    let json_document = adapter.load(v)?;
+    let _json_document = adapter.load(v.as_bytes())?;
 
     let mut out = std::io::stdout();
     graph.dump_entities(&mut out)?;

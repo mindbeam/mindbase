@@ -2,15 +2,11 @@ pub mod body;
 pub mod id;
 pub mod test;
 
-use std::fmt::Display;
-
-use body::SubGraph;
 pub use mindbase_util::Error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 
-pub trait NodeType: Serialize + DeserializeOwned {}
-pub trait NodeInstance: Clone + std::fmt::Display + std::cmp::Ord + Serialize {}
+pub trait ArtifactNodeType: Serialize + DeserializeOwned {}
 
 ///! == Artifact subcrate
 ///! The intention behind this crate is to be able to represent any arbitrary datastructure
@@ -48,7 +44,7 @@ pub enum Artifact<T> {
 
 impl<T> Artifact<T>
 where
-    T: NodeType,
+    T: ArtifactNodeType,
 {
     pub fn id(&self) -> ArtifactId {
         let mut hasher = Sha512Trunc256::default();
@@ -62,11 +58,16 @@ where
     }
 }
 
-impl<T> mindbase_hypergraph::traits::Weight for Artifact<T> where T: NodeType {}
+impl<T> mindbase_hypergraph::traits::Weight for Artifact<T>
+where
+    T: ArtifactNodeType,
+{
+    type Symbol = T;
+}
 
 impl<T> std::fmt::Display for Artifact<T>
 where
-    T: NodeType + std::fmt::Debug,
+    T: ArtifactNodeType + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

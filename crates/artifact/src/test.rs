@@ -1,29 +1,29 @@
-use crate::{Artifact, NodeType};
-use mindbase_hypergraph::traits::Weight;
-use serde::{Deserialize, Serialize};
+use crate::{Artifact, ArtifactNodeType};
+use mindbase_hypergraph::traits::{Symbol, Weight};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum TestWeight<T> {
+pub enum TestWeight<T>
+where
+    T: Symbol,
+{
     Artifact(Artifact<T>),
     Type(T),
 }
-impl<T> Weight for TestWeight<T> where T: NodeType {}
 
-impl<A, T> From<A> for TestWeight<T>
+impl<T> Weight for TestWeight<T>
 where
-    A: Into<Artifact<T>>,
-    T: NodeType,
+    T: ArtifactNodeType + Symbol,
 {
-    fn from(artifact: A) -> Self {
-        TestWeight::Artifact(artifact.into())
-    }
+    type Symbol = T;
 }
 
-// impl<T> From<T> for TestWeight<T>
-// where
-//     T: Serialize + DeserializeOwned,
-// {
-//     fn from(t: T) -> Self {
-//         TestWeight::Type(t)
-//     }
-// }
+impl<IA, T> From<IA> for TestWeight<T>
+where
+    IA: Into<Artifact<T>>,
+    T: ArtifactNodeType + Symbol,
+{
+    fn from(into_artifact: IA) -> Self {
+        TestWeight::Artifact(into_artifact.into())
+    }
+}

@@ -1,9 +1,8 @@
 use mindbase_crypto::AgentId;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha512Trunc256};
 use std::fmt::{self, Display};
 
-use crate::{Artifact, ArtifactId, NodeInstance, NodeType};
+use crate::{Artifact, ArtifactNodeType};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Url {
@@ -25,7 +24,7 @@ pub struct SubGraph<T> {
 
 impl<T> Display for SubGraph<T>
 where
-    T: NodeType + std::fmt::Debug,
+    T: ArtifactNodeType + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "DataNode({:?})", self.graph_type,)
@@ -37,9 +36,13 @@ pub struct DataNode<T> {
     pub data_type: T,
     pub data: Option<Vec<u8>>,
 }
+
+// TODO - determine if the datanode should understand the serialization scheme
+// and output types, or if that should be externalized to the user
+
 impl<T> Display for DataNode<T>
 where
-    T: NodeType + std::fmt::Debug,
+    T: ArtifactNodeType + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -53,7 +56,7 @@ where
 
 impl<T> Into<Artifact<T>> for Url
 where
-    T: NodeType,
+    T: ArtifactNodeType,
 {
     fn into(self) -> Artifact<T> {
         Artifact::Url(self)
@@ -82,7 +85,7 @@ impl fmt::Display for Text {
 
 impl<T> Into<Artifact<T>> for Text
 where
-    T: NodeType,
+    T: ArtifactNodeType,
 {
     fn into(self) -> Artifact<T> {
         Artifact::FlatText(self)
@@ -91,7 +94,7 @@ where
 
 impl<T> Into<Artifact<T>> for &str
 where
-    T: NodeType,
+    T: ArtifactNodeType,
 {
     fn into(self) -> Artifact<T> {
         Artifact::FlatText(Text::new(self))
@@ -100,7 +103,7 @@ where
 
 impl<T> Into<Artifact<T>> for DataNode<T>
 where
-    T: NodeType,
+    T: ArtifactNodeType,
 {
     fn into(self) -> Artifact<T> {
         Artifact::Node(self)
@@ -108,7 +111,7 @@ where
 }
 impl<T> Into<Artifact<T>> for SubGraph<T>
 where
-    T: NodeType,
+    T: ArtifactNodeType,
 {
     fn into(self) -> Artifact<T> {
         Artifact::SubGraph(self)
@@ -117,7 +120,7 @@ where
 
 impl<T> Into<Artifact<T>> for AgentId
 where
-    T: NodeType,
+    T: ArtifactNodeType,
 {
     fn into(self) -> Artifact<T> {
         Artifact::Agent(self)

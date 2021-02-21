@@ -1,6 +1,5 @@
 use core::fmt;
 use mindbase_util::Error;
-use serde::{Deserialize, Serialize};
 
 use crate::ArtifactId;
 

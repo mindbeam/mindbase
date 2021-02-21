@@ -2,7 +2,11 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{Entity, EntityId, Error};
 
-pub trait Weight: Serialize + DeserializeOwned {}
+pub trait Weight: Serialize + DeserializeOwned {
+    type Symbol;
+}
+
+pub trait Symbol {}
 pub trait Provenance {}
 
 pub trait GraphInterface<W>
@@ -16,5 +20,7 @@ where
 impl Provenance for () {}
 
 pub mod basics {
-    impl super::Weight for String {}
+    impl super::Weight for String {
+        type Symbol = ();
+    }
 }

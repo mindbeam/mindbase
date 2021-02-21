@@ -1,42 +1,49 @@
+pub mod test;
+
 use std::marker::PhantomData;
 
-use mindbase_artifact::{
-    body::{DataNode, SubGraph},
-    Artifact, NodeType,
-};
+use mindbase_artifact::body::{DataNode, SubGraph};
 use mindbase_hypergraph::{
     entity::{directed, vertex},
-    traits::{GraphInterface, Weight},
+    traits::{GraphInterface, Symbol, Weight},
     EntityId,
 };
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::Error;
 
-pub struct JsonAdapter<'a, G, W> {
+pub struct JsonAdapter<'a, G, W, T>
+where
+    T: Clone,
+{
     graph: &'a G,
+    tm: TypeMap<T>,
     _w: PhantomData<W>,
 }
 
-impl<'a, G, W> JsonAdapter<'a, G, W>
+impl<'a, G, W, S> JsonAdapter<'a, G, W, S>
 where
     G: GraphInterface<W>,
-    W: Weight + From<JSONType> + From<DataNode<JSONType>> + From<SubGraph<JSONType>>,
+    W: Weight<Symbol = S> + From<S> + From<DataNode<S>> + From<SubGraph<S>>,
+    S: Symbol + Clone,
 {
-    pub fn new(graph: &'a G) -> Self {
-        Self { graph, _w: PhantomData }
+    pub fn new(graph: &'a G, typemap: TypeMap<S>) -> Self {
+        Self {
+            graph,
+            _w: PhantomData,
+            tm: typemap,
+        }
     }
     pub fn load<R: std::io::Read>(&self, reader: R) -> Result<EntityId, Error> {
         let jv: Value = serde_json::from_reader(reader)?;
 
         let root_element = self.input_recurse(jv)?;
         let json_document = self.graph.insert(vertex(SubGraph {
-            graph_type: JSONType::Document,
+            graph_type: self.tm.Document.clone(),
         }))?;
 
         self.graph
-            .insert(directed(JSONType::RootElement, [json_document], [root_element]))?;
+            .insert(directed(self.tm.RootElement.clone(), [json_document], [root_element]))?;
 
         Ok(json_document)
     }
@@ -49,25 +56,25 @@ where
     fn input_recurse(&self, v: Value) -> Result<EntityId, Error> {
         Ok(match v {
             Value::Null => self.graph.insert(vertex(DataNode {
-                data_type: JSONType::Null,
+                data_type: self.tm.Null.clone(),
                 data: None,
             }))?,
             Value::Bool(b) => self.graph.insert(vertex(DataNode {
-                data_type: JSONType::Bool,
+                data_type: self.tm.Bool.clone(),
                 data: Some(vec![b as u8]),
             }))?,
             Value::Number(n) => self.graph.insert(vertex(DataNode {
-                data_type: JSONType::Number,
+                data_type: self.tm.Number.clone(),
                 data: Some(n.as_i64().unwrap().to_ne_bytes().to_vec()),
             }))?,
             Value::String(s) => self.graph.insert(vertex(DataNode {
-                data_type: JSONType::String,
+                data_type: self.tm.String.clone(),
                 data: Some(s.as_bytes().to_vec()),
             }))?,
             Value::Array(values) => {
                 //First define the array node itself
                 let arr = self.graph.insert(vertex(DataNode {
-                    data_type: JSONType::Array,
+                    data_type: self.tm.Array.clone(),
                     data: None,
                 }))?;
 
@@ -78,30 +85,37 @@ where
                     let member = self.input_recurse(value)?;
 
                     // TODO1 - how does this work with symbolic types?
-                    self.graph.insert(directed(JSONType::ArrayOffset(i), [arr], [member]))?;
+                    self.graph.insert(directed(
+                        DataNode {
+                            data_type: self.tm.ArrayOffset.clone(),
+                            data: Some(i.to_ne_bytes().to_vec()),
+                        },
+                        [arr],
+                        [member],
+                    ))?;
 
                     if i == 0 {
-                        self.graph.insert(directed(JSONType::ArrHead, [arr], [member]))?;
+                        self.graph.insert(directed(self.tm.ArrHead.clone(), [arr], [member]))?;
                     } else {
                         let prev = *members.last().unwrap();
-                        self.graph.insert(directed(JSONType::ArrNextMember, [prev], [member]))?;
-                        self.graph.insert(directed(JSONType::ArrPrevMember, [member], [prev]))?;
+                        self.graph.insert(directed(self.tm.ArrNextMember.clone(), [prev], [member]))?;
+                        self.graph.insert(directed(self.tm.ArrPrevMember.clone(), [member], [prev]))?;
                     };
 
                     members.push(member);
                 }
                 if let Some(tail) = members.last() {
-                    self.graph.insert(directed(JSONType::ArrTail, [arr], [*tail]))?;
+                    self.graph.insert(directed(self.tm.ArrTail.clone(), [arr], [*tail]))?;
                 }
 
-                self.graph.insert(directed(JSONType::ArrayMember, [arr], members))?;
+                self.graph.insert(directed(self.tm.ArrayMember.clone(), [arr], members))?;
 
                 arr
             }
             Value::Object(values) => {
                 //First define the array node itself
                 let obj = self.graph.insert(vertex(DataNode {
-                    data_type: JSONType::Object,
+                    data_type: self.tm.Object.clone(),
                     data: None,
                 }))?;
                 let mut properties: Vec<EntityId> = Vec::with_capacity(values.len());
@@ -112,13 +126,22 @@ where
                     let member = self.input_recurse(value)?;
 
                     // TODO1 - reconcile HyperedgeWeight with symbolic types
-                    let prop = self.graph.insert(directed(JSONType::ObjectProperty(key), [obj], [member]))?;
+                    let prop = self.graph.insert(directed(
+                        DataNode {
+                            data_type: self.tm.ObjectProperty.clone(),
+                            data: Some(key.bytes().collect()),
+                        },
+                        [obj],
+                        [member],
+                    ))?;
 
                     members.push(member);
                     properties.push(prop);
                 }
-                self.graph.insert(directed(JSONType::ObjectMembers, [obj], members.clone()))?;
-                self.graph.insert(directed(JSONType::ObjectProperties, [obj], members))?;
+                self.graph
+                    .insert(directed(self.tm.ObjectMembers.clone(), [obj], members.clone()))?;
+                self.graph
+                    .insert(directed(self.tm.ObjectProperties.clone(), [obj], members))?;
 
                 obj
             }
@@ -140,30 +163,29 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum JSONType {
-    Document,
-    Null,
-    Bool,
-    Number,
-    String,
-    Array,
-    ArrayMember,
-    ArrayOffset(usize),
-    ArrNextMember,
-    ArrPrevMember,
-    ArrHead,
-    ArrTail,
-    Object,
-    ObjectProperty(String),
-    ObjectProperties,
-    ObjectMembers,
-    Value,
-    RootElement,
+#[allow(non_snake_case)]
+pub struct TypeMap<T>
+where
+    T: Clone,
+{
+    Document: T,
+    Null: T,
+    Bool: T,
+    Number: T,
+    String: T,
+    Array: T,
+    ArrayMember: T,
+    ArrayOffset: T,
+    ArrNextMember: T,
+    ArrPrevMember: T,
+    ArrHead: T,
+    ArrTail: T,
+    Object: T,
+    ObjectProperty: T,
+    ObjectProperties: T,
+    ObjectMembers: T,
+    RootElement: T,
 }
-
-impl Weight for JSONType {}
-impl NodeType for JSONType {}
 
 #[derive(Default)]
 struct CycleGuard(Vec<EntityId>);
