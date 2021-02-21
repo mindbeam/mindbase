@@ -26,24 +26,28 @@ Each Claim has a Payload.
 
 ## Concordance
 
-Noun. The end state of some process where some specific data have become fully or sufficiently aligned by whatever relevant standard. A system is "concordant" when it is fully aligned across all of its parts.
+##### As In
+Concordance, Concordant
 
-For Example: An eventual consistency database where all write traffic has ceased will become concordant after sufficient time.
+Noun. The end state of some process where some specific data have become fully or sufficiently aligned by whatever relevant standard. A system is "concordant" when it is fully aligned across all of its parts.
 
 We define this term primarily as a way to differentiate and narrow the definition of another more important term [Convergence](./GLOSSARY.md#convergence), which is a continuous process with no end state.
 
 In common usage, the terms "converged" or "convergence" are frequently synonymous with "Concordance".
 For our purposes However, caution should be exercised, given that it may be readily conflated with the continuous, aggregate process of [Convergence](./GLOSSARY.md#convergence).
 
+For Example: An eventual consistency database is "convergent" all the time, but it's only "concordant" after all write traffic has ceased, and all replication traffic has been duly applied. We expressly forbid usage of the term "Converged", as it conflates these two matters.
+
+
 ## Convergence
 
 ##### As in
 
-Convergence, Converging, Converge.
+Convergence, Converging, Converge
 
 ##### Definition
 
-1. Verb – Referring to a continuous process in which an open-ended subset of a given cohort become increasingly aligned in some fashion, while not necessarily concluding in their alignment.
+1. Verb – Referring to a continuous process in which an open-ended subset of information becomes increasingly aligned in some fashion, while not necessarily concluding in their alignment.
 2. Noun – Referring to the process of Converging itself, and crucially: NOT a final state of "sufficiency". See [Concordance](./GLOSSARY.md#concordance)
 
 **Example**
@@ -54,7 +58,7 @@ We can also imagine other abstract scenarios in which every point in space is th
 For purposes of clarity, we recommend against using the term "Converged" (Noun) to describe a process which has concluded to sufficiency by some standard, and instead use: Concorded, [Concordance](./GLOSSARY.md#concordance), Concluded, Completed, or Aligned.
 
 **Note**
-Convergence may in fact occur in discrete chunks, by way of many incremental or momentary Concordances. However, in this nomenclature at least, we must take great care to differentiate such finalities, however momentary, from the overarchingly-continuous dynamic processes of a system with continuous inputs.
+Convergence may in fact occur in discrete chunks, by way of many incremental or momentary Concordances. In this nomenclature, we must take great care to differentiate such finalities, however momentary, from the overarchingly-continuous dynamic processes of a system with continuous inputs.
 
 ## FuzzySet
 
