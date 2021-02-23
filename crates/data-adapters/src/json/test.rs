@@ -36,8 +36,8 @@ impl From<TestJSONType> for TestWeight<TestJSONType> {
 }
 
 impl TestJSONType {
-    pub fn typemap() -> crate::json::TypeMap<TestJSONType> {
-        crate::json::TypeMap {
+    pub fn typemap() -> crate::json::JsonTypeMap<TestJSONType> {
+        crate::json::JsonTypeMap {
             Document: TestJSONType::Document,
             Null: TestJSONType::Null,
             Bool: TestJSONType::Bool,

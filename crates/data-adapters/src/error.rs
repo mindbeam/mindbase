@@ -6,6 +6,8 @@ pub enum Error {
     NotFound,
     CycleDetected,
     Sanity,
+    InvariantViolation(&'static str),
+    SymbolResolution,
 }
 
 impl std::convert::From<Error> for std::io::Error {
