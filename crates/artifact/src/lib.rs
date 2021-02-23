@@ -40,6 +40,7 @@ pub enum Artifact<T> {
     FlatText(body::Text),
     Node(body::DataNode<T>),
     SubGraph(body::SubGraph<T>),
+    Type(body::Type<T>),
 }
 
 impl<T> Artifact<T>
@@ -76,6 +77,7 @@ where
             Self::FlatText(t) => write!(f, "Artifact::FlatText({})", t),
             Self::Node(n) => write!(f, "Artifact::Node({})", n),
             Self::SubGraph(s) => write!(f, "Artifact::Subgraph({})", s),
+            Self::Type(s) => write!(f, "Artifact::Type({:?})", s),
         }
     }
 }

@@ -4,6 +4,29 @@ use std::fmt::{self, Display};
 
 use crate::{Artifact, ArtifactNodeType};
 
+/// Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
+/// This can be used to store XML or JSON documents, or other application specific formats
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub struct Type<T>(pub T);
+
+impl<T> Display for Type<T>
+where
+    T: ArtifactNodeType + std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Type({:?})", self.0,)
+    }
+}
+
+impl<T> Into<Artifact<T>> for Type<T>
+where
+    T: ArtifactNodeType,
+{
+    fn into(self) -> Artifact<T> {
+        Artifact::Type(self)
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Url {
     pub url: String,
@@ -15,8 +38,8 @@ pub struct Text {
     text: String,
 }
 
-// Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
-// This can be used to store XML or JSON documents, or other application specific formats
+/// Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
+/// This can be used to store XML or JSON documents, or other application specific formats
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct SubGraph<T> {
     pub graph_type: T,
