@@ -169,11 +169,35 @@ where
 
         let artifact = entity.weight;
 
+        println!("ARTIFACT {:?}", artifact);
         // The distinction between edge and vertex feels wrong.
         // Maybe there should only be edges?
 
         match artifact {
-            Artifact::Node(DataNode { data_type, data }) => {}
+            Artifact::Node(DataNode { data_type, data }) => match self.tm.from_sym(data_type, self.graph)? {
+                JsonType::Document => {
+                    println!(
+                        "Ohhai a document: {:?}",
+                        data.map(|b| { String::from_utf8_lossy(&b).to_string() })
+                    );
+                }
+                JsonType::Null => {}
+                JsonType::Bool => {}
+                JsonType::Number => {}
+                JsonType::String => {}
+                JsonType::Array => {}
+                JsonType::ArrayMember => {}
+                JsonType::ArrayOffset => {}
+                JsonType::ArrNextMember => {}
+                JsonType::ArrPrevMember => {}
+                JsonType::ArrHead => {}
+                JsonType::ArrTail => {}
+                JsonType::Object => {}
+                JsonType::ObjectProperty => {}
+                JsonType::ObjectProperties => {}
+                JsonType::ObjectMembers => {}
+                JsonType::RootElement => {}
+            },
             Artifact::SubGraph(SubGraph { graph_type }) => {}
             Artifact::Type(Type(s)) => match self.tm.from_sym(s, self.graph)? {
                 JsonType::Document => {}
@@ -216,7 +240,8 @@ where
         //     }))?
 
         cycleguard.pop(entity_id);
-        unimplemented!()
+
+        Ok(())
     }
 }
 

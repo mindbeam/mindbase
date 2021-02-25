@@ -6,7 +6,7 @@ pub trait Weight: Serialize + DeserializeOwned {
     type Symbol;
 }
 
-pub trait Symbol {
+pub trait Symbol: std::fmt::Debug {
     // Compare two symbols to determine a similarity score
     fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, Error>
     where

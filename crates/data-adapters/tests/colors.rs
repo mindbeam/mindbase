@@ -11,12 +11,18 @@ fn colors() -> Result<(), std::io::Error> {
 
     let adapter = JsonAdapter::new(&graph, TestJSONType::typemap());
 
-    let _json_document = adapter.load(v.as_bytes(), "colors.json".to_string())?;
+    let json_document = adapter.load(v.as_bytes(), "colors.json".to_string())?;
 
     let mut out = std::io::stdout();
     graph.dump_entities(&mut out)?;
 
-    // adapter.write(&mut out, json_document)?;
+    // TODO 1 - LEFT OFF HERE
+    // Fix writer
+    // Search graph for JSON documents and list
+    // Update to use Fuzzy Symbols
+    // Update mbcli
+    // First long-lived database
+    adapter.write(&mut out, json_document)?;
 
     Ok(())
 }
