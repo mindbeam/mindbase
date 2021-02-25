@@ -8,10 +8,10 @@ pub trait Weight: Serialize + DeserializeOwned {
 
 pub trait Symbol {
     // Compare two symbols to determine a similarity score
-    fn compare<G, W>(&self, other: &Self, graph: G) -> Result<f64, Error>
+    fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, Error>
     where
         G: GraphInterface<W>,
-        W: Weight;
+        W: Weight<Symbol = Self>;
 }
 pub trait Provenance {}
 

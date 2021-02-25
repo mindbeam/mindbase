@@ -1,8 +1,8 @@
-use mindbase_artifact::{test::TestWeight, ArtifactNodeType};
+use mindbase_artifact::ArtifactNodeType;
 use mindbase_hypergraph::traits::Symbol;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum TestJSONType {
     Document,
     Null,
@@ -29,11 +29,11 @@ pub enum TestJSONType {
 //         TestWeight::Type(self)
 //     }
 // }
-impl From<TestJSONType> for TestWeight<TestJSONType> {
-    fn from(t: TestJSONType) -> Self {
-        TestWeight::Type(t)
-    }
-}
+// impl From<TestJSONType> for TestWeight<TestJSONType> {
+//     fn from(t: TestJSONType) -> Self {
+//         TestWeight::Type(t)
+//     }
+// }
 
 impl TestJSONType {
     pub fn typemap() -> crate::json::JsonTypeMap<TestJSONType> {
@@ -60,4 +60,16 @@ impl TestJSONType {
 }
 
 impl ArtifactNodeType for TestJSONType {}
-impl Symbol for TestJSONType {}
+impl Symbol for TestJSONType {
+    fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, mindbase_hypergraph::Error>
+    where
+        G: mindbase_hypergraph::traits::GraphInterface<W>,
+        W: mindbase_hypergraph::traits::Weight<Symbol = Self>,
+    {
+        if self == other {
+            Ok(1.0)
+        } else {
+            Ok(0.0)
+        }
+    }
+}

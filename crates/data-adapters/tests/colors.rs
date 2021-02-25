@@ -11,7 +11,7 @@ fn colors() -> Result<(), std::io::Error> {
 
     let adapter = JsonAdapter::new(&graph, TestJSONType::typemap());
 
-    let _json_document = adapter.load(v.as_bytes(), "colors.json")?;
+    let _json_document = adapter.load(v.as_bytes(), "colors.json".to_string())?;
 
     let mut out = std::io::stdout();
     graph.dump_entities(&mut out)?;

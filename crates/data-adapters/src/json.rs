@@ -8,10 +8,7 @@ use mindbase_artifact::{
     Artifact, ArtifactNodeType,
 };
 use mindbase_hypergraph::{
-    entity::{
-        directed, vertex,
-        EntityInner::{Directed, Undirected, Vertex},
-    },
+    entity::{directed, vertex},
     traits::{GraphInterface, Symbol, Weight},
     Entity, EntityId,
 };
@@ -154,7 +151,7 @@ where
                     properties.push(prop);
                 }
                 self.graph
-                    .insert(directed(Type(tm.to_sym(JsonType::ObjectMembers)), [obj], members))?;
+                    .insert(directed(Type(tm.to_sym(JsonType::ObjectMembers)), [obj], members.clone()))?;
                 self.graph
                     .insert(directed(Type(tm.to_sym(JsonType::ObjectProperties)), [obj], members))?;
 

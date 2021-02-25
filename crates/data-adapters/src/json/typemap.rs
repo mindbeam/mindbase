@@ -10,25 +10,26 @@ pub struct JsonTypeMap<T>
 where
     T: Clone,
 {
-    Document: T,
-    Null: T,
-    Bool: T,
-    Number: T,
-    String: T,
-    Array: T,
-    ArrayMember: T,
-    ArrayOffset: T,
-    ArrNextMember: T,
-    ArrPrevMember: T,
-    ArrHead: T,
-    ArrTail: T,
-    Object: T,
-    ObjectProperty: T,
-    ObjectProperties: T,
-    ObjectMembers: T,
-    RootElement: T,
+    pub Document: T,
+    pub Null: T,
+    pub Bool: T,
+    pub Number: T,
+    pub String: T,
+    pub Array: T,
+    pub ArrayMember: T,
+    pub ArrayOffset: T,
+    pub ArrNextMember: T,
+    pub ArrPrevMember: T,
+    pub ArrHead: T,
+    pub ArrTail: T,
+    pub Object: T,
+    pub ObjectProperty: T,
+    pub ObjectProperties: T,
+    pub ObjectMembers: T,
+    pub RootElement: T,
 }
 
+#[derive(Clone, Copy)]
 pub enum JsonType {
     Document,
     Null,
@@ -107,7 +108,7 @@ where
         candidates.sort_by(|Comp(_, a), Comp(_, b)| b.partial_cmp(a).unwrap_or(Ordering::Greater));
 
         if candidates[0].1 > threshold {
-            return Ok(candidates[0].0);
+            return Ok(candidates[0].0.clone());
         } else {
             Err(Error::SymbolResolution)
         }
