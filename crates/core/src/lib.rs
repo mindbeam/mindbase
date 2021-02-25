@@ -6,11 +6,11 @@ pub use error::Error;
 
 #[cfg(test)]
 mod tests {
-    use mindbase_store::MemoryStore;
+    use toboggan_kv::adapter::BTreeAdapter;
 
     #[test]
     fn dump() -> Result<(), Error> {
-        let mb = Service::new(MemoryStore::new())?;
+        let mb = Service::new(BTreeAdapter::new())?;
 
         // Make the ULID play nice for out-of-order testing
         let dur = std::time::Duration::from_millis(50);
@@ -66,7 +66,7 @@ mod tests {
         {"Allegation":["AXDCW2k4A7LuPwBx3l2hBw",{"id":"AXDCW2k4A7LuPwBx3l2hBw","agent_id":{"pubkey":"rKEhipCfl9P3K7+6glZVZi1nnQbxVA9vjloNdWsS0bY"},"body":{"Analogy":{"left":{"atoms":[{"id":"AXDCW2gsaVltJU2vcQFKuQ","spin":"Up"}],"spread_factor":0.0},"confidence":1.0,"right":{"atoms":[{"id":"AXDCW2jLdjUVrz/igyanqQ","spin":"Up"}],"spread_factor":0.0}}},"signature":"dd4fqB3J957G/dP/GUl9lP9ZaTYWqQ5zi5U+3oSniUTOd1rtUX9x6nZENxOa8OnW6571nBRpmyXBOPNnGtDdDg"}]}"#;
         let cursor = std::io::Cursor::new(dump);
 
-        let mb = Service::new(MemoryStore::new())?;
+        let mb = Service::new(BTreeAdapter::new())?;
 
         crate::xport::load_json(&mb, cursor).unwrap();
 

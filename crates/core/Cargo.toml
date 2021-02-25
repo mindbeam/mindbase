@@ -13,8 +13,8 @@ exclude = ["mbql/*"]
 mindbase-symbol = { path="../symbol" }
 mindbase-mbql = { path="../mbql" }
 mindbase-util = { path="../util" }
-mindbase-crypto = { path="../crypto" }
-mindbase-store = { path="../store"}
+keyplace = "0.1.0"
+toboggan-kv = "0.1.1"
 mindbase-artifact = { path="../artifact" }
 mindbase-claim = { path="../claim" }
 

@@ -5,7 +5,7 @@ mod test {
         sync::{Arc, Mutex},
     };
 
-    use mindbase_artifact::{artifact::DataNode, Artifact, ArtifactId};
+    use mindbase_artifact::{body::DataNode, Artifact, ArtifactId};
     use serde::Serialize;
 
     #[test]

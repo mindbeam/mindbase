@@ -4,7 +4,7 @@ use mindbase_core::{
     *,
 };
 
-use mindbase_crypto::KeyManager;
+use keyplace::KeyManager;
 use rustyline::{error::ReadlineError, Editor};
 
 pub fn run(mb: MindBase, keymanager: KeyManager) -> Result<(), std::io::Error> {

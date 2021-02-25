@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufReader};
 
+use keyplace::*;
 use mindbase_core::*;
-use mindbase_crypto::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

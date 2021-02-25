@@ -11,8 +11,8 @@ use crate::{
 
 use std::io::Write;
 
-use mindbase_store::{MemoryStore, Tree};
 use rusty_ulid::generate_ulid_bytes;
+use toboggan_kv::{adapter::BTreeAdapter, Tree};
 
 use crate::entity::EntityId;
 /// ?? Claims are sometimes artifact instances, but illegal instance values are possible to represent
@@ -32,7 +32,7 @@ use crate::entity::EntityId;
 #[derive(Debug)]
 pub struct Hypergraph<S, W, P = ()>
 where
-    S: mindbase_store::Store,
+    S: toboggan_kv::Toboggan,
     W: traits::Weight,
     P: traits::Provenance,
 {
@@ -55,7 +55,7 @@ where
 
 impl<S, W, P> Hypergraph<S, W, P>
 where
-    S: mindbase_store::Store,
+    S: toboggan_kv::Toboggan,
     W: traits::Weight,
     P: traits::Provenance,
 {
@@ -144,14 +144,15 @@ fn deserialize<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
 
 impl<S, W, P> GraphInterface<W> for Hypergraph<S, W, P>
 where
-    S: mindbase_store::Store,
+    S: toboggan_kv::Toboggan,
     W: traits::Weight,
     P: traits::Provenance,
 {
     /// Insert an entity into the hypergraph
     /// ```
-    /// use mindbase_hypergraph::{HyperGraph,entity,MemoryStore};
-    /// let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
+    /// use mindbase_hypergraph::{HyperGraph,entity};
+    /// use toboggan_kv::adapter::BTreeAdapter;
+    /// let graph : HyperGraph<BTreeAdapter,&'str,()> = HyperGraph::memory();
     /// graph.insert(entity::vertex("123")).unwrap()
     /// ```
     fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error> {
@@ -179,13 +180,13 @@ where
     }
 }
 
-impl<W, P> Hypergraph<MemoryStore, W, P>
+impl<W, P> Hypergraph<BTreeAdapter, W, P>
 where
     W: traits::Weight,
     P: traits::Provenance,
 {
     pub fn memory() -> Self {
-        Self::new(MemoryStore::new()).unwrap()
+        Self::new(BTreeAdapter::new()).unwrap()
     }
 }
 
@@ -217,8 +218,8 @@ mod test {
     #[test]
     fn insert() -> Result<(), std::io::Error> {
         use crate::{entity, Hypergraph};
-        use mindbase_store::MemoryStore;
-        let graph = Hypergraph::<MemoryStore, String>::memory();
+        use toboggan_kv::adapter::BTreeAdapter;
+        let graph = Hypergraph::<BTreeAdapter, String>::memory();
         use crate::traits::GraphInterface;
 
         let a = graph.insert(entity::vertex(
@@ -256,7 +257,8 @@ mod test {
 // /// Convenience function, equivalent to
 // /// ```
 // /// # use mindbase_hypergraph::{HyperGraph,entity};
-// /// # let graph : HyperGraph<MemoryStore,&'str,()> = HyperGraph::memory();
+// /// # use toboggan_kv::adapter::BTreeAdapter;
+// /// # let graph : HyperGraph<BTreeAdapter,&'str,()> = HyperGraph::memory();
 // /// graph.insert(entity::vertex("123")).unwrap();
 // /// ```
 // pub fn insert_vertex<IW: Into<W>>(&self, weight: IW) -> Result<EntityId, Error> {

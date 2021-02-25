@@ -14,7 +14,7 @@ pub enum Error {
     SymbolVarAlreadyBound,
     NullSymbol,
     Other,
-    Store(mindbase_store::Error),
+    Store(toboggan_kv::Error),
     Util(mindbase_util::Error),
 }
 
@@ -30,8 +30,8 @@ impl std::fmt::Display for Error {
 //     }
 // }
 
-impl From<mindbase_store::Error> for Error {
-    fn from(e: mindbase_store::Error) -> Self {
+impl From<toboggan_kv::Error> for Error {
+    fn from(e: toboggan_kv::Error) -> Self {
         Self::Store(e)
     }
 }

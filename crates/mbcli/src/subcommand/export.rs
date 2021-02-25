@@ -1,7 +1,7 @@
 use std::{fs::File, path::PathBuf};
 
+use keyplace::KeyManager;
 use mindbase_core::MindBase;
-use mindbase_crypto::KeyManager;
 
 pub(crate) fn run(mb: MindBase, keymanager: KeyManager, file: PathBuf) -> Result<(), std::io::Error> {
     let path = file.as_path();

@@ -3,14 +3,12 @@ members = [
     "crates/artifact",
     "crates/claim",
     "crates/core",
-    "crates/crypto",
     "crates/data-adapters",
     "crates/fuzzyset",
     "crates/genesis",
     "crates/hypergraph",
     "crates/mbcli",
     "crates/mbql",
-    "crates/store",
     "crates/symbol",
     "crates/util"
 ]

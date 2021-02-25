@@ -436,8 +436,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use mindbase_graph::Graph;
-    use mindbase_store::MemoryStore;
+    use mindbase_hypergraph::Hypergraph;
+    use toboggan_kv::adapter::BTreeAdapter;
 
     use crate::{fuzzyset::FuzzySet, test_util::SimpleMember};
 

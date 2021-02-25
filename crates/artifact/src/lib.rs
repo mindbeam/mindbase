@@ -35,7 +35,7 @@ pub struct ArtifactId(
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Artifact<T> {
-    Agent(mindbase_crypto::AgentId),
+    Agent(keyplace::AgentId),
     Url(body::Url),
     FlatText(body::Text),
     Node(body::DataNode<T>),

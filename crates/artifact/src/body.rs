@@ -1,4 +1,4 @@
-use mindbase_crypto::AgentId;
+use keyplace::AgentId;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display};
 

@@ -7,7 +7,7 @@ use crate::search::SearchContext;
 
 use mindbase_artifact::Artifact;
 use mindbase_claim::Claim;
-use mindbase_graph::Graph;
+use mindbase_hypergraph::Hypergraph;
 use mindbase_symbol as sy;
 
 use std::{collections::BTreeMap, io::Cursor, sync::Mutex};
@@ -45,7 +45,7 @@ pub struct Query<'a, S: Store> {
     artifact_var_map: Mutex<BTreeMap<String, ArtifactVarMapItem>>,
     symbol_var_map: Mutex<BTreeMap<String, SymbolVarMapItem>>,
     pub search_context: Mutex<SearchContext<'a>>,
-    pub graph: &'a Graph<S, Artifact, Claim>,
+    pub graph: &'a Hypergraph<S, Artifact, Claim>,
 }
 
 pub enum BindResult {
@@ -54,7 +54,7 @@ pub enum BindResult {
 }
 
 impl<'a> Query<'a> {
-    pub fn new<T: std::io::BufRead>(graph: &'a Graph, reader: T) -> Result<Self, Error> {
+    pub fn new<T: std::io::BufRead>(graph: &'a Hypergraph, reader: T) -> Result<Self, Error> {
         let mut query = Query {
             statements: Vec::new(),
             artifact_var_map: Mutex::new(BTreeMap::new()),
@@ -67,7 +67,7 @@ impl<'a> Query<'a> {
         Ok(query)
     }
 
-    pub fn from_str(mb: &'a Graph, mbql_string: &str) -> Result<Self, Error> {
+    pub fn from_str(mb: &'a Hypergraph, mbql_string: &str) -> Result<Self, Error> {
         let cur = Cursor::new(mbql_string);
         Self::new(mb, cur)
     }

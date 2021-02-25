@@ -1,6 +1,6 @@
 use mindbase_artifact::Artifact;
 use mindbase_mbql::Query;
-use mindbase_store::{MemoryStore, Store, Tree};
+use toboggan_kv::{adapter::BTreeAdapter, Toboggan, Tree};
 
 use crate::Error;
 
@@ -62,7 +62,7 @@ where
 
 #[test]
 fn basic() -> Result<(), Error> {
-    let mb = Service::new(MemoryStore::new())?;
+    let mb = Service::new(BTreeAdapter::new())?;
     let query = mb.query_str(r#"$isaid = Ground("Things that I said" : "In this test")"#)?;
 
     query.apply()?;

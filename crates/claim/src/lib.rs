@@ -8,7 +8,7 @@ use mindbase_symbol::{
     AssociativeAnalogy, CategoricalAnalogy,
 };
 
-use mindbase_crypto::{AgentId, AgentKey, Signature};
+use keyplace::{AgentId, AgentKey, Signature};
 use mindbase_util::Error;
 
 use rusty_ulid::generate_ulid_bytes;

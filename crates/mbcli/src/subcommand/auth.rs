@@ -1,8 +1,8 @@
 use structopt::StructOpt;
 
 use dialoguer::{theme::ColorfulTheme, Input, Password};
+use keyplace::{AgentKey, KeyManager, PassKey};
 use mindbase_core::MindBase;
-use mindbase_crypto::{AgentKey, KeyManager, PassKey};
 
 #[derive(StructOpt, Debug)]
 pub enum Command {

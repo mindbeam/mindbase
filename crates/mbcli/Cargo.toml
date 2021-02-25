@@ -11,9 +11,9 @@ gl=["glow","glutin","glyph_brush"]
 
 [dependencies]
 mindbase-artifact = {path = "../artifact"}
-mindbase-crypto = {path = "../crypto"}
+keyplace = "0.1.0"
 mindbase-core = {path = "../core"}
-mindbase-graph = {path = "../graph"}
+mindbase-hypergraph = {path = "../hypergraph"}
 structopt = "0.3"
 rustyline = "6.3"
 dialoguer = "0.7"

@@ -10,7 +10,7 @@ edition = "2018"
 mindbase-symbol = { path="../symbol" }
 mindbase-artifact = { path="../artifact" }
 mindbase-claim = { path="../claim" }
-mindbase-graph = { path="../graph" }
+mindbase-hypergraph = { path="../hypergraph" }
 
 itertools = "0.9"
 pest = "2.1.3"
