@@ -31,7 +31,4 @@ where
         }
         Err(_e) => Err(D::Error::custom("failed to deserialize")),
     }
-    // .and_then(|string| base64::decode(&string).map_err(|err| Error::custom(err.to_string())))
-    //                                  .map(|bytes| try_64_from_slice::<u8>(&bytes[..]).map(|v|v.clone())
-    //                                  .and_then(|opt| opt.map_err(|_| ))
 }
