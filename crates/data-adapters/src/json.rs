@@ -60,7 +60,7 @@ where
     }
     pub fn write<R: std::io::Write>(&self, writer: R, entity_id: EntityId) -> Result<(), Error> {
         let mut cycleguard = CycleGuard::default();
-        self.output_recurse(&mut cycleguard, &entity_id, writer)?;
+        self.output_recurse(&mut cycleguard, &entity_id, &writer)?;
         Ok(())
     }
 
@@ -161,7 +161,7 @@ where
     }
 
     fn output_recurse<R: std::io::Write>(
-        &self, cycleguard: &mut CycleGuard, entity_id: &EntityId, writer: R,
+        &self, cycleguard: &mut CycleGuard, entity_id: &EntityId, writer: &R,
     ) -> Result<(), Error> {
         cycleguard.push(entity_id)?;
 
@@ -180,6 +180,11 @@ where
                         "Ohhai a document: {:?}",
                         data.map(|b| { String::from_utf8_lossy(&b).to_string() })
                     );
+                    if let Some(entity_ids) = self.graph.get_edges_containing(entity_id)? {
+                        for target_entity_id in entity_ids {
+                            self.output_recurse(cycleguard, &target_entity_id, writer)?;
+                        }
+                    }
                 }
                 JsonType::Null => {}
                 JsonType::Bool => {}
@@ -196,7 +201,13 @@ where
                 JsonType::ObjectProperty => {}
                 JsonType::ObjectProperties => {}
                 JsonType::ObjectMembers => {}
-                JsonType::RootElement => {}
+                JsonType::RootElement => {
+                    if let Some(entity_ids) = self.graph.get_edges_containing(entity_id)? {
+                        for target_entity_id in entity_ids {
+                            self.output_recurse(cycleguard, &target_entity_id, writer)?;
+                        }
+                    }
+                }
             },
             Artifact::SubGraph(SubGraph { graph_type }) => {}
             Artifact::Type(Type(s)) => match self.tm.from_sym(s, self.graph)? {
@@ -216,7 +227,13 @@ where
                 JsonType::ObjectProperty => {}
                 JsonType::ObjectProperties => {}
                 JsonType::ObjectMembers => {}
-                JsonType::RootElement => {}
+                JsonType::RootElement => {
+                    if let Some(entity_ids) = self.graph.get_edges_containing(entity_id)? {
+                        for target_entity_id in entity_ids {
+                            self.output_recurse(cycleguard, &target_entity_id, writer)?;
+                        }
+                    }
+                }
             },
             _ => return Err(Error::InvariantViolation("Invalid artifact type for JSON")),
         }
@@ -239,7 +256,7 @@ where
         //         data: Some(s.as_bytes().to_vec()),
         //     }))?
 
-        cycleguard.pop(entity_id);
+        cycleguard.pop(entity_id)?;
 
         Ok(())
     }
