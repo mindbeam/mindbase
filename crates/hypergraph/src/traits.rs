@@ -21,6 +21,7 @@ where
 {
     fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error>;
     fn get(&self, entity_id: &EntityId) -> Result<Entity<W>, Error>;
+    fn get_edges_containing(&self, entity_id: &EntityId) -> Result<Option<Vec<EntityId>>, Error>;
 }
 
 impl Provenance for () {}

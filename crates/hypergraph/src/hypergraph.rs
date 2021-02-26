@@ -1,12 +1,13 @@
-use std::{fmt::Display, marker::PhantomData};
+use std::{convert::TryInto, fmt::Display, marker::PhantomData};
 
+use inverted_index_util::entity_list::insert_entity_mut;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
 use traits::GraphInterface;
 
 use crate::{
     entity::{undirected, Entity, EntityInner},
-    traits, Error,
+    index, traits, Error,
 };
 
 use std::io::Write;
@@ -47,7 +48,8 @@ where
     weight_storage: S::Tree,
 
     /// Index the raw weight value directly to the hyperedge
-    entity_by_weight_index: S::Tree,
+    idx_weight_to_entity: S::Tree,
+    idx_entity_to_hyperedge: S::Tree,
 
     _w: PhantomData<W>,
     _p: PhantomData<P>,
@@ -65,7 +67,12 @@ where
         weight_storage.set_merge_operator(op_write_once);
 
         let entity_storage = store.open_tree("hypergraph::entity_storage")?;
-        let entity_by_weight_index = store.open_tree("hypergraph::entity_by_weight_index")?;
+
+        let idx_entity_to_hyperedge = store.open_tree("hypergraph::hyperedge_by_entity_id")?;
+        idx_entity_to_hyperedge.set_merge_operator(index::merge_byte_list::<typenum::U16>);
+
+        let idx_weight_to_entity = store.open_tree("hypergraph::entity_by_weight_index")?;
+        idx_weight_to_entity.set_merge_operator(index::merge_byte_list::<typenum::U16>);
 
         Ok(Hypergraph {
             _w: PhantomData,
@@ -73,7 +80,8 @@ where
             _store: store,
             weight_storage,
             entity_storage,
-            entity_by_weight_index,
+            idx_entity_to_hyperedge,
+            idx_weight_to_entity,
         })
     }
     pub fn get_weight(&self, entity_id: &EntityId) -> Result<W, Error> {
@@ -86,24 +94,24 @@ where
         }
     }
 
-    fn put_weight<T: Into<W>>(&self, into_weight: T) -> Result<WeightRef, Error> {
+    fn put_weight<T: Into<W>>(&self, into_weight: T) -> Result<(WeightRef, WeightId), Error> {
         let weight: W = into_weight.into();
 
         let bytes = serialize(&weight)?;
         let mut hasher = Sha512Trunc256::default();
         hasher.update(&bytes);
-        let hash = hasher.finalize();
+        let id: WeightId = hasher.finalize().into();
 
         let wr = if bytes.len() < 32 {
             WeightRef::Inline(bytes.clone())
         } else {
-            WeightRef::Remote(StoredWeightId(hash.into()))
+            WeightRef::Remote(StoredWeightId(id))
         };
 
         // Only store it if we haven't seen this one before
-        self.weight_storage.merge(hash, bytes)?;
+        self.weight_storage.merge(id.clone(), bytes)?;
 
-        Ok(wr)
+        Ok((wr, id))
     }
     fn get_weight_by_ref(&self, wr: WeightRef) -> Result<W, Error> {
         match wr {
@@ -156,14 +164,33 @@ where
     /// graph.insert(entity::vertex("123")).unwrap()
     /// ```
     fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error> {
-        let w = self.put_weight(entity.weight)?;
+        let (weight_ref, weight_id): (WeightRef, WeightId) = self.put_weight(entity.weight)?;
 
-        let id_bytes = generate_ulid_bytes();
+        let entity_id: [u8; 16] = generate_ulid_bytes();
+
+        match &entity.inner {
+            EntityInner::Vertex => {}
+            EntityInner::Undirected(member_ids) => {
+                for m in member_ids.iter() {
+                    self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
+                }
+            }
+            EntityInner::Directed(from_member_ids, to_member_ids) => {
+                for m in from_member_ids.iter() {
+                    self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
+                }
+                for m in to_member_ids.iter() {
+                    self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
+                }
+            }
+        }
 
         self.entity_storage
-            .insert(id_bytes, bincode::serialize(&StoredEntity(w, entity.inner))?)?;
+            .insert(entity_id, bincode::serialize(&StoredEntity(weight_ref, entity.inner))?)?;
 
-        Ok(EntityId(id_bytes).into())
+        self.idx_weight_to_entity.merge(weight_id, entity_id)?;
+
+        Ok(EntityId(entity_id).into())
     }
 
     fn get(&self, entity_id: &EntityId) -> Result<Entity<W>, Error> {
@@ -176,6 +203,15 @@ where
                 })
             }
             None => Err(Error::NotFound),
+        }
+    }
+
+    fn get_edges_containing(&self, entity_id: &EntityId) -> Result<Option<Vec<EntityId>>, Error> {
+        match self.idx_entity_to_hyperedge.get(entity_id.0)? {
+            Some(bytes) => Ok(Some(
+                bytes.chunks_exact(16).map(|b| EntityId(b.try_into().unwrap())).collect(),
+            )),
+            None => Ok(None),
         }
     }
 }
@@ -198,9 +234,25 @@ enum WeightRef {
     Inline(Vec<u8>),
     Remote(StoredWeightId),
 }
+
+type WeightId = [u8; 32];
 /// The hash of the weight which was stored
 #[derive(Serialize, Deserialize)]
-pub(crate) struct StoredWeightId([u8; 32]);
+pub(crate) struct StoredWeightId(WeightId);
+
+impl WeightRef {
+    fn id(&self) -> WeightId {
+        match self {
+            WeightRef::Inline(bytes) => {
+                let mut hasher = Sha512Trunc256::default();
+                hasher.update(bytes);
+                let id: WeightId = hasher.finalize().into();
+                id
+            }
+            WeightRef::Remote(StoredWeightId(id)) => id.clone(),
+        }
+    }
+}
 
 fn op_write_once(
     _key: &[u8],               // the key being merged

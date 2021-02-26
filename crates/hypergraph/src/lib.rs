@@ -1,6 +1,7 @@
 pub mod entity;
 pub mod error;
 pub mod hypergraph;
+mod index;
 pub mod traits;
 
 pub use entity::{Entity, EntityId};
