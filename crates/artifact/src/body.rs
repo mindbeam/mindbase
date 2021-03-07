@@ -38,22 +38,6 @@ pub struct Text {
     text: String,
 }
 
-/// Allow the Agent to store arbitrary Graph of data, of an arbitrarily defined type.
-/// This can be used to store XML or JSON documents, or other application specific formats
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct SubGraph<T> {
-    pub graph_type: T,
-}
-
-impl<T> Display for SubGraph<T>
-where
-    T: ArtifactNodeType + std::fmt::Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DataNode({:?})", self.graph_type,)
-    }
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct DataNode<T> {
     pub data_type: T,
@@ -130,14 +114,6 @@ where
 {
     fn into(self) -> Artifact<T> {
         Artifact::Node(self)
-    }
-}
-impl<T> Into<Artifact<T>> for SubGraph<T>
-where
-    T: ArtifactNodeType,
-{
-    fn into(self) -> Artifact<T> {
-        Artifact::SubGraph(self)
     }
 }
 

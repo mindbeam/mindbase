@@ -66,7 +66,8 @@ impl Symbol for TestJSONType {
         G: mindbase_hypergraph::traits::GraphInterface<W>,
         W: mindbase_hypergraph::traits::Weight<Symbol = Self>,
     {
-        if self == other {
+        // LEFT OFF HERE - something strange is happening here
+        if *self == *other {
             Ok(1.0)
         } else {
             Ok(0.0)

@@ -206,13 +206,35 @@ where
         }
     }
 
-    fn get_edges_containing(&self, entity_id: &EntityId) -> Result<Option<Vec<EntityId>>, Error> {
+    fn get_adjacencies(&self, entity_id: &EntityId) -> Result<Vec<EntityId>, Error> {
         match self.idx_entity_to_hyperedge.get(entity_id.0)? {
-            Some(bytes) => Ok(Some(
-                bytes.chunks_exact(16).map(|b| EntityId(b.try_into().unwrap())).collect(),
-            )),
-            None => Ok(None),
+            Some(bytes) => Ok(bytes.chunks_exact(16).map(|b| EntityId(b.try_into().unwrap())).collect()),
+            None => Ok(vec![]),
         }
+    }
+
+    fn get_adjacencies_matching<F>(&self, entity_id: &EntityId, filter: F) -> Result<Vec<EntityId>, Error>
+    where
+        F: Fn(&W) -> Result<bool, Error>,
+    {
+        // TODO - How do we index by weight AND symbol - decompose?
+        // weights might contain multiple symbols in the future, but for
+        // now they may only contain one.
+        // Maybe a way to interrogate the weight to get its symbol(s), and index by that
+        // How do we index by fuzzy symbols?
+
+        let entity_ids = self.get_adjacencies(entity_id)?;
+        println!("Adjacencies unfiltered: {:?}", entity_ids);
+
+        let mut out = Vec::new();
+
+        for entity_id in entity_ids {
+            let entity = self.get(&entity_id)?;
+            if filter(&entity.weight)? {
+                out.push(entity_id)
+            }
+        }
+        Ok(out)
     }
 }
 

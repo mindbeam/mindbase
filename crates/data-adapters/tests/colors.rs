@@ -30,7 +30,12 @@ fn colors() -> Result<(), std::io::Error> {
     // [ ] First long-lived database (trivially practical storage application)
     // [ ] deeper Application invariant expression, mindful of fuzziness
 
-    adapter.write(&mut out, json_document)?;
+    let (filename, root_id) = adapter.get_filename_and_root(&json_document)?;
+
+    println!("Document name: {:?}", filename);
+    println!("Document root {}", root_id);
+
+    // adapter.write(&mut out)?;
 
     Ok(())
 }

@@ -8,6 +8,7 @@ pub enum Error {
     Sanity,
     InvariantViolation(&'static str),
     SymbolResolution,
+    MaterializationDeclined(&'static str),
 }
 
 impl std::convert::From<Error> for std::io::Error {

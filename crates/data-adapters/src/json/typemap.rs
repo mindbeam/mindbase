@@ -75,7 +75,7 @@ where
             JsonType::RootElement => self.RootElement.clone(),
         }
     }
-    pub fn from_sym<G>(&self, symbol: T, graph: &G) -> Result<JsonType, Error>
+    pub fn from_sym<G>(&self, symbol: &T, graph: &G) -> Result<JsonType, Error>
     where
         G: GraphInterface<Artifact<T>>,
     {

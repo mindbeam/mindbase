@@ -10,6 +10,7 @@ pub struct Symbol<E>
 where
     E: Entity,
 {
+    // A symbol is essentially just a Non-polar fuzzyset
     pub set: FuzzySet<SymbolMember<E>>,
 }
 

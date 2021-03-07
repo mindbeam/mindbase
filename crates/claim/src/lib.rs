@@ -1,5 +1,6 @@
 mod body;
-mod traits;
+mod relation;
+// mod traits;
 
 use mindbase_symbol::{
     analogy::Analogy,
@@ -17,6 +18,16 @@ use std::fmt;
 use traits::Artifact;
 
 use self::body::Body;
+
+// Any Vertex is always according to some observer(s) (Claim(s))
+// Any Edge is always according to some observer(s) (Claim(s))
+// Any Vertex may have one or more values (artifacts)
+// Any Edge may have one or more weights (artifacts)
+
+//          | Vertex | Edge
+//           -------------
+// Claim    |   X    |  X
+// Artifact |   X    |  X
 
 #[derive(Clone, Serialize, Deserialize, Ord, Eq, PartialOrd, PartialEq)]
 pub struct ClaimId(
@@ -134,7 +145,7 @@ impl std::convert::TryFrom<&[u8]> for ClaimId {
 pub struct Claim<E, A>
 where
     E: Entity,
-    A: traits::Artifact,
+    A: mindbase_hypergraph::traits::Weight,
 {
     /// TODO 3 - Consider renaming "Claim*" to "Symbol*"
     pub id: ClaimId,
@@ -143,6 +154,8 @@ where
     pub body: Body<E, A>,
     pub signature: Signature,
 }
+
+// TODO - deal with claimant genericization for simplicity of testing
 
 pub enum ArtifactList<'a, A: traits::Artifact> {
     None,

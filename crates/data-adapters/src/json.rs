@@ -4,7 +4,7 @@ pub mod typemap;
 use std::marker::PhantomData;
 
 use mindbase_artifact::{
-    body::{DataNode, SubGraph, Type},
+    body::{DataNode, Type},
     Artifact, ArtifactNodeType,
 };
 use mindbase_hypergraph::{
@@ -58,9 +58,54 @@ where
 
         Ok(json_document)
     }
+    pub fn get_filename_and_root(&self, entity_id: &EntityId) -> Result<(Option<String>, EntityId), Error> {
+        // might be a document, or a root node
+        let entity = self.graph.get(&entity_id)?;
+
+        if let Artifact::Node(DataNode { ref data_type, data }) = entity.weight {
+            match self.tm.from_sym(data_type, self.graph)? {
+                JsonType::Document => {
+                    // This is dumb. it should not be a fulter function
+                    let roots = self.graph.get_adjacencies_matching(entity_id, |a| {
+                        if let Artifact::Type(Type(ty)) = a {
+                            println!("FRAAP: {:?}", ty);
+                            if data_type.compare(&self.tm.RootElement, self.graph)? > 0.7 {
+                                println!("GRAAP!");
+                                return Ok(true);
+                            }
+                        }
+                        Ok(false)
+                    })?;
+                    if roots.len() == 0 {
+                        return Err(Error::InvariantViolation("No RootElement found for Document"));
+                    }
+                    if roots.len() > 1 {
+                        return Err(Error::InvariantViolation("Multiple RootElements found for Document"));
+                    }
+                    let root_id = roots[0];
+                    Ok((data.map(|b| String::from_utf8_lossy(&b).to_string()), root_id))
+                }
+                JsonType::Null | JsonType::Bool | JsonType::Number | JsonType::Array | JsonType::Object => {
+                    // These are legal node types to start rendering
+                    Ok((None, *entity_id))
+                }
+                _ => Err(Error::MaterializationDeclined("Invalid root JSON entity")),
+            }
+        } else {
+            Err(Error::MaterializationDeclined("Entity is not a node"))
+        }
+    }
     pub fn write<R: std::io::Write>(&self, writer: R, entity_id: EntityId) -> Result<(), Error> {
         let mut cycleguard = CycleGuard::default();
-        self.output_recurse(&mut cycleguard, &entity_id, &writer)?;
+
+        // {
+        //     println!(
+        //         "Ohhai a document: {:?}",
+        //         data.map(|b| { String::from_utf8_lossy(&b).to_string() })
+        //     );
+        // }
+
+        // self.output_recurse(&mut cycleguard, &entity_id, &writer)?;
         Ok(())
     }
 
@@ -160,106 +205,95 @@ where
         })
     }
 
-    fn output_recurse<R: std::io::Write>(
-        &self, cycleguard: &mut CycleGuard, entity_id: &EntityId, writer: &R,
-    ) -> Result<(), Error> {
-        cycleguard.push(entity_id)?;
+    // fn output_recurse<R: std::io::Write>(
+    //     &self, cycleguard: &mut CycleGuard, entity_id: &EntityId, writer: &R,
+    // ) -> Result<(), Error> {
+    //     cycleguard.push(entity_id)?;
 
-        let entity = self.graph.get(entity_id)?;
+    //     let entity = self.graph.get(entity_id)?;
 
-        let artifact = entity.weight;
+    //     let artifact = entity.weight;
 
-        println!("ARTIFACT {:?}", artifact);
-        // The distinction between edge and vertex feels wrong.
-        // Maybe there should only be edges?
+    //     println!("ARTIFACT {:?}", artifact);
+    //     // The distinction between edge and vertex feels wrong.
+    //     // Maybe there should only be edges?
 
-        match artifact {
-            Artifact::Node(DataNode { data_type, data }) => match self.tm.from_sym(data_type, self.graph)? {
-                JsonType::Document => {
-                    println!(
-                        "Ohhai a document: {:?}",
-                        data.map(|b| { String::from_utf8_lossy(&b).to_string() })
-                    );
-                    if let Some(entity_ids) = self.graph.get_edges_containing(entity_id)? {
-                        for target_entity_id in entity_ids {
-                            self.output_recurse(cycleguard, &target_entity_id, writer)?;
-                        }
-                    }
-                }
-                JsonType::Null => {}
-                JsonType::Bool => {}
-                JsonType::Number => {}
-                JsonType::String => {}
-                JsonType::Array => {}
-                JsonType::ArrayMember => {}
-                JsonType::ArrayOffset => {}
-                JsonType::ArrNextMember => {}
-                JsonType::ArrPrevMember => {}
-                JsonType::ArrHead => {}
-                JsonType::ArrTail => {}
-                JsonType::Object => {}
-                JsonType::ObjectProperty => {}
-                JsonType::ObjectProperties => {}
-                JsonType::ObjectMembers => {}
-                JsonType::RootElement => {
-                    if let Some(entity_ids) = self.graph.get_edges_containing(entity_id)? {
-                        for target_entity_id in entity_ids {
-                            self.output_recurse(cycleguard, &target_entity_id, writer)?;
-                        }
-                    }
-                }
-            },
-            Artifact::SubGraph(SubGraph { graph_type }) => {}
-            Artifact::Type(Type(s)) => match self.tm.from_sym(s, self.graph)? {
-                JsonType::Document => {}
-                JsonType::Null => {}
-                JsonType::Bool => {}
-                JsonType::Number => {}
-                JsonType::String => {}
-                JsonType::Array => {}
-                JsonType::ArrayMember => {}
-                JsonType::ArrayOffset => {}
-                JsonType::ArrNextMember => {}
-                JsonType::ArrPrevMember => {}
-                JsonType::ArrHead => {}
-                JsonType::ArrTail => {}
-                JsonType::Object => {}
-                JsonType::ObjectProperty => {}
-                JsonType::ObjectProperties => {}
-                JsonType::ObjectMembers => {}
-                JsonType::RootElement => {
-                    if let Some(entity_ids) = self.graph.get_edges_containing(entity_id)? {
-                        for target_entity_id in entity_ids {
-                            self.output_recurse(cycleguard, &target_entity_id, writer)?;
-                        }
-                    }
-                }
-            },
-            _ => return Err(Error::InvariantViolation("Invalid artifact type for JSON")),
-        }
+    //     match artifact {
+    //         Artifact::Node(DataNode { data_type, data }) => match self.tm.from_sym(data_type, self.graph)? {
+    //             JsonType::Document => return Err(Error::MaterializationDeclined),
+    //             JsonType::Null => {}
+    //             JsonType::Bool => {}
+    //             JsonType::Number => {}
+    //             JsonType::String => {}
+    //             JsonType::Array => {}
+    //             JsonType::ArrayMember => {}
+    //             JsonType::ArrayOffset => {}
+    //             JsonType::ArrNextMember => {}
+    //             JsonType::ArrPrevMember => {}
+    //             JsonType::ArrHead => {}
+    //             JsonType::ArrTail => {}
+    //             JsonType::Object => {}
+    //             JsonType::ObjectProperty => {}
+    //             JsonType::ObjectProperties => {}
+    //             JsonType::ObjectMembers => {}
+    //             JsonType::RootElement => {
+    //                 if let Some(entity_ids) = self.graph.get_adjacencies(entity_id)? {
+    //                     for target_entity_id in entity_ids {
+    //                         self.output_recurse(cycleguard, &target_entity_id, writer)?;
+    //                     }
+    //                 }
+    //             }
+    //         },
+    //         Artifact::Type(Type(s)) => match self.tm.from_sym(s, self.graph)? {
+    //             JsonType::Document => {}
+    //             JsonType::Null => {}
+    //             JsonType::Bool => {}
+    //             JsonType::Number => {}
+    //             JsonType::String => {}
+    //             JsonType::Array => {}
+    //             JsonType::ArrayMember => {}
+    //             JsonType::ArrayOffset => {}
+    //             JsonType::ArrNextMember => {}
+    //             JsonType::ArrPrevMember => {}
+    //             JsonType::ArrHead => {}
+    //             JsonType::ArrTail => {}
+    //             JsonType::Object => {}
+    //             JsonType::ObjectProperty => {}
+    //             JsonType::ObjectProperties => {}
+    //             JsonType::ObjectMembers => {}
+    //             JsonType::RootElement => {
+    //                 if let Some(entity_ids) = self.graph.get_adjacencies(entity_id)? {
+    //                     for target_entity_id in entity_ids {
+    //                         self.output_recurse(cycleguard, &target_entity_id, writer)?;
+    //                     }
+    //                 }
+    //             }
+    //         },
+    //         _ => return Err(Error::InvariantViolation("Invalid artifact type for JSON")),
+    //     }
 
-        // Ok(match v {
-        //     Value::Null => self.graph.insert(vertex(DataNode {
-        //         data_type: self.tm.to_sym(JsonType::$),
-        //         data: None,
-        //     }))?,
-        //     Value::Bool(b) => self.graph.insert(vertex(DataNode {
-        //         data_type: self.tm.to_sym(JsonType::$),
-        //         data: Some(vec![b as u8]),
-        //     }))?,
-        //     Value::Number(n) => self.graph.insert(vertex(DataNode {
-        //         data_type: self.tm.to_sym(JsonType::$),
-        //         data: Some(n.as_i64().unwrap().to_ne_bytes().to_vec()),
-        //     }))?,
-        //     Value::String(s) => self.graph.insert(vertex(DataNode {
-        //         data_type: self.tm.to_sym(JsonType::$),
-        //         data: Some(s.as_bytes().to_vec()),
-        //     }))?
+    //     // Ok(match v {
+    //     //     Value::Null => self.graph.insert(vertex(DataNode {
+    //     //         data_type: self.tm.to_sym(JsonType::$),
+    //     //         data: None,
+    //     //     }))?,
+    //     //     Value::Bool(b) => self.graph.insert(vertex(DataNode {
+    //     //         data_type: self.tm.to_sym(JsonType::$),
+    //     //         data: Some(vec![b as u8]),
+    //     //     }))?,
+    //     //     Value::Number(n) => self.graph.insert(vertex(DataNode {
+    //     //         data_type: self.tm.to_sym(JsonType::$),
+    //     //         data: Some(n.as_i64().unwrap().to_ne_bytes().to_vec()),
+    //     //     }))?,
+    //     //     Value::String(s) => self.graph.insert(vertex(DataNode {
+    //     //         data_type: self.tm.to_sym(JsonType::$),
+    //     //         data: Some(s.as_bytes().to_vec()),
+    //     //     }))?
 
-        cycleguard.pop(entity_id)?;
+    //     cycleguard.pop(entity_id)?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }
 
 #[derive(Default)]

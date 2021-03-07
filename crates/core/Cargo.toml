@@ -18,7 +18,7 @@ toboggan-kv = "0.1.1"
 mindbase-artifact = { path="../artifact" }
 mindbase-claim = { path="../claim" }
 
-rusty_ulid = "0.9.3"
+rusty_ulid = "0.10"
 typenum = "1.12"
 inverted-index-util = "0.0.5"
 base64 = "0.13"

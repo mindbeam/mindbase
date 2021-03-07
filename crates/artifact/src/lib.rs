@@ -39,7 +39,6 @@ pub enum Artifact<T> {
     Url(body::Url),
     FlatText(body::Text),
     Node(body::DataNode<T>),
-    SubGraph(body::SubGraph<T>),
     Type(body::Type<T>),
 }
 
@@ -64,6 +63,15 @@ where
     T: ArtifactNodeType,
 {
     type Symbol = T;
+    // fn compare_sym<G, W>(&self, symbol: Self::Symbol, graph: &G) -> Result<f64, Error> {
+    //     match self {
+    //         Artifact::Agent(_) => unimplemented!(),
+    //         Artifact::Url(_) => unimplemented!(),
+    //         Artifact::FlatText(_) => unimplemented!(),
+    //         Artifact::Node(DataType) => {}
+    //         Artifact::Type(_) => {}
+    //     }
+    // }
 }
 
 impl<T> std::fmt::Display for Artifact<T>
@@ -76,7 +84,6 @@ where
             Self::Url(_u) => unimplemented!(),
             Self::FlatText(t) => write!(f, "Artifact::FlatText({})", t),
             Self::Node(n) => write!(f, "Artifact::Node({})", n),
-            Self::SubGraph(s) => write!(f, "Artifact::Subgraph({})", s),
             Self::Type(s) => write!(f, "Artifact::Type({:?})", s),
         }
     }
