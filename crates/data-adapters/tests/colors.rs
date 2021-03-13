@@ -35,7 +35,7 @@ fn colors() -> Result<(), std::io::Error> {
     println!("Document name: {:?}", filename);
     println!("Document root {}", root_id);
 
-    // adapter.write(&mut out)?;
+    adapter.write(&mut out, root_id)?;
 
     Ok(())
 }
