@@ -1,6 +1,5 @@
-use json::test::TestJSONType;
 use mindbase_artifact::Artifact;
-use mindbase_data_adapters::json::{self, JsonAdapter};
+use mindbase_data_adapters::json::{test::TestJSONType, JsonAdapter};
 use mindbase_hypergraph::Hypergraph;
 
 /// Parse a simple JSON file into artifacts using a simple in-memory store
@@ -14,13 +13,14 @@ fn colors() -> Result<(), std::io::Error> {
     let json_document = adapter.load(v.as_bytes(), "colors.json".to_string())?;
 
     let mut out = std::io::stdout();
-    //graph.dump_entities(&mut out)?;
+    graph.dump_entities(&mut out)?;
 
     // TODO 1 - LEFT OFF HERE
     // [ ] Fix writer
     //  [X] hyperedge indexing
     //  [ ] hyperedge traversal
     //  [ ] RootElement traversal
+    // [ ] Clarify Entity vs HyperEdge (nomenclature, documentation)
     // [ ] Search graph for JSON documents and list
     //    [X] Index entities by weight
     //    [ ] Query entities by symbol(weight)

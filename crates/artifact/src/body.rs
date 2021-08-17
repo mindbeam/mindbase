@@ -1,6 +1,6 @@
 use keyplace::AgentId;
 use serde::{Deserialize, Serialize};
-use std::fmt::{self, Display};
+use std::fmt::{self, Debug, Display};
 
 use crate::{Artifact, ArtifactNodeType};
 
@@ -38,7 +38,7 @@ pub struct Text {
     text: String,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq)]
 pub struct DataNode<T> {
     pub data_type: T,
     pub data: Option<Vec<u8>>,
@@ -49,7 +49,20 @@ pub struct DataNode<T> {
 
 impl<T> Display for DataNode<T>
 where
-    T: ArtifactNodeType + std::fmt::Debug,
+    T: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "DataNode({:?}:{})",
+            self.data_type,
+            String::from_utf8_lossy(self.data.as_ref().map_or(b"", |d| &d[..]))
+        )
+    }
+}
+impl<T> Debug for DataNode<T>
+where
+    T: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

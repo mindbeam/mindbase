@@ -60,7 +60,7 @@ where
 
 impl<T> mindbase_hypergraph::traits::Weight for Artifact<T>
 where
-    T: ArtifactNodeType,
+    T: ArtifactNodeType + std::fmt::Debug,
 {
     type Symbol = T;
     // fn compare_sym<G, W>(&self, symbol: Self::Symbol, graph: &G) -> Result<f64, Error> {

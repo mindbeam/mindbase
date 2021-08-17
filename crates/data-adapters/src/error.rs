@@ -1,5 +1,7 @@
+use mindbase_hypergraph::{traits::Weight, Entity};
+
 #[derive(Debug)]
-pub enum Error {
+pub enum Error<W: Weight> {
     Hypergraph(mindbase_hypergraph::Error),
     SerdeJson(serde_json::Error),
     Io(std::io::Error),
@@ -8,27 +10,27 @@ pub enum Error {
     Sanity,
     InvariantViolation(&'static str),
     SymbolResolution,
-    MaterializationDeclined(&'static str),
+    MaterializationDeclined { entity: Entity<W>, reason: &'static str },
 }
 
-impl std::convert::From<Error> for std::io::Error {
-    fn from(error: Error) -> Self {
+impl<'a, W: Weight> std::convert::From<Error<W>> for std::io::Error {
+    fn from(error: Error<W>) -> Self {
         use std::io::ErrorKind;
         std::io::Error::new(ErrorKind::Other, format!("{:?}", error))
     }
 }
-impl From<mindbase_hypergraph::Error> for Error {
+impl<'a, W: Weight> From<mindbase_hypergraph::Error> for Error<W> {
     fn from(e: mindbase_hypergraph::Error) -> Self {
         Error::Hypergraph(e)
     }
 }
-impl From<serde_json::Error> for Error {
+impl<'a, W: Weight> From<serde_json::Error> for Error<W> {
     fn from(e: serde_json::Error) -> Self {
         Error::SerdeJson(e)
     }
 }
 
-impl From<std::io::Error> for Error {
+impl<'a, W: Weight> From<std::io::Error> for Error<W> {
     fn from(e: std::io::Error) -> Self {
         Error::Io(e)
     }

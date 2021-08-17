@@ -24,78 +24,103 @@ where
     T: Clone,
 {
     graph: &'a G,
-    tm: JsonTypeMap<T>,
+    typemap: JsonTypeMap<T>,
 }
 
-impl<'a, G, S> JsonAdapter<'a, G, S>
+impl<'a, G, JsonTypeSymbol> JsonAdapter<'a, G, JsonTypeSymbol>
 where
-    G: GraphInterface<Artifact<S>>,
+    G: GraphInterface<Artifact<JsonTypeSymbol>>,
     // W: Weight<Symbol = S> + From<DataNode<S>> + From<SubGraph<S>> + From<Type<S>>,
-    S: Symbol + ArtifactNodeType + Clone,
+    JsonTypeSymbol: Symbol + ArtifactNodeType + Clone + std::fmt::Debug,
 {
-    pub fn new(graph: &'a G, typemap: JsonTypeMap<S>) -> Self {
+    pub fn new(graph: &'a G, typemap: JsonTypeMap<JsonTypeSymbol>) -> Self {
         Self {
             graph,
             // a: PhantomData,
-            tm: typemap,
+            typemap,
         }
     }
-    pub fn load<R: std::io::Read>(&self, reader: R, filename: String) -> Result<EntityId, Error> {
+    /// Load a json file into the hypergraph
+    ///
+    /// Note that this operation is NOT idempotent. We are not deduplicating json files or elements at this time.
+    /// That operation would require a high degree of opinionation about precisely how it ought to be performed
+    pub fn load<'b, R: std::io::Read>(&self, reader: R, filename: String) -> Result<EntityId, Error<Artifact<JsonTypeSymbol>>> {
         let jv: Value = serde_json::from_reader(reader)?;
 
         let root_element = self.input_recurse(jv)?;
 
         let json_document = self.graph.insert(vertex(DataNode {
-            data_type: self.tm.to_sym(JsonType::Document),
+            data_type: self.typemap.to_sym(JsonType::Document),
             data: Some(filename.into_bytes()),
         }))?;
 
         self.graph.insert(directed(
-            Type(self.tm.to_sym(JsonType::RootElement)),
+            Type(self.typemap.to_sym(JsonType::RootElement)),
             [json_document],
             [root_element],
         ))?;
 
         Ok(json_document)
     }
-    pub fn get_filename_and_root(&self, entity_id: &EntityId) -> Result<(Option<String>, EntityId), Error> {
+    pub fn get_filename_and_root<'b>(
+        &self, entity_id: &'b EntityId,
+    ) -> Result<(Option<String>, EntityId), Error<Artifact<JsonTypeSymbol>>> {
         // might be a document, or a root node
         let entity = self.graph.get(&entity_id)?;
 
-        if let Artifact::Node(DataNode { ref data_type, data }) = entity.weight {
-            match self.tm.from_sym(data_type, self.graph)? {
-                JsonType::Document => {
-                    // This is dumb. it should not be a fulter function
-                    let roots = self.graph.get_adjacencies_matching(entity_id, |a| {
-                        if let Artifact::Type(Type(ty)) = a {
-                            let score = ty.compare(&self.tm.RootElement, self.graph)?;
+        match &entity.weight {
+            Artifact::Node(DataNode { ref data_type, data }) => {
+                match self.typemap.from_sym(data_type, self.graph)? {
+                    JsonType::Document => {
+                        // This is dumb. it should not be a fulter function
+                        let roots = self.graph.get_adjacencies_matching(entity_id, |a| {
+                            if let Artifact::Type(Type(ty)) = a {
+                                let score = ty.compare(&self.typemap.RootElement, self.graph)?;
 
-                            if score > 0.7 {
-                                return Ok(true);
+                                if score > 0.7 {
+                                    return Ok(true);
+                                }
                             }
+                            Ok(false)
+                        })?;
+                        if roots.len() == 0 {
+                            return Err(Error::InvariantViolation("No RootElement found for Document"));
                         }
-                        Ok(false)
-                    })?;
-                    if roots.len() == 0 {
-                        return Err(Error::InvariantViolation("No RootElement found for Document"));
+                        if roots.len() > 1 {
+                            return Err(Error::InvariantViolation("Multiple RootElements found for Document"));
+                        }
+                        let root_id = roots[0];
+                        Ok((data.as_ref().map(|b| String::from_utf8_lossy(&b).to_string()), root_id))
                     }
-                    if roots.len() > 1 {
-                        return Err(Error::InvariantViolation("Multiple RootElements found for Document"));
+                    JsonType::Null | JsonType::Bool | JsonType::Number | JsonType::Array | JsonType::Object => {
+                        // These are legal node types to start rendering
+                        Ok((None, *entity_id))
                     }
-                    let root_id = roots[0];
-                    Ok((data.map(|b| String::from_utf8_lossy(&b).to_string()), root_id))
+                    _ => Err(Error::MaterializationDeclined {
+                        entity,
+                        reason: "Invalid root JSON entity",
+                    }),
                 }
-                JsonType::Null | JsonType::Bool | JsonType::Number | JsonType::Array | JsonType::Object => {
-                    // These are legal node types to start rendering
-                    Ok((None, *entity_id))
-                }
-                _ => Err(Error::MaterializationDeclined("Invalid root JSON entity")),
             }
-        } else {
-            Err(Error::MaterializationDeclined("Entity is not a node"))
+            Artifact::Agent(_) => Err(Error::MaterializationDeclined {
+                entity,
+                reason: "Entity should be a node, but is an Agent",
+            }),
+            Artifact::Url(_) => Err(Error::MaterializationDeclined {
+                entity,
+                reason: "Entity should be a node, but is a Url",
+            }),
+            Artifact::FlatText(_) => Err(Error::MaterializationDeclined {
+                entity,
+                reason: "Entity should be a node, but is a FlatText",
+            }),
+            Artifact::Type(v) => Err(Error::MaterializationDeclined {
+                entity,
+                reason: "Entity should be a node, but is a Type",
+            }),
         }
     }
-    pub fn write<R: std::io::Write>(&self, writer: R, entity_id: EntityId) -> Result<(), Error> {
+    pub fn write<'b, R: std::io::Write>(&self, writer: R, entity_id: EntityId) -> Result<(), Error<Artifact<JsonTypeSymbol>>> {
         let mut cycleguard = CycleGuard::default();
 
         // skip over the document vertex, if applicable
@@ -106,8 +131,8 @@ where
         Ok(())
     }
 
-    fn input_recurse(&self, v: Value) -> Result<EntityId, Error> {
-        let tm = &self.tm;
+    fn input_recurse<'b, W: Weight>(&self, v: Value) -> Result<EntityId, Error<W>> {
+        let tm = &self.typemap;
         Ok(match v {
             Value::Null => self.graph.insert(vertex(DataNode {
                 data_type: tm.to_sym(JsonType::Null),
@@ -136,7 +161,7 @@ where
 
                     self.graph.insert(directed(
                         DataNode {
-                            data_type: self.tm.to_sym(JsonType::ArrayOffset),
+                            data_type: self.typemap.to_sym(JsonType::ArrayOffset),
                             data: Some(i.to_ne_bytes().to_vec()),
                         },
                         [arr],
@@ -202,103 +227,103 @@ where
         })
     }
 
-//     fn output_recurse<R: std::io::Write>(
-//         &self, cycleguard: &mut CycleGuard, entity_id: &EntityId, writer: &R,
-//     ) -> Result<(), Error> {
-//         cycleguard.push(entity_id)?;
+    //     fn output_recurse<R: std::io::Write>(
+    //         &self, cycleguard: &mut CycleGuard, entity_id: &EntityId, writer: &R,
+    //     ) -> Result<(), Error> {
+    //         cycleguard.push(entity_id)?;
 
-//         // QUESTION: How might we potentially vectorize this kind of retrieval?
+    //         // QUESTION: How might we potentially vectorize this kind of retrieval?
 
-//         let entity = self.graph.get(entity_id)?;
-//         let artifact = entity.weight;
+    //         let entity = self.graph.get(entity_id)?;
+    //         let artifact = entity.weight;
 
-//         println!("ARTIFACT {:?}", artifact);
-//         // The distinction between edge and vertex feels wrong.
-//         // Maybe there should only be edges?
+    //         println!("ARTIFACT {:?}", artifact);
+    //         // The distinction between edge and vertex feels wrong.
+    //         // Maybe there should only be edges?
 
-//         match artifact {
-//             Artifact::Node(DataNode { data_type, data }) => match self.tm.from_sym(data_type, self.graph)? {
-//                 JsonType::Document => return Err(Error::MaterializationDeclined),
-//                 JsonType::Null => {}
-//                 JsonType::Bool => {}
-//                 JsonType::Number => {}
-//                 JsonType::String => {}
-//                 JsonType::Array => {}
-//                 JsonType::ArrayMember => {}
-//                 JsonType::ArrayOffset => {}
-//                 JsonType::ArrNextMember => {}
-//                 JsonType::ArrPrevMember => {}
-//                 JsonType::ArrHead => {}
-//                 JsonType::ArrTail => {}
-//                 JsonType::Object => {}
-//                 JsonType::ObjectProperty => {}
-//                 JsonType::ObjectProperties => {}
-//                 JsonType::ObjectMembers => {}
-//                 JsonType::RootElement => {
-//                     if let Some(entity_ids) = self.graph.get_adjacencies(entity_id)? {
-//                         for target_entity_id in entity_ids {
-//                             self.output_recurse(cycleguard, &target_entity_id, writer)?;
-//                         }
-//                     }
-//                 }
-//             },
-//             Artifact::Type(Type(s)) => match self.tm.from_sym(s, self.graph)? {
-//                 JsonType::Document => {}
-//                 JsonType::Null => {}
-//                 JsonType::Bool => {}
-//                 JsonType::Number => {}
-//                 JsonType::String => {}
-//                 JsonType::Array => {}
-//                 JsonType::ArrayMember => {}
-//                 JsonType::ArrayOffset => {}
-//                 JsonType::ArrNextMember => {}
-//                 JsonType::ArrPrevMember => {}
-//                 JsonType::ArrHead => {}
-//                 JsonType::ArrTail => {}
-//                 JsonType::Object => {}
-//                 JsonType::ObjectProperty => {}
-//                 JsonType::ObjectProperties => {}
-//                 JsonType::ObjectMembers => {}
-//                 JsonType::RootElement => {
-//                     if let Some(entity_ids) = self.graph.get_adjacencies(entity_id)? {
-//                         for target_entity_id in entity_ids {
-//                             self.output_recurse(cycleguard, &target_entity_id, writer)?;
-//                         }
-//                     }
-//                 }
-//             },
-//             _ => return Err(Error::InvariantViolation("Invalid artifact type for JSON")),
-//         }
+    //         match artifact {
+    //             Artifact::Node(DataNode { data_type, data }) => match self.tm.from_sym(data_type, self.graph)? {
+    //                 JsonType::Document => return Err(Error::MaterializationDeclined),
+    //                 JsonType::Null => {}
+    //                 JsonType::Bool => {}
+    //                 JsonType::Number => {}
+    //                 JsonType::String => {}
+    //                 JsonType::Array => {}
+    //                 JsonType::ArrayMember => {}
+    //                 JsonType::ArrayOffset => {}
+    //                 JsonType::ArrNextMember => {}
+    //                 JsonType::ArrPrevMember => {}
+    //                 JsonType::ArrHead => {}
+    //                 JsonType::ArrTail => {}
+    //                 JsonType::Object => {}
+    //                 JsonType::ObjectProperty => {}
+    //                 JsonType::ObjectProperties => {}
+    //                 JsonType::ObjectMembers => {}
+    //                 JsonType::RootElement => {
+    //                     if let Some(entity_ids) = self.graph.get_adjacencies(entity_id)? {
+    //                         for target_entity_id in entity_ids {
+    //                             self.output_recurse(cycleguard, &target_entity_id, writer)?;
+    //                         }
+    //                     }
+    //                 }
+    //             },
+    //             Artifact::Type(Type(s)) => match self.tm.from_sym(s, self.graph)? {
+    //                 JsonType::Document => {}
+    //                 JsonType::Null => {}
+    //                 JsonType::Bool => {}
+    //                 JsonType::Number => {}
+    //                 JsonType::String => {}
+    //                 JsonType::Array => {}
+    //                 JsonType::ArrayMember => {}
+    //                 JsonType::ArrayOffset => {}
+    //                 JsonType::ArrNextMember => {}
+    //                 JsonType::ArrPrevMember => {}
+    //                 JsonType::ArrHead => {}
+    //                 JsonType::ArrTail => {}
+    //                 JsonType::Object => {}
+    //                 JsonType::ObjectProperty => {}
+    //                 JsonType::ObjectProperties => {}
+    //                 JsonType::ObjectMembers => {}
+    //                 JsonType::RootElement => {
+    //                     if let Some(entity_ids) = self.graph.get_adjacencies(entity_id)? {
+    //                         for target_entity_id in entity_ids {
+    //                             self.output_recurse(cycleguard, &target_entity_id, writer)?;
+    //                         }
+    //                     }
+    //                 }
+    //             },
+    //             _ => return Err(Error::InvariantViolation("Invalid artifact type for JSON")),
+    //         }
 
-//         // Ok(match v {
-//         //     Value::Null => self.graph.insert(vertex(DataNode {
-//         //         data_type: self.tm.to_sym(JsonType::$),
-//         //         data: None,
-//         //     }))?,
-//         //     Value::Bool(b) => self.graph.insert(vertex(DataNode {
-//         //         data_type: self.tm.to_sym(JsonType::$),
-//         //         data: Some(vec![b as u8]),
-//         //     }))?,
-//         //     Value::Number(n) => self.graph.insert(vertex(DataNode {
-//         //         data_type: self.tm.to_sym(JsonType::$),
-//         //         data: Some(n.as_i64().unwrap().to_ne_bytes().to_vec()),
-//         //     }))?,
-//         //     Value::String(s) => self.graph.insert(vertex(DataNode {
-//         //         data_type: self.tm.to_sym(JsonType::$),
-//         //         data: Some(s.as_bytes().to_vec()),
-//         //     }))?
+    //         // Ok(match v {
+    //         //     Value::Null => self.graph.insert(vertex(DataNode {
+    //         //         data_type: self.tm.to_sym(JsonType::$),
+    //         //         data: None,
+    //         //     }))?,
+    //         //     Value::Bool(b) => self.graph.insert(vertex(DataNode {
+    //         //         data_type: self.tm.to_sym(JsonType::$),
+    //         //         data: Some(vec![b as u8]),
+    //         //     }))?,
+    //         //     Value::Number(n) => self.graph.insert(vertex(DataNode {
+    //         //         data_type: self.tm.to_sym(JsonType::$),
+    //         //         data: Some(n.as_i64().unwrap().to_ne_bytes().to_vec()),
+    //         //     }))?,
+    //         //     Value::String(s) => self.graph.insert(vertex(DataNode {
+    //         //         data_type: self.tm.to_sym(JsonType::$),
+    //         //         data: Some(s.as_bytes().to_vec()),
+    //         //     }))?
 
-//         cycleguard.pop(entity_id)?;
+    //         cycleguard.pop(entity_id)?;
 
-//         Ok(())
-//     }
-// }
+    //         Ok(())
+    //     }
+}
 
 #[derive(Default)]
 struct CycleGuard(Vec<EntityId>);
 
-impl CycleGuard {
-    fn push(&mut self, entity: &EntityId) -> Result<(), Error> {
+impl<'a> CycleGuard {
+    fn push<W: Weight>(&mut self, entity: &EntityId) -> Result<(), Error<W>> {
         match self.0.binary_search(entity) {
             Ok(_) => Err(Error::CycleDetected),
             Err(i) => {
@@ -307,7 +332,7 @@ impl CycleGuard {
             }
         }
     }
-    fn pop(&mut self, entity_id: &EntityId) -> Result<(), Error> {
+    fn pop<W: Weight>(&mut self, entity_id: &EntityId) -> Result<(), Error<W>> {
         match self.0.binary_search(&entity_id) {
             Ok(i) => {
                 self.0.remove(i);

@@ -125,7 +125,7 @@ where
 
     pub fn dump_entities<O: Write>(&self, mut writer: O) -> Result<(), Error>
     where
-        W: std::fmt::Debug,
+        W: std::fmt::Display,
     {
         for entity_rec in self.entity_storage.iter() {
             let (id_bytes, bytes) = entity_rec?;
@@ -133,10 +133,10 @@ where
             let entity: StoredEntity = deserialize(&bytes)?;
             write!(
                 writer,
-                "{} = {:?}: {:?}\n",
+                "{} = {} Weight: {}\n",
                 entity_id,
+                entity.1,
                 self.get_weight_by_ref(entity.0)?,
-                entity.1
             )?;
         }
         Ok(())
@@ -170,12 +170,12 @@ where
 
         match &entity.inner {
             EntityInner::Vertex => {}
-            EntityInner::Undirected(member_ids) => {
+            EntityInner::Edge(member_ids) => {
                 for m in member_ids.iter() {
                     self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
                 }
             }
-            EntityInner::Directed(from_member_ids, to_member_ids) => {
+            EntityInner::DirectedEdge(from_member_ids, to_member_ids) => {
                 for m in from_member_ids.iter() {
                     self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
                 }

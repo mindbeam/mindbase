@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use mindbase_artifact::{Artifact, ArtifactNodeType};
-use mindbase_hypergraph::traits::{GraphInterface, Symbol};
+use mindbase_hypergraph::traits::{GraphInterface, Symbol, Weight};
 
 use crate::Error;
 
@@ -50,11 +50,11 @@ pub enum JsonType {
     RootElement,
 }
 
-impl<T> JsonTypeMap<T>
+impl<TypeSymbol> JsonTypeMap<TypeSymbol>
 where
-    T: Symbol + ArtifactNodeType + Clone,
+    TypeSymbol: Symbol + ArtifactNodeType + Clone + std::fmt::Debug,
 {
-    pub fn to_sym(&self, jt: JsonType) -> T {
+    pub fn to_sym(&self, jt: JsonType) -> TypeSymbol {
         match jt {
             JsonType::Document => self.Document.clone(),
             JsonType::Null => self.Null.clone(),
@@ -75,9 +75,9 @@ where
             JsonType::RootElement => self.RootElement.clone(),
         }
     }
-    pub fn from_sym<G>(&self, symbol: &T, graph: &G) -> Result<JsonType, Error>
+    pub fn from_sym<'a, G, W: Weight>(&self, symbol: &TypeSymbol, graph: &G) -> Result<JsonType, Error<W>>
     where
-        G: GraphInterface<Artifact<T>>,
+        G: GraphInterface<Artifact<TypeSymbol>>,
     {
         // Who should decide this?
         // How is it calculated for hyperedges?
