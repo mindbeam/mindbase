@@ -2,6 +2,7 @@
 members = [
     "crates/artifact",
     "crates/claim",
+    "crates/client",
     "crates/core",
     "crates/data-adapters",
     "crates/fuzzyset",
@@ -9,6 +10,7 @@ members = [
     "crates/hypergraph",
     "crates/mbcli",
     "crates/mbql",
+    "crates/server",
     "crates/symbol",
     "crates/util"
 ]

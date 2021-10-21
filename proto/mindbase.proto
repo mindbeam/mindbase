@@ -1,0 +1,26 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+package mindbase;
+
+service Entities {
+    rpc PutEntity (PutEntityRequest) returns (PutEntityReply);
+}
+
+message PutEntityRequest {
+    map<string, PropertyValue> properties = 1;
+}
+
+message PutEntityReply {
+    string id = 1;
+}
+
+message PropertyValue{
+    oneof value {
+        string string = 1;
+        google.protobuf.Timestamp date = 2;
+        uint32 uint32 = 3;
+        google.protobuf.Struct struct = 9;
+    };
+}
