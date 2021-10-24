@@ -58,7 +58,7 @@ where
     }
 }
 
-impl<T> mindbase_hypergraph::traits::Weight for Artifact<T>
+impl<T> mindbase_hypergraph::traits::Value for Artifact<T>
 where
     T: ArtifactNodeType + std::fmt::Debug,
 {

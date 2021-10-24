@@ -145,7 +145,7 @@ impl std::convert::TryFrom<&[u8]> for ClaimId {
 pub struct Claim<E, A>
 where
     E: Entity,
-    A: mindbase_hypergraph::traits::Weight,
+    A: mindbase_hypergraph::traits::Value,
 {
     /// TODO 3 - Consider renaming "Claim*" to "Symbol*"
     pub id: ClaimId,

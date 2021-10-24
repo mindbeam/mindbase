@@ -9,7 +9,7 @@ use mindbase_artifact::{
 };
 use mindbase_hypergraph::{
     entity::{directed, vertex},
-    traits::{GraphInterface, Symbol, Weight},
+    traits::{GraphInterface, Symbol, Value},
     Entity, EntityId,
 };
 use serde_json::Value;
@@ -131,7 +131,7 @@ where
         Ok(())
     }
 
-    fn input_recurse<'b, W: Weight>(&self, v: Value) -> Result<EntityId, Error<W>> {
+    fn input_recurse<'b, W: Value>(&self, v: Value) -> Result<EntityId, Error<W>> {
         let tm = &self.typemap;
         Ok(match v {
             Value::Null => self.graph.insert(vertex(DataNode {
@@ -323,7 +323,7 @@ where
 struct CycleGuard(Vec<EntityId>);
 
 impl<'a> CycleGuard {
-    fn push<W: Weight>(&mut self, entity: &EntityId) -> Result<(), Error<W>> {
+    fn push<W: Value>(&mut self, entity: &EntityId) -> Result<(), Error<W>> {
         match self.0.binary_search(entity) {
             Ok(_) => Err(Error::CycleDetected),
             Err(i) => {
@@ -332,7 +332,7 @@ impl<'a> CycleGuard {
             }
         }
     }
-    fn pop<W: Weight>(&mut self, entity_id: &EntityId) -> Result<(), Error<W>> {
+    fn pop<W: Value>(&mut self, entity_id: &EntityId) -> Result<(), Error<W>> {
         match self.0.binary_search(&entity_id) {
             Ok(i) => {
                 self.0.remove(i);

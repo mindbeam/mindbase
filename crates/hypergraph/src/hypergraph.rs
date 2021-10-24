@@ -31,60 +31,77 @@ use crate::entity::EntityId;
 /// * indexed lookup of nodes and edges by weight
 /// * provenance (and filtration by same)
 #[derive(Debug)]
-pub struct Hypergraph<S, W, P = ()>
+pub struct Hypergraph<Stor, Prop, Val, Prov = ()>
 where
-    S: toboggan_kv::Toboggan,
-    W: traits::Weight,
-    P: traits::Provenance,
+    Stor: toboggan_kv::Toboggan,
 {
-    // Need to store this due to RAI
-    #[doc(hidden)]
-    _store: S,
     /// Keyed on UUID for now, but this is ripe for optimization
-    entity_storage: S::Tree,
-    /// Smaller weights may be stored directly in the hyper entity
+    entity_storage: Stor::Tree,
+
+    /// Smaller values may be stored directly in the hyper entity property
     /// But larger weights should be stored separately
-    /// Keyed by hash of weight
-    weight_storage: S::Tree,
+    /// Keyed by hash of value
+    value_storage: Stor::Tree,
+
+    /// Symbols could potentially be large. We need to locally enumerate them for compactness
+    symbol_storage: Stor::Tree,
 
     /// Index the raw weight value directly to the hyperedge
-    idx_weight_to_entity: S::Tree,
-    idx_entity_to_hyperedge: S::Tree,
+    idx_propertyvalue_to_entity: Stor::Tree,
+    idx_entity_to_hyperedge: Stor::Tree,
 
-    _w: PhantomData<W>,
-    _p: PhantomData<P>,
+    // Need to store this due to RAI
+    #[doc(hidden)]
+    _store: Stor,
+
+    // Prevent mixing and matching
+    #[doc(hidden)]
+    _prop: PhantomData<Prop>,
+    #[doc(hidden)]
+    _val: PhantomData<Val>,
+    #[doc(hidden)]
+    _prov: PhantomData<Prov>,
 }
 
-impl<S, W, P> Hypergraph<S, W, P>
+impl<Stor, Prop, Val, Prov> Hypergraph<Stor, Prop, Val, Prov>
 where
-    S: toboggan_kv::Toboggan,
-    W: traits::Weight,
-    P: traits::Provenance,
+    Stor: toboggan_kv::Toboggan,
+    Prop: traits::Symbol,
+    Val: traits::Value,
+    Prov: traits::Provenance,
 {
-    pub fn new(store: S) -> Result<Self, Error> {
+    pub fn open(store: Stor) -> Result<Self, Error> {
         // Store weights separately from entities
-        let weight_storage = store.open_tree("hypergraph::weight_storage")?;
-        weight_storage.set_merge_operator(op_write_once);
+
+        let symbol_storage = store.open_tree("hypergraph::symbol_storage")?;
+        symbol_storage.set_merge_operator(op_write_once);
+
+        let last_symbol_id = symbol_storage.last().map_or(0, |v| v.map_or(0, |(k, _)| read_be_u32(&k)));
+
+        let value_storage = store.open_tree("hypergraph::value_storage")?;
+        value_storage.set_merge_operator(op_write_once);
 
         let entity_storage = store.open_tree("hypergraph::entity_storage")?;
 
         let idx_entity_to_hyperedge = store.open_tree("hypergraph::hyperedge_by_entity_id")?;
         idx_entity_to_hyperedge.set_merge_operator(index::merge_byte_list::<typenum::U16>);
 
-        let idx_weight_to_entity = store.open_tree("hypergraph::entity_by_weight_index")?;
-        idx_weight_to_entity.set_merge_operator(index::merge_byte_list::<typenum::U16>);
+        let idx_propertyvalue_to_entity = store.open_tree("hypergraph::entity_by_weight_index")?;
+        idx_propertyvalue_to_entity.set_merge_operator(index::merge_byte_list::<typenum::U16>);
 
         Ok(Hypergraph {
-            _w: PhantomData,
-            _p: PhantomData,
+            _prop: PhantomData,
+            _val: PhantomData,
+            _prov: PhantomData,
             _store: store,
-            weight_storage,
+            symbol_storage,
+            value_storage,
             entity_storage,
             idx_entity_to_hyperedge,
-            idx_weight_to_entity,
+            idx_propertyvalue_to_entity,
         })
     }
-    pub fn get_weight(&self, entity_id: &EntityId) -> Result<W, Error> {
+    pub fn get_weight(&self, entity_id: &EntityId) -> Result<Val, Error> {
         match self.entity_storage.get(entity_id.0)? {
             Some(entity_bytes) => {
                 let sv: StoredEntity = deserialize(&entity_bytes)?;
@@ -94,8 +111,8 @@ where
         }
     }
 
-    fn put_weight<T: Into<W>>(&self, into_weight: T) -> Result<(WeightRef, WeightId), Error> {
-        let weight: W = into_weight.into();
+    fn put_weight<T: Into<Val>>(&self, into_weight: T) -> Result<(WeightRef, WeightId), Error> {
+        let weight: Val = into_weight.into();
 
         let bytes = serialize(&weight)?;
         let mut hasher = Sha512Trunc256::default();
@@ -109,14 +126,14 @@ where
         };
 
         // Only store it if we haven't seen this one before
-        self.weight_storage.merge(id.clone(), bytes)?;
+        self.value_storage.merge(id.clone(), bytes)?;
 
         Ok((wr, id))
     }
-    fn get_weight_by_ref(&self, wr: WeightRef) -> Result<W, Error> {
+    fn get_weight_by_ref(&self, wr: WeightRef) -> Result<Val, Error> {
         match wr {
             WeightRef::Inline(ref bytes) => Ok(deserialize(bytes)?),
-            WeightRef::Remote(id) => match self.weight_storage.get(id.0)? {
+            WeightRef::Remote(id) => match self.value_storage.get(id.0)? {
                 Some(ref bytes) => Ok(deserialize(bytes)?),
                 None => return Err(Error::NotFound),
             },
@@ -125,7 +142,7 @@ where
 
     pub fn dump_entities<O: Write>(&self, mut writer: O) -> Result<(), Error>
     where
-        W: std::fmt::Display,
+        Val: std::fmt::Display,
     {
         for entity_rec in self.entity_storage.iter() {
             let (id_bytes, bytes) = entity_rec?;
@@ -153,7 +170,7 @@ fn deserialize<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, Error> {
 impl<S, W, P> GraphInterface<W> for Hypergraph<S, W, P>
 where
     S: toboggan_kv::Toboggan,
-    W: traits::Weight,
+    W: traits::Value,
     P: traits::Provenance,
 {
     /// Insert an entity into the hypergraph
@@ -164,6 +181,10 @@ where
     /// graph.insert(entity::vertex("123")).unwrap()
     /// ```
     fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error> {
+        // It can have properties regardless of whether its an edge or vertex
+        // A "vertex" is just an edge to nothing
+
+        // let (symbol_id) = self.put_symbol()
         let (weight_ref, weight_id): (WeightRef, WeightId) = self.put_weight(entity.weight)?;
 
         let entity_id: [u8; 16] = generate_ulid_bytes();
@@ -171,24 +192,28 @@ where
         match &entity.inner {
             EntityInner::Vertex => {}
             EntityInner::Edge(member_ids) => {
-                for m in member_ids.iter() {
-                    self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
-                }
+                unimplemented!()
+                // for m in member_ids.iter() {
+                //     self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
+                // }
             }
             EntityInner::DirectedEdge(from_member_ids, to_member_ids) => {
-                for m in from_member_ids.iter() {
-                    self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
-                }
-                for m in to_member_ids.iter() {
-                    self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
-                }
+                unimplemented!()
+                // for m in from_member_ids.iter() {
+                //     self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
+                // }
+                // for m in to_member_ids.iter() {
+                //     self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
+                // }
             }
         }
 
         self.entity_storage
             .insert(entity_id, bincode::serialize(&StoredEntity(weight_ref, entity.inner))?)?;
 
-        self.idx_weight_to_entity.merge(weight_id, entity_id)?;
+        // What if we did this once per property?
+        // symbol id + value -> [entity_id]
+        self.idx_propertyvalue_to_entity.merge(weight_id, entity_id)?;
 
         Ok(EntityId(entity_id).into())
     }
@@ -240,12 +265,24 @@ where
 
 impl<W, P> Hypergraph<BTreeAdapter, W, P>
 where
-    W: traits::Weight,
+    W: traits::Value,
     P: traits::Provenance,
 {
     pub fn memory() -> Self {
-        Self::new(BTreeAdapter::new()).unwrap()
+        Self::open(BTreeAdapter::new()).unwrap()
     }
+}
+
+fn read_be_u64(input: &[u8]) -> u64 {
+    let (int_bytes, _rest) = input.split_at(std::mem::size_of::<u64>());
+    // *input = rest;
+    u64::from_be_bytes(int_bytes.try_into().unwrap())
+}
+
+fn read_be_u32(input: &[u8]) -> u32 {
+    let (int_bytes, _rest) = input.split_at(std::mem::size_of::<u32>());
+    // *input = rest;
+    u32::from_be_bytes(int_bytes.try_into().unwrap())
 }
 
 #[derive(Serialize, Deserialize)]

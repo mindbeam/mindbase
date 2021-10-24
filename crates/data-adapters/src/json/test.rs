@@ -64,7 +64,7 @@ impl Symbol for TestJSONType {
     fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, mindbase_hypergraph::Error>
     where
         G: mindbase_hypergraph::traits::GraphInterface<W>,
-        W: mindbase_hypergraph::traits::Weight<Symbol = Self>,
+        W: mindbase_hypergraph::traits::Value<Symbol = Self>,
     {
         if *self == *other {
             Ok(1.0)

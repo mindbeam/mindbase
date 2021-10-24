@@ -6,7 +6,7 @@ use std::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{traits::Weight, Error};
+use crate::{traits::Value, Error};
 
 /// HyperedgeId is a ULID
 #[derive(Serialize, Deserialize, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
@@ -51,12 +51,14 @@ impl Debug for EntityId {
     }
 }
 
+pub struct Property<Sym, Val> {
+    key: Sym,
+    value: Val,
+}
+
 #[derive(Debug)]
-pub struct Entity<W>
-where
-    W: Weight,
-{
-    pub weight: W,
+pub struct Entity<Key, Val> {
+    properties: Vec<Property<Key, Val>>,
     pub(crate) inner: EntityInner,
 }
 
@@ -99,37 +101,34 @@ impl Display for EntityInner {
     }
 }
 
-pub fn directed<'a, W, WI, F, T>(weight: WI, from: F, to: T) -> Entity<W>
+pub fn directed<'a, Key, Val, PI, F, T>(properties: PI, from: F, to: T) -> Entity<Key, Val>
 where
-    W: Weight,
-    WI: Into<W>,
+    PI: Into<Vec<Property<Key, Val>>>,
     F: Into<Vec<EntityId>>,
     T: Into<Vec<EntityId>>,
 {
     Entity {
-        weight: weight.into(),
+        properties: properties.into(),
         inner: EntityInner::DirectedEdge(from.into(), to.into()),
     }
 }
-pub fn undirected<'a, WI, W, M>(weight: WI, members: M) -> Entity<W>
+pub fn undirected<'a, Key, Val, PI, M>(properties: PI, members: M) -> Entity<Key, Val>
 where
-    WI: Into<W>,
-    W: Weight,
+    PI: Into<Vec<Property<Key, Val>>>,
     M: Into<Vec<EntityId>>,
 {
     Entity {
-        weight: weight.into(),
+        properties: properties.into(),
         inner: EntityInner::Edge(members.into()),
     }
 }
 
-pub fn vertex<W, WI>(weight: WI) -> Entity<W>
+pub fn vertex<Key, Val, PI>(properties: PI) -> Entity<Key, Val>
 where
-    W: Weight,
-    WI: Into<W>,
+    PI: Into<Vec<Property<Key, Val>>>,
 {
     Entity {
-        weight: weight.into(),
+        properties: properties.into(),
         inner: EntityInner::Vertex,
     }
 }

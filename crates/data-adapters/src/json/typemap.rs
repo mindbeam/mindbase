@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use mindbase_artifact::{Artifact, ArtifactNodeType};
-use mindbase_hypergraph::traits::{GraphInterface, Symbol, Weight};
+use mindbase_hypergraph::traits::{GraphInterface, Symbol, Value};
 
 use crate::Error;
 
@@ -75,7 +75,7 @@ where
             JsonType::RootElement => self.RootElement.clone(),
         }
     }
-    pub fn from_sym<'a, G, W: Weight>(&self, symbol: &TypeSymbol, graph: &G) -> Result<JsonType, Error<W>>
+    pub fn from_sym<'a, G, W: Value>(&self, symbol: &TypeSymbol, graph: &G) -> Result<JsonType, Error<W>>
     where
         G: GraphInterface<Artifact<TypeSymbol>>,
     {
