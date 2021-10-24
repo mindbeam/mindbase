@@ -2,7 +2,7 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
 
-package mindbase;
+package mindbase_proto;
 
 service Entities {
     rpc PutEntity (PutEntityRequest) returns (PutEntityReply);
@@ -21,6 +21,8 @@ message PropertyValue{
         string string = 1;
         google.protobuf.Timestamp date = 2;
         uint32 uint32 = 3;
-        google.protobuf.Struct struct = 9;
+        google.protobuf.Struct struct = 8;
+        bytes json = 9;
+        bytes bytes = 10;
     };
 }

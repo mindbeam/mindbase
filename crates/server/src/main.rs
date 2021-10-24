@@ -5,7 +5,7 @@ use proto::{PutEntityReply, PutEntityRequest};
 use tokio;
 
 pub mod proto {
-    tonic::include_proto!("mindbase"); // The string specified here must match the proto package name
+    tonic::include_proto!("mindbase_proto"); // The string specified here must match the proto package name
 }
 
 #[derive(Debug, Default)]
