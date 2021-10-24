@@ -18,3 +18,5 @@ Cargo.lock
 .mindbasecli_history
 .vscode
 .ipynb_checkpoints
+
+deploy-*
