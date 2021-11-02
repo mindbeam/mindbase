@@ -51,14 +51,15 @@ impl Debug for EntityId {
     }
 }
 
+#[derive(Debug)]
 pub struct Property<Sym, Val> {
-    key: Sym,
-    value: Val,
+    pub key: Sym,
+    pub value: Val,
 }
 
 #[derive(Debug)]
 pub struct Entity<Key, Val> {
-    properties: Vec<Property<Key, Val>>,
+    pub properties: Vec<Property<Key, Val>>,
     pub(crate) inner: EntityInner,
 }
 

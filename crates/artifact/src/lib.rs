@@ -2,6 +2,7 @@ pub mod body;
 pub mod id;
 pub mod test;
 
+use chrono::{DateTime, Utc};
 pub use mindbase_util::Error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
@@ -34,57 +35,62 @@ pub struct ArtifactId(
 );
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum Artifact<T> {
+pub enum Artifact {
     Agent(keyplace::AgentId),
-    Url(body::Url),
-    FlatText(body::Text),
-    Node(body::DataNode<T>),
-    Type(body::Type<T>),
+    String(String),
+    Date(DateTime<Utc>),
+    Uint32(u32),
+    // Struct()
+    Json(Vec<u8>),
+    Bytes(Vec<u8>),
 }
 
-impl<T> Artifact<T>
-where
-    T: ArtifactNodeType,
-{
-    pub fn id(&self) -> ArtifactId {
-        let mut hasher = Sha512Trunc256::default();
+// impl Artifact
+// where
+//     T: ArtifactNodeType,
+// {
+//     pub fn id(&self) -> ArtifactId {
+//         let mut hasher = Sha512Trunc256::default();
 
-        // TODO 5 switch to CapnProto or similar. Artifact storage and wire representation should be identical
-        // Therefore we should hash that
-        let encoded: Vec<u8> = bincode::serialize(self).unwrap();
-        hasher.update(&encoded);
-        let result = hasher.finalize();
-        ArtifactId(result.into())
-    }
-}
+//         // TODO 5 switch to CapnProto or similar. Artifact storage and wire representation should be identical
+//         // Therefore we should hash that
+//         let encoded: Vec<u8> = bincode::serialize(self).unwrap();
+//         hasher.update(&encoded);
+//         let result = hasher.finalize();
+//         ArtifactId(result.into())
+//     }
+// }
 
-impl<T> mindbase_hypergraph::traits::Value for Artifact<T>
-where
-    T: ArtifactNodeType + std::fmt::Debug,
-{
-    type Symbol = T;
-    // fn compare_sym<G, W>(&self, symbol: Self::Symbol, graph: &G) -> Result<f64, Error> {
-    //     match self {
-    //         Artifact::Agent(_) => unimplemented!(),
-    //         Artifact::Url(_) => unimplemented!(),
-    //         Artifact::FlatText(_) => unimplemented!(),
-    //         Artifact::Node(DataType) => {}
-    //         Artifact::Type(_) => {}
-    //     }
-    // }
-}
+// impl<T> mindbase_hypergraph::traits::Value for Artifact
+// where
+//     T: ArtifactNodeType + std::fmt::Debug,
+// {
+// type Symbol = T;
+// fn compare_sym<G, W>(&self, symbol: Self::Symbol, graph: &G) -> Result<f64, Error> {
+//     match self {
+//         Artifact::Agent(_) => unimplemented!(),
+//         Artifact::Url(_) => unimplemented!(),
+//         Artifact::FlatText(_) => unimplemented!(),
+//         Artifact::Node(DataType) => {}
+//         Artifact::Type(_) => {}
+//     }
+// }
+// }
 
-impl<T> std::fmt::Display for Artifact<T>
-where
-    T: ArtifactNodeType + std::fmt::Debug,
-{
+impl<T> std::fmt::Display for Artifact {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Agent(_a) => unimplemented!(),
-            Self::Url(_u) => unimplemented!(),
-            Self::FlatText(t) => write!(f, "Artifact::FlatText({})", t),
-            Self::Node(n) => write!(f, "Artifact::Node({})", n),
-            Self::Type(s) => write!(f, "Artifact::Type({:?})", s),
+            Artifact::Agent(a) => todo!(),
+            Artifact::String(s) => todo!(),
+            Artifact::Date(d) => todo!(),
+            Artifact::Uint32(v) => todo!(),
+            Artifact::Json(j) => todo!(),
+            Artifact::Bytes(b) => todo!(),
+            // Self::Agent(_a) => unimplemented!(),
+            // Self::Url(_u) => unimplemented!(),
+            // Self::FlatText(t) => write!(f, "Artifact::FlatText({})", t),
+            // Self::Node(n) => write!(f, "Artifact::Node({})", n),
+            // Self::Type(s) => write!(f, "Artifact::Type({:?})", s),
         }
     }
 }

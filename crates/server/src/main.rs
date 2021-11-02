@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use mindbase_artifact::Artifact;
+use mindbase_hypergraph::entity::{vertex, Property};
 use tonic::{transport::Server, Request, Response, Status};
 
 use proto::entities_server::{Entities, EntitiesServer};
@@ -35,7 +36,7 @@ use toboggan_kv::adapter::SledAdapter;
 
 #[derive(Debug, Default)]
 pub struct MyService {
-    hg: Hypergraph<SledStore, Artifact<String>>,
+    hg: Hypergraph<SledStore, String, Artifact<String>>,
 }
 
 #[tonic::async_trait]
@@ -47,7 +48,27 @@ impl Entities for MyService {
         // Return an instance of type HelloReply
         println!("Got a request: {:?}", request);
 
-        // self.hg.
+        let mut properties = Vec::new();
+        for (key, value) in request.into_inner().properties.iter() {
+            if let Some(value) = value.value {
+                use proto::property_value::Value as PV;
+                let value: Artifact = match value {
+                    PV::String(s) => Artifact::String(s.into()),
+                    PV::Date(ts) => Artifact::DateTime(ts.into()),
+                    PV::Uint32(v) => Artifact::DateTime(ts.into()),
+                    PV::Struct(s) => unimplemented!(),
+                    PV::Json(j) => unimplemented!(),
+                    PV::Bytes(b) => unimplemented!(),
+                };
+
+                properties.push(Property {
+                    key: key.to_string(),
+                    value,
+                })
+            }
+        }
+
+        self.hg.put_entity(vertex()).unwrap();
         let id = "test".to_string();
         // TODO add storage engine insertion guts here
         let reply = PutEntityReply { id };
@@ -68,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Loading database in {}", path.display());
 
-    let hg: Hypergraph<_, Artifact<String>> = Hypergraph::open(SledStore::open(path)?)?;
+    let hg: Hypergraph<_, String, Artifact<String>> = Hypergraph::open(SledStore::open(path)?)?;
     let service = MyService { hg };
 
     Server::builder()

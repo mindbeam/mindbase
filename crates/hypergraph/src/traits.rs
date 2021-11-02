@@ -18,16 +18,17 @@ pub trait Symbol {
 }
 pub trait Provenance {}
 
-pub trait GraphInterface<W>
+pub trait GraphInterface<Key, Val>
 where
-    W: Value + std::fmt::Debug,
+    Key: Serialize + DeserializeOwned,
+    Val: Serialize + DeserializeOwned,
 {
-    fn insert(&self, entity: Entity<W>) -> Result<EntityId, Error>;
-    fn get(&self, entity_id: &EntityId) -> Result<Entity<W>, Error>;
+    fn insert(&self, entity: Entity<Key, Val>) -> Result<EntityId, Error>;
+    fn get(&self, entity_id: &EntityId) -> Result<Entity<Key, Val>, Error>;
     fn get_adjacencies(&self, entity_id: &EntityId) -> Result<Vec<EntityId>, Error>;
     fn get_adjacencies_matching<F>(&self, entity_id: &EntityId, filter: F) -> Result<Vec<EntityId>, Error>
     where
-        F: Fn(&W) -> Result<bool, Error>;
+        F: Fn(&Key, &Val) -> Result<bool, Error>;
 }
 
 impl Provenance for () {}
