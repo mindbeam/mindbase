@@ -18,14 +18,14 @@ where
     }
 }
 
-impl<T> Into<Artifact<T>> for Type<T>
-where
-    T: ArtifactNodeType,
-{
-    fn into(self) -> Artifact<T> {
-        Artifact::Type(self)
-    }
-}
+// impl<T> Into<Artifact> for Type<T>
+// where
+//     T: ArtifactNodeType,
+// {
+//     fn into(self) -> Artifact {
+//         Artifact::Type(self)
+//     }
+// }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Url {
@@ -74,18 +74,18 @@ where
     }
 }
 
-impl<T> Into<Artifact<T>> for Url
-where
-    T: ArtifactNodeType,
-{
-    fn into(self) -> Artifact<T> {
-        Artifact::Url(self)
-    }
-}
+// impl<T> Into<Artifact<T>> for Url
+// where
+//     T: ArtifactNodeType,
+// {
+//     fn into(self) -> Artifact<T> {
+//         Artifact::Url(self)
+//     }
+// }
 
-pub fn text(text: &str) -> Text {
-    Text::new(text)
-}
+// pub fn text(text: &str) -> Text {
+//     Text::new(text)
+// }
 
 impl Text {
     pub fn new(text: &str) -> Self {

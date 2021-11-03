@@ -1,8 +1,9 @@
-pub mod body;
-pub mod id;
+// pub mod body;
+// pub mod id;
 pub mod test;
 
 use chrono::{DateTime, Utc};
+use mindbase_hypergraph::traits::Value;
 pub use mindbase_util::Error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha512Trunc256};
@@ -25,25 +26,27 @@ pub trait ArtifactNodeType: Serialize + DeserializeOwned {}
 ///!    |                          V
 ///! {Best friend of}  <------ ([Human])  
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord)]
-pub struct ArtifactId(
-    #[serde(
-        serialize_with = "mindbase_util::serde_helper::as_base64",
-        deserialize_with = "mindbase_util::serde_helper::from_base64_32"
-    )]
-    pub(crate) [u8; 32],
-);
+// #[derive(Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord)]
+// pub struct ArtifactId(
+//     #[serde(
+//         serialize_with = "mindbase_util::serde_helper::as_base64",
+//         deserialize_with = "mindbase_util::serde_helper::from_base64_32"
+//     )]
+//     pub(crate) [u8; 32],
+// );
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Artifact {
     Agent(keyplace::AgentId),
     String(String),
-    Date(DateTime<Utc>),
+    DateTime(DateTime<Utc>),
     Uint32(u32),
     // Struct()
     Json(Vec<u8>),
     Bytes(Vec<u8>),
 }
+
+impl Value for Artifact {}
 
 // impl Artifact
 // where
@@ -77,12 +80,12 @@ pub enum Artifact {
 // }
 // }
 
-impl<T> std::fmt::Display for Artifact {
+impl std::fmt::Display for Artifact {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Artifact::Agent(a) => todo!(),
             Artifact::String(s) => todo!(),
-            Artifact::Date(d) => todo!(),
+            Artifact::DateTime(d) => todo!(),
             Artifact::Uint32(v) => todo!(),
             Artifact::Json(j) => todo!(),
             Artifact::Bytes(b) => todo!(),

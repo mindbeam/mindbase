@@ -1,15 +1,15 @@
 #[derive(Debug)]
 pub enum Error {
-    Store(toboggan_kv::Error),
+    Sled(sled::Error),
     Bincode(bincode::Error),
     Io(std::io::Error),
     NotFound,
     InvalidSlice,
 }
 
-impl From<toboggan_kv::Error> for Error {
-    fn from(e: toboggan_kv::Error) -> Self {
-        Self::Store(e)
+impl From<sled::Error> for Error {
+    fn from(e: sled::Error) -> Self {
+        Self::Sled(e)
     }
 }
 

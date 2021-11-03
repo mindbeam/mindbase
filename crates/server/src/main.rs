@@ -1,7 +1,10 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use chrono::{TimeZone, Utc};
 use mindbase_artifact::Artifact;
+use mindbase_hypergraph::adapter::sled::SledAdapter;
+use mindbase_hypergraph::adapter::StorageAdapter;
 use mindbase_hypergraph::entity::{vertex, Property};
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -32,11 +35,10 @@ struct Opt {
 }
 
 use mindbase_hypergraph::Hypergraph;
-use toboggan_kv::adapter::SledAdapter;
 
-#[derive(Debug, Default)]
 pub struct MyService {
-    hg: Hypergraph<SledStore, String, Artifact<String>>,
+    // hg: Hypergraph<SledStore, String, Artifact<String>>,
+    hg: SledAdapter<String, Artifact, ()>,
 }
 
 #[tonic::async_trait]
@@ -50,14 +52,14 @@ impl Entities for MyService {
 
         let mut properties = Vec::new();
         for (key, value) in request.into_inner().properties.iter() {
-            if let Some(value) = value.value {
+            if let Some(value) = &value.value {
                 use proto::property_value::Value as PV;
                 let value: Artifact = match value {
                     PV::String(s) => Artifact::String(s.into()),
-                    PV::Date(ts) => Artifact::DateTime(ts.into()),
-                    PV::Uint32(v) => Artifact::DateTime(ts.into()),
+                    PV::Date(ts) => Artifact::DateTime(Utc.timestamp(ts.seconds, ts.nanos as u32)),
+                    PV::Uint32(v) => Artifact::Uint32(*v),
                     PV::Struct(s) => unimplemented!(),
-                    PV::Json(j) => unimplemented!(),
+                    PV::Json(j) => Artifact::Json(j.to_owned()),
                     PV::Bytes(b) => unimplemented!(),
                 };
 
@@ -68,10 +70,9 @@ impl Entities for MyService {
             }
         }
 
-        self.hg.put_entity(vertex()).unwrap();
-        let id = "test".to_string();
+        let (ix, id) = self.hg.insert(vertex(properties)).unwrap();
         // TODO add storage engine insertion guts here
-        let reply = PutEntityReply { id };
+        let reply = PutEntityReply { id: id.full() };
 
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
@@ -89,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Loading database in {}", path.display());
 
-    let hg: Hypergraph<_, String, Artifact<String>> = Hypergraph::open(SledStore::open(path)?)?;
+    let hg = SledAdapter::open(path).unwrap();
     let service = MyService { hg };
 
     Server::builder()

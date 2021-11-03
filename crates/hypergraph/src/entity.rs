@@ -6,11 +6,15 @@ use std::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{traits::Value, Error};
+use crate::{
+    traits::{Symbol, Value},
+    Error,
+};
 
 /// HyperedgeId is a ULID
 #[derive(Serialize, Deserialize, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 pub struct EntityId(pub(crate) [u8; 16]);
+pub type EntityIx = u64;
 
 impl EntityId {
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
@@ -52,14 +56,22 @@ impl Debug for EntityId {
 }
 
 #[derive(Debug)]
-pub struct Property<Sym, Val> {
+pub struct Property<Sym, Val>
+where
+    Sym: Symbol,
+    Val: Value,
+{
     pub key: Sym,
     pub value: Val,
 }
 
 #[derive(Debug)]
-pub struct Entity<Key, Val> {
-    pub properties: Vec<Property<Key, Val>>,
+pub struct Entity<Sym, Val>
+where
+    Sym: Symbol,
+    Val: Value,
+{
+    pub properties: Vec<Property<Sym, Val>>,
     pub(crate) inner: EntityInner,
 }
 
@@ -102,21 +114,25 @@ impl Display for EntityInner {
     }
 }
 
-pub fn directed<'a, Key, Val, PI, F, T>(properties: PI, from: F, to: T) -> Entity<Key, Val>
+pub fn directed<'a, Sym, Val, PI, F, T>(properties: PI, from: F, to: T) -> Entity<Sym, Val>
 where
-    PI: Into<Vec<Property<Key, Val>>>,
+    PI: Into<Vec<Property<Sym, Val>>>,
     F: Into<Vec<EntityId>>,
     T: Into<Vec<EntityId>>,
+    Sym: Symbol,
+    Val: Value,
 {
     Entity {
         properties: properties.into(),
         inner: EntityInner::DirectedEdge(from.into(), to.into()),
     }
 }
-pub fn undirected<'a, Key, Val, PI, M>(properties: PI, members: M) -> Entity<Key, Val>
+pub fn undirected<'a, Sym, Val, PI, M>(properties: PI, members: M) -> Entity<Sym, Val>
 where
-    PI: Into<Vec<Property<Key, Val>>>,
+    PI: Into<Vec<Property<Sym, Val>>>,
     M: Into<Vec<EntityId>>,
+    Sym: Symbol,
+    Val: Value,
 {
     Entity {
         properties: properties.into(),
@@ -124,9 +140,11 @@ where
     }
 }
 
-pub fn vertex<Key, Val, PI>(properties: PI) -> Entity<Key, Val>
+pub fn vertex<Sym, Val, PI>(properties: PI) -> Entity<Sym, Val>
 where
-    PI: Into<Vec<Property<Key, Val>>>,
+    PI: Into<Vec<Property<Sym, Val>>>,
+    Sym: Symbol,
+    Val: Value,
 {
     Entity {
         properties: properties.into(),
