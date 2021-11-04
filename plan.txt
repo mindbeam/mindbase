@@ -3,29 +3,31 @@
 [X] get rid of capnp and tarpc
 [X] Define minimal GRPC proto for inserting entities with properties
 [ ] Hypergraph entities directly manage properties
-    [ ] Make Hypergraph generic over symbol type
-    [ ] Each entity has N properties, each "named" by a symbol
-       [ ] audit property vs edge ( property has a value, edge has an entity? )
-    [ ] How are Edges handled?
-       [ ] temporarily ignore them
-       * ??: What if they were just properties where the value was a list of entity ids?
-       * Ok: from, to gives you a directed edge. members: gives you a 
-       * Weird: You have to use symbols to describe from,to, and members?
-       *        that makes traversal really hard
+    [X] temporarily edges
+    [X] Make Hypergraph generic over symbol type
+    [X] Basic String symbols
     [X] Rename weight to value.
-        [~] Rename Artifact to Value
-        [X] How do we do type mapping?
-           * Type mapping is purely a function of input/output. Not the Hypergraph itself
-    [ ] Can Values contain symbols? or just property keys?
-        - if they do, that's ok, but they won't be indexed by it
-    [ ] How do we index properties? Symbol +
-        - Too many indices?
-        - Symbols which are similar?
-        - Symbol id?
+    [ ] Property indexing (by symbol + value)
+    [ ] Naive Query by property
+      [ ] presumptuous value specification
+      [ ] single value
+      [ ] Range
+    [ ] Clean up or remove the Hypergraph trait
+    [ ] How are Edges handled?
+       [ ] Adjacency list (remove from entity store)
+       [ ] Adjacency list should be bidirectional for undirected AND directed edges
+    [X] Clean up Artifact and rename to Types
+    [ ] Clean up tests
+    [ ] Clean up docs
+    [ ] Type + property grounding. Eg: [["type","string"], "full_name"]
+      [ ] query argument validation (and value parsing?)
+    [ ] Restore symbol sets
+       [ ] trivial symbol grounding
+    [ ] MBQL via GRPC
+       [ ] more sophisticated symbol grounding
 
-[ ] Add tonic to mindbase and incorporate time-series
-[~] Update hubitat to insert entities into mindbase
-[ ] Automatically create an index for each property (of which date occurred is one)
+[X] Add tonic to mindbase and incorporate time-series
+[X] Update hubitat to insert entities into mindbase
 [ ] Expand proto to query entity range by date property
 [ ] Implement time series graph rendering with trailing query interval via GRPC 
 

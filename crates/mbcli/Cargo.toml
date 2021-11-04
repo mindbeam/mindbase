@@ -10,7 +10,7 @@ edition = "2018"
 gl=["glow","glutin","glyph_brush"]
 
 [dependencies]
-mindbase-artifact = {path = "../artifact"}
+mindbase-types = {path = "../types"}
 keyplace = "0.1.0"
 mindbase-core = {path = "../core"}
 mindbase-hypergraph = {path = "../hypergraph"}

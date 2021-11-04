@@ -13,4 +13,3 @@ serde = { version = "1.0", features = ["derive"] }
 # [dev-dependencies]
 regex="1.4"
 mindbase-hypergraph = { path="../hypergraph" }
-toboggan-kv = "0.1.1"

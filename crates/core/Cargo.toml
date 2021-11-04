@@ -14,8 +14,6 @@ mindbase-symbol = { path="../symbol" }
 mindbase-mbql = { path="../mbql" }
 mindbase-util = { path="../util" }
 keyplace = "0.1.0"
-toboggan-kv = "0.1.1"
-mindbase-artifact = { path="../artifact" }
 mindbase-claim = { path="../claim" }
 
 rusty_ulid = "0.10"

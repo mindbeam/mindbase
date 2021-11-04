@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "crates/artifact",
     "crates/claim",
     "crates/client",
     "crates/core",
@@ -12,6 +11,7 @@ members = [
     "crates/mbql",
     "crates/server",
     "crates/symbol",
+    "crates/types",
     "crates/util"
 ]
 

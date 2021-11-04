@@ -2,10 +2,10 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use chrono::{TimeZone, Utc};
-use mindbase_artifact::Artifact;
 use mindbase_hypergraph::adapter::sled::SledAdapter;
 use mindbase_hypergraph::adapter::StorageAdapter;
 use mindbase_hypergraph::entity::{vertex, Property};
+use mindbase_types::MBValue;
 use tonic::{transport::Server, Request, Response, Status};
 
 use proto::entities_server::{Entities, EntitiesServer};
@@ -38,7 +38,7 @@ use mindbase_hypergraph::Hypergraph;
 
 pub struct MyService {
     // hg: Hypergraph<SledStore, String, Artifact<String>>,
-    hg: SledAdapter<String, Artifact, ()>,
+    hg: SledAdapter<String, MBValue, ()>,
 }
 
 #[tonic::async_trait]
@@ -54,12 +54,12 @@ impl Entities for MyService {
         for (key, value) in request.into_inner().properties.iter() {
             if let Some(value) = &value.value {
                 use proto::property_value::Value as PV;
-                let value: Artifact = match value {
-                    PV::String(s) => Artifact::String(s.into()),
-                    PV::Date(ts) => Artifact::DateTime(Utc.timestamp(ts.seconds, ts.nanos as u32)),
-                    PV::Uint32(v) => Artifact::Uint32(*v),
+                let value: MBValue = match value {
+                    PV::String(s) => MBValue::String(s.into()),
+                    PV::Date(ts) => MBValue::DateTime(Utc.timestamp(ts.seconds, ts.nanos as u32)),
+                    PV::Uint32(v) => MBValue::Uint32(*v),
                     PV::Struct(s) => unimplemented!(),
-                    PV::Json(j) => Artifact::Json(j.to_owned()),
+                    PV::Json(j) => MBValue::Json(j.to_owned()),
                     PV::Bytes(b) => unimplemented!(),
                 };
 

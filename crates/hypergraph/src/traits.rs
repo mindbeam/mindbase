@@ -15,6 +15,8 @@ pub trait Value: Sized + Serialize + DeserializeOwned {
     //     G: GraphInterface<Self>;
 }
 
+impl<T> Value for T where T: Sized + Serialize + DeserializeOwned {}
+
 pub trait Symbol: Sized + Serialize + DeserializeOwned {
     fn serialize(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
@@ -54,18 +56,3 @@ where
 }
 
 impl Provenance for () {}
-
-pub mod basics {
-    use crate::Error;
-
-    impl super::Value for String {
-        // type Symbol = ();
-        // fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, Error> {
-        //     if self == other {
-        //         Ok(1.0)
-        //     } else {
-        //         Ok(0.0)
-        //     }
-        // }
-    }
-}

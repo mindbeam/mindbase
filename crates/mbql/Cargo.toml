@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 mindbase-symbol = { path="../symbol" }
-mindbase-artifact = { path="../artifact" }
+mindbase-types = { path="../types" }
 mindbase-claim = { path="../claim" }
 mindbase-hypergraph = { path="../hypergraph" }
 

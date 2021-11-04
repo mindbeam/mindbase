@@ -14,7 +14,7 @@ prost-types = "0.8"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 
 mindbase-hypergraph = { path="../hypergraph" }
-mindbase-artifact = { path="../artifact" }
+mindbase-types= { path="../types" }
 
 [build-dependencies]
 tonic-build = "0.5"
