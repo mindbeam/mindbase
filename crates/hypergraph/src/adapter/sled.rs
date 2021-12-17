@@ -111,7 +111,7 @@ where
                 // let (value_ref, value_ix): (ValueRef, u64) = self.put_value(property.value)?;
                 // self.idx_propertyvalue_to_entity.merge(value_ix, entity_id)?;
 
-                StoredProperty(traits::Symbol::serialize(&prop.key), traits::Value::serialize(&prop.value))
+                StoredProperty(traits::Symbol::serialize(&prop.key), prop.value.as_ref().to_owned())
             })
             .collect();
 

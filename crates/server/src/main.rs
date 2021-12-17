@@ -55,11 +55,11 @@ impl Entities for MyService {
             if let Some(value) = &value.value {
                 use proto::property_value::Value as PV;
                 let value: MBValue = match value {
-                    PV::String(s) => MBValue::String(s.into()),
-                    PV::Date(ts) => MBValue::DateTime(Utc.timestamp(ts.seconds, ts.nanos as u32)),
-                    PV::Uint32(v) => MBValue::Uint32(*v),
+                    PV::String(s) => MBValue::string(s.into()),
+                    PV::Date(ts) => MBValue::dateTime(ts.seconds, ts.nanos as u32),
+                    PV::Uint32(v) => MBValue::uint32(*v),
                     PV::Struct(s) => unimplemented!(),
-                    PV::Json(j) => MBValue::Json(j.to_owned()),
+                    PV::Json(j) => MBValue::json(j.to_owned()),
                     PV::Bytes(b) => unimplemented!(),
                 };
 

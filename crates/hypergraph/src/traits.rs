@@ -2,20 +2,18 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{Entity, EntityId, Error};
 
-pub trait Value: Sized + Serialize + DeserializeOwned {
-    fn serialize(&self) -> Vec<u8> {
-        bincode::serialize(self).unwrap()
-    }
-    fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
-        Ok(bincode::deserialize(bytes)?)
-    }
+pub trait Value: Sized + AsRef<[u8]> {
+    // fn deserialize(bytes: &[u8]) -> Result<Self, Error> {
+    //     todo!()
+    //     // Ok(bincode::deserialize(bytes)?)
+    // }
     // type Symbol;
     // fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, Error>
     // where
     //     G: GraphInterface<Self>;
 }
 
-impl<T> Value for T where T: Sized + Serialize + DeserializeOwned {}
+// impl<T> Value for T where T: Sized + Serialize + DeserializeOwned {}
 
 pub trait Symbol: Sized + Serialize + DeserializeOwned {
     fn serialize(&self) -> Vec<u8> {
