@@ -45,7 +45,7 @@ where
     Stor: StorageAdapter<Sym, Val>,
     Sym: traits::TSymbol,
     Val: traits::TValue,
-    Prov: traits::Provenance,
+    Prov: traits::TProvenance,
 {
     pub fn new(adapter: Stor) -> Self {
         Self {

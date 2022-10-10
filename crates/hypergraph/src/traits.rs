@@ -40,7 +40,7 @@ impl TSymbol for String {
         Ok(Self::from_utf8_lossy(bytes).to_string())
     }
 }
-pub trait Provenance {}
+pub trait TProvenance {}
 
 pub trait GraphInterface<Sym, Val>
 where
@@ -55,4 +55,4 @@ where
         F: Fn(&Sym, &Val) -> Result<bool, Error>;
 }
 
-impl Provenance for () {}
+impl TProvenance for () {}

@@ -93,7 +93,7 @@ impl<Sym, Val, Prov> StorageAdapter<Sym, Val, Prov> for SledAdapter<Sym, Val, Pr
 where
     Sym: crate::traits::TSymbol,
     Val: crate::traits::TValue,
-    Prov: crate::traits::Provenance,
+    Prov: crate::traits::TProvenance,
 {
     fn insert(&self, entity: Entity<Sym, Val>) -> Result<(EntityIx, EntityId), Error> {
         let entity_ix = self.next_entity_ix.fetch_add(1, Ordering::SeqCst);

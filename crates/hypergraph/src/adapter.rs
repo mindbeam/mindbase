@@ -3,7 +3,7 @@ use sha2::{Digest, Sha512Trunc256};
 
 use crate::{
     entity::{EntityInner, EntityIx},
-    traits::{Provenance, TSymbol, TValue},
+    traits::{TProvenance, TSymbol, TValue},
     Entity, EntityId, Error,
 };
 
@@ -13,7 +13,7 @@ pub trait StorageAdapter<Sym, Val, Prov = ()>
 where
     Sym: TSymbol,
     Val: TValue,
-    Prov: Provenance,
+    Prov: TProvenance,
 {
     fn insert(&self, entity: Entity<Sym, Val>) -> Result<(EntityIx, EntityId), Error>;
     fn get_by_ix(&self, entity_ix: &EntityIx) -> Result<Entity<Sym, Val>, Error>;
