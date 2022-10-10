@@ -147,12 +147,11 @@ where
     E: Entity,
     A: mindbase_hypergraph::traits::TValue,
 {
-    /// TODO 3 - Consider renaming "Claim*" to "Symbol*"
     pub id: ClaimId,
     pub agent_id: AgentId,
     // TODO 3 - Context (Date, time, place, etc)
     pub body: Body<E, A>,
-    pub signature: Signature,
+    // pub signature: Signature,
 }
 
 // TODO - deal with claimant genericization for simplicity of testing
@@ -232,11 +231,11 @@ where
                             // NOTE: I think we may only need to include those claims which are authored by ground symbol
                             // agents
                             match claim.referenced_artifacts(mb)? {
-                                ArtifactList::None => {}
+                                ArtifactList::None => {},
                                 ArtifactList::One(id) => v.push(id.clone()),
                                 ArtifactList::Many(many) => v.extend(many),
                             }
-                        }
+                        },
                         None => return Err(MBError::ClaimNotFound),
                     }
                 }
@@ -245,7 +244,7 @@ where
                 for atom in analogy.right() {
                     match mb.get_claim(atom.id())? {
                         Some(claim) => match claim.referenced_artifacts(mb)? {
-                            ArtifactList::None => {}
+                            ArtifactList::None => {},
                             ArtifactList::One(id) => v.push(id.clone()),
                             ArtifactList::Many(many) => v.extend(many),
                         },
@@ -253,7 +252,7 @@ where
                     }
                 }
                 Ok(ArtifactList::Many(v))
-            }
+            },
             _ => unimplemented!(),
         }
     }

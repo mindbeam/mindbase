@@ -1,9 +1,8 @@
-use mindbase_artifact::ArtifactNodeType;
-use mindbase_hypergraph::traits::Symbol;
+use mindbase_hypergraph::traits::TSymbol;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum TestJSONType {
+pub enum TestJSONSymbol {
     Document,
     Null,
     Bool,
@@ -35,41 +34,40 @@ pub enum TestJSONType {
 //     }
 // }
 
-impl TestJSONType {
-    pub fn typemap() -> crate::json::JsonTypeMap<TestJSONType> {
+impl TestJSONSymbol {
+    pub fn typemap() -> crate::json::JsonTypeMap<TestJSONSymbol> {
         crate::json::JsonTypeMap {
-            Document: TestJSONType::Document,
-            Null: TestJSONType::Null,
-            Bool: TestJSONType::Bool,
-            Number: TestJSONType::Number,
-            String: TestJSONType::String,
-            Array: TestJSONType::Array,
-            ArrayMember: TestJSONType::ArrayMember,
-            ArrayOffset: TestJSONType::ArrayOffset,
-            ArrNextMember: TestJSONType::ArrNextMember,
-            ArrPrevMember: TestJSONType::ArrPrevMember,
-            ArrHead: TestJSONType::ArrHead,
-            ArrTail: TestJSONType::ArrTail,
-            Object: TestJSONType::Object,
-            ObjectProperty: TestJSONType::ObjectProperty,
-            ObjectProperties: TestJSONType::ObjectProperties,
-            ObjectMembers: TestJSONType::ObjectMembers,
-            RootElement: TestJSONType::RootElement,
+            Document: TestJSONSymbol::Document,
+            Null: TestJSONSymbol::Null,
+            Bool: TestJSONSymbol::Bool,
+            Number: TestJSONSymbol::Number,
+            String: TestJSONSymbol::String,
+            Array: TestJSONSymbol::Array,
+            ArrayMember: TestJSONSymbol::ArrayMember,
+            ArrayOffset: TestJSONSymbol::ArrayOffset,
+            ArrNextMember: TestJSONSymbol::ArrNextMember,
+            ArrPrevMember: TestJSONSymbol::ArrPrevMember,
+            ArrHead: TestJSONSymbol::ArrHead,
+            ArrTail: TestJSONSymbol::ArrTail,
+            Object: TestJSONSymbol::Object,
+            ObjectProperty: TestJSONSymbol::ObjectProperty,
+            ObjectProperties: TestJSONSymbol::ObjectProperties,
+            ObjectMembers: TestJSONSymbol::ObjectMembers,
+            RootElement: TestJSONSymbol::RootElement,
         }
     }
 }
 
-impl ArtifactNodeType for TestJSONType {}
-impl Symbol for TestJSONType {
-    fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, mindbase_hypergraph::Error>
-    where
-        G: mindbase_hypergraph::traits::GraphInterface<W>,
-        W: mindbase_hypergraph::traits::Value<Symbol = Self>,
-    {
-        if *self == *other {
-            Ok(1.0)
-        } else {
-            Ok(0.0)
-        }
-    }
+impl TSymbol for TestJSONSymbol {
+    // fn compare<G, W>(&self, other: &Self, graph: &G) -> Result<f64, mindbase_hypergraph::Error>
+    // where
+    //     G: mindbase_hypergraph::traits::GraphInterface<W>,
+    //     W: mindbase_hypergraph::traits::TValue<Symbol = Self>,
+    // {
+    //     if *self == *other {
+    //         Ok(1.0)
+    //     } else {
+    //         Ok(0.0)
+    //     }
+    // }
 }

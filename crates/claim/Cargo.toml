@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 mindbase-hypergraph = { path = "../hypergraph" }
+mindbase-symbol = {path = "../symbol"}
 # mindbase-symbol = { path="../symbol" }
 keyplace = "0.1.0"
 mindbase-util = { path="../util" }

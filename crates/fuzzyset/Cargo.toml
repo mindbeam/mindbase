@@ -1,5 +1,5 @@
 [package]
-name = "fuzzyset"
+name = "mindbase-fuzzyset"
 version = "0.1.0"
 authors = ["Daniel Norman <daniel@danielnorman.net>"]
 edition = "2018"
@@ -13,3 +13,6 @@ serde = { version = "1.0", features = ["derive"] }
 # [dev-dependencies]
 regex="1.4"
 mindbase-hypergraph = { path="../hypergraph" }
+
+[dev-dependencies]
+toboggan-kv = { version = "0.1.2" }

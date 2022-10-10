@@ -3,15 +3,12 @@ pub mod typemap;
 
 use std::marker::PhantomData;
 
-use mindbase_artifact::{
-    body::{DataNode, Type},
-    Artifact, ArtifactNodeType,
-};
 use mindbase_hypergraph::{
-    entity::{directed, vertex},
-    traits::{GraphInterface, Symbol, Value},
+    entity::{directed, vertex, Property},
+    traits::{GraphInterface, TSymbol},
     Entity, EntityId,
 };
+use mindbase_types::MBValue;
 use serde_json::Value;
 
 use crate::Error;
@@ -29,9 +26,9 @@ where
 
 impl<'a, G, JsonTypeSymbol> JsonAdapter<'a, G, JsonTypeSymbol>
 where
-    G: GraphInterface<Artifact<JsonTypeSymbol>>,
+    G: GraphInterface<JsonTypeSymbol, MBValue>,
     // W: Weight<Symbol = S> + From<DataNode<S>> + From<SubGraph<S>> + From<Type<S>>,
-    JsonTypeSymbol: Symbol + ArtifactNodeType + Clone + std::fmt::Debug,
+    JsonTypeSymbol: TSymbol + Clone + std::fmt::Debug,
 {
     pub fn new(graph: &'a G, typemap: JsonTypeMap<JsonTypeSymbol>) -> Self {
         Self {
@@ -44,14 +41,14 @@ where
     ///
     /// Note that this operation is NOT idempotent. We are not deduplicating json files or elements at this time.
     /// That operation would require a high degree of opinionation about precisely how it ought to be performed
-    pub fn load<'b, R: std::io::Read>(&self, reader: R, filename: String) -> Result<EntityId, Error<Artifact<JsonTypeSymbol>>> {
+    pub fn load<'b, R: std::io::Read>(&self, reader: R, filename: String) -> Result<EntityId, Error<JsonTypeSymbol, MBValue>> {
         let jv: Value = serde_json::from_reader(reader)?;
 
         let root_element = self.input_recurse(jv)?;
 
-        let json_document = self.graph.insert(vertex(DataNode {
-            data_type: self.typemap.to_sym(JsonType::Document),
-            data: Some(filename.into_bytes()),
+        let json_document = self.graph.insert(vertex(Property {
+            key: self.typemap.to_sym(JsonType::Document),
+            value: MBValue::String(filename),
         }))?;
 
         self.graph.insert(directed(
@@ -64,7 +61,7 @@ where
     }
     pub fn get_filename_and_root<'b>(
         &self, entity_id: &'b EntityId,
-    ) -> Result<(Option<String>, EntityId), Error<Artifact<JsonTypeSymbol>>> {
+    ) -> Result<(Option<String>, EntityId), Error<JsonTypeSymbol, MBValue>> {
         // might be a document, or a root node
         let entity = self.graph.get(&entity_id)?;
 
@@ -91,17 +88,17 @@ where
                         }
                         let root_id = roots[0];
                         Ok((data.as_ref().map(|b| String::from_utf8_lossy(&b).to_string()), root_id))
-                    }
+                    },
                     JsonType::Null | JsonType::Bool | JsonType::Number | JsonType::Array | JsonType::Object => {
                         // These are legal node types to start rendering
                         Ok((None, *entity_id))
-                    }
+                    },
                     _ => Err(Error::MaterializationDeclined {
                         entity,
                         reason: "Invalid root JSON entity",
                     }),
                 }
-            }
+            },
             Artifact::Agent(_) => Err(Error::MaterializationDeclined {
                 entity,
                 reason: "Entity should be a node, but is an Agent",
@@ -190,7 +187,7 @@ where
                     .insert(directed(Type(tm.to_sym(JsonType::ArrayMember)), [arr], members))?;
 
                 arr
-            }
+            },
             Value::Object(values) => {
                 //First define the array node itself
                 let obj = self.graph.insert(vertex(DataNode {
@@ -223,7 +220,7 @@ where
                     .insert(directed(Type(tm.to_sym(JsonType::ObjectProperties)), [obj], members))?;
 
                 obj
-            }
+            },
         })
     }
 
@@ -329,7 +326,7 @@ impl<'a> CycleGuard {
             Err(i) => {
                 self.0.insert(i, entity.clone());
                 Ok(())
-            }
+            },
         }
     }
     fn pop<W: Value>(&mut self, entity_id: &EntityId) -> Result<(), Error<W>> {
@@ -337,7 +334,7 @@ impl<'a> CycleGuard {
             Ok(i) => {
                 self.0.remove(i);
                 Ok(())
-            }
+            },
             Err(i) => Err(Error::Sanity),
         }
     }

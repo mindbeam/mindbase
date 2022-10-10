@@ -131,7 +131,7 @@ where
                 // for m in to_member_ids.iter() {
                 //     self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
                 // }
-            }
+            },
         }
 
         self.entity_id_to_ix.insert(entity_id, &entity_ix.to_be_bytes())?;

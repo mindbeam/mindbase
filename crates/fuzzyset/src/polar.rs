@@ -73,10 +73,10 @@ where
         match self.polarity {
             Polarity::Negative => {
                 self.polarity = Polarity::Positive;
-            }
+            },
             Polarity::Positive => {
                 self.polarity = Polarity::Negative;
-            }
+            },
         }
     }
 
@@ -179,11 +179,11 @@ where
                 Polarity::Negative => {
                     item.member.polarity = Polarity::Positive;
                     item.degree *= p_scale_factor;
-                }
+                },
                 Polarity::Positive => {
                     item.member.polarity = Polarity::Negative;
                     item.degree *= n_scale_factor;
-                }
+                },
             }
         }
     }
@@ -268,7 +268,7 @@ where
                     bucket.degree += my_item.degree;
 
                     corpus_expansion.push(my_item.clone());
-                }
+                },
                 EitherOrBoth::Right(query_item) => {
                     // println!("Query Only {}", query_item);
                     // Present in the set, but not present in query
@@ -280,7 +280,7 @@ where
                     bucket.degree += query_item.degree;
 
                     query_expansion.push(query_item.clone());
-                }
+                },
                 EitherOrBoth::Both(my_item, query_item) => {
                     // We've got a hit
                     // println!("Match {}", my_item);
@@ -302,7 +302,7 @@ where
                     output_item.degree = match_degree;
 
                     matching_corpus.insert(output_item);
-                }
+                },
             };
 
             // TODO 2:
@@ -545,32 +545,32 @@ mod test {
         // Door (Walk through that, open the)
     }
 
-    #[test]
-    fn recursive_polar_inference() -> Result<(), std::io::Error> {
-        let g = Hypergraph::memory();
+    // #[test]
+    // fn recursive_polar_inference() -> Result<(), std::io::Error> {
+    //     let g = Hypergraph::memory();
 
-        // Containment of Sets WITHIN SimpleMembers is simply not tenable due to cloning vs aliasing.
-        // We must deal with the grap claim vs artifact issue now in order to proceed with this case,
-        // and the fuzzyset basic vector space test
+    //     // Containment of Sets WITHIN SimpleMembers is simply not tenable due to cloning vs aliasing.
+    //     // We must deal with the grap claim vs artifact issue now in order to proceed with this case,
+    //     // and the fuzzyset basic vector space test
 
-        let subject = PolarFuzzySet::from_dipole(
-            &[("n", g.put_vertex_weight(PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))?)],
-            &[(
-                "p",
-                g.put_vertex_weight(PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))?,
-            )],
-        );
+    //     let subject = PolarFuzzySet::from_dipole(
+    //         &[("n", g.put_vertex_weight(PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))?)],
+    //         &[(
+    //             "p",
+    //             g.put_vertex_weight(PolarFuzzySet::from_dipole(&["Caliente"], &["Fria"]))?,
+    //         )],
+    //     );
 
-        let query = PolarFuzzySet::from_dipole(
-            &[("n", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
-            &[("p", PolarFuzzySet::from_monopole(&["Caliente"]))],
-        );
+    //     let query = PolarFuzzySet::from_dipole(
+    //         &[("n", PolarFuzzySet::from_dipole(&["Hot"], &["Cold"]))],
+    //         &[("p", PolarFuzzySet::from_monopole(&["Caliente"]))],
+    //     );
 
-        // TODO 2 - recurse
-        let foo = subject.interrogate_with(&query).unwrap();
+    //     // TODO 2 - recurse
+    //     let foo = subject.interrogate_with(&query).unwrap();
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     // #[test]
     fn expansive_then_convergent_network() {

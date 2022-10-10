@@ -1,21 +1,27 @@
-use mindbase_artifact::Artifact;
-use mindbase_data_adapters::json::{test::TestJSONType, JsonAdapter};
+use mindbase_data_adapters::json::{test::TestJSONSymbol, JsonAdapter};
 use mindbase_hypergraph::Hypergraph;
+use mindbase_types::MBValue;
 
-/// Parse a simple JSON file into artifacts using a simple in-memory store
+/// Parse a simple JSON file into MBValues using a simple in-memory store
 #[test]
 fn colors() -> Result<(), std::io::Error> {
     let v = include_str!("./colors.json");
-    let graph: Hypergraph<_, Artifact<TestJSONType>> = Hypergraph::memory();
+    let graph: Hypergraph<_, TestJSONSymbol, MBValue> = Hypergraph::memory();
 
-    let adapter = JsonAdapter::new(&graph, TestJSONType::typemap());
+    let adapter = JsonAdapter::new(&graph, TestJSONSymbol::typemap());
 
     let json_document = adapter.load(v.as_bytes(), "colors.json".to_string())?;
 
     let mut out = std::io::stdout();
     graph.dump_entities(&mut out)?;
 
-    // TODO 1 - LEFT OFF HERE
+    // NEW TODOS:
+    // [ ] consolidate vertex/directed into entity?
+    // [ ] store properties and rays outside of entities
+    // [ ] each property has key-symbol, value, agent, signature
+    // [ ] each (ray? or edge?) has type-symbol, direction, agent, signature
+
+    // OLD TODOS
     // [ ] Fix writer
     //  [X] hyperedge indexing
     //  [ ] hyperedge traversal

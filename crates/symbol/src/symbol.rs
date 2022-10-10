@@ -1,7 +1,5 @@
-use crate::{
-    fuzzyset::{self as fs, FuzzySet},
-    traits::Entity,
-};
+use crate::traits::Entity;
+use mindbase_fuzzyset::{self as fs, FuzzySet};
 
 use std::cmp::Ordering;
 

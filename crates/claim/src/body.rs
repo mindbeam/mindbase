@@ -14,7 +14,7 @@ pub enum Body<E: Entity, A: traits::Artifact> {
         // Or should it be generic over that? I'm not sure how to make this generic
         // Should probably just press ahead without generics for now
         set: PolarFuzzySet,
-        type: Symbol
+        _type: Symbol
     }
 
 

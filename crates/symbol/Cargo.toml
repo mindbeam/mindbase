@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 mindbase-util = { path = "../util"}
+mindbase-fuzzyset = { path = "../fuzzyset" }
 
 colorful = "0.2.1"
 itertools = "0.9"

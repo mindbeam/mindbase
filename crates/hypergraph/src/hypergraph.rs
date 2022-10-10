@@ -55,6 +55,10 @@ where
             _prov: PhantomData,
         }
     }
+    pub fn memory() -> Self {
+        unimplemented!()
+        // Self { adapter: StorageAdapter }
+    }
     //  /// Insert an entity into the hypergraph
     //  /// ```
     //  /// use mindbase_hypergraph::{HyperGraph,entity};
