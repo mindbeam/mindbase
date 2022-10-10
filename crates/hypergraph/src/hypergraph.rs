@@ -6,7 +6,7 @@ use crate::{
     adapter::StorageAdapter,
     entity::{undirected, Entity, EntityInner, EntityIx},
     index,
-    traits::{self, Value},
+    traits::{self, TValue},
     Error,
 };
 
@@ -43,8 +43,8 @@ pub struct Hypergraph<Stor, Sym, Val, Prov> {
 impl<Stor, Sym, Val, Prov> Hypergraph<Stor, Sym, Val, Prov>
 where
     Stor: StorageAdapter<Sym, Val>,
-    Sym: traits::Symbol,
-    Val: traits::Value,
+    Sym: traits::TSymbol,
+    Val: traits::TValue,
     Prov: traits::Provenance,
 {
     pub fn new(adapter: Stor) -> Self {

@@ -2,7 +2,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{Entity, EntityId, Error};
 
-pub trait Value: Sized + Serialize + DeserializeOwned {
+pub trait TValue: Sized + Serialize + DeserializeOwned {
     fn serialize(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }
@@ -15,9 +15,9 @@ pub trait Value: Sized + Serialize + DeserializeOwned {
     //     G: GraphInterface<Self>;
 }
 
-impl<T> Value for T where T: Sized + Serialize + DeserializeOwned {}
+impl<T> TValue for T where T: Sized + Serialize + DeserializeOwned {}
 
-pub trait Symbol: Sized + Serialize + DeserializeOwned {
+pub trait TSymbol: Sized + Serialize + DeserializeOwned {
     fn serialize(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }
@@ -31,7 +31,7 @@ pub trait Symbol: Sized + Serialize + DeserializeOwned {
     // W: Value<Symbol = Self>;
 }
 
-impl Symbol for String {
+impl TSymbol for String {
     fn serialize(&self) -> Vec<u8> {
         self.as_bytes().to_vec()
     }
@@ -44,8 +44,8 @@ pub trait Provenance {}
 
 pub trait GraphInterface<Sym, Val>
 where
-    Sym: Symbol,
-    Val: Value,
+    Sym: TSymbol,
+    Val: TValue,
 {
     fn insert(&self, entity: Entity<Sym, Val>) -> Result<EntityId, Error>;
     fn get(&self, entity_id: &EntityId) -> Result<Entity<Sym, Val>, Error>;

@@ -3,7 +3,7 @@ use sha2::{Digest, Sha512Trunc256};
 
 use crate::{
     entity::{EntityInner, EntityIx},
-    traits::{Provenance, Symbol, Value},
+    traits::{Provenance, TSymbol, TValue},
     Entity, EntityId, Error,
 };
 
@@ -11,8 +11,8 @@ pub mod sled;
 
 pub trait StorageAdapter<Sym, Val, Prov = ()>
 where
-    Sym: Symbol,
-    Val: Value,
+    Sym: TSymbol,
+    Val: TValue,
     Prov: Provenance,
 {
     fn insert(&self, entity: Entity<Sym, Val>) -> Result<(EntityIx, EntityId), Error>;

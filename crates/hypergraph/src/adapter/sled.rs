@@ -44,8 +44,8 @@ pub struct SledAdapter<Prop, Val, Prov = ()> {
 
 impl<Sym, Val> SledAdapter<Sym, Val>
 where
-    Sym: crate::traits::Symbol,
-    Val: crate::traits::Value,
+    Sym: crate::traits::TSymbol,
+    Val: crate::traits::TValue,
 {
     pub fn open(basedir: &std::path::Path) -> Result<Self, Error> {
         let pathbuf = basedir.join(format!("./mindbase.sled"));
@@ -91,8 +91,8 @@ where
 
 impl<Sym, Val, Prov> StorageAdapter<Sym, Val, Prov> for SledAdapter<Sym, Val, Prov>
 where
-    Sym: crate::traits::Symbol,
-    Val: crate::traits::Value,
+    Sym: crate::traits::TSymbol,
+    Val: crate::traits::TValue,
     Prov: crate::traits::Provenance,
 {
     fn insert(&self, entity: Entity<Sym, Val>) -> Result<(EntityIx, EntityId), Error> {
@@ -111,18 +111,18 @@ where
                 // let (value_ref, value_ix): (ValueRef, u64) = self.put_value(property.value)?;
                 // self.idx_propertyvalue_to_entity.merge(value_ix, entity_id)?;
 
-                StoredProperty(traits::Symbol::serialize(&prop.key), traits::Value::serialize(&prop.value))
+                StoredProperty(traits::TSymbol::serialize(&prop.key), traits::TValue::serialize(&prop.value))
             })
             .collect();
 
         match &entity.inner {
-            EntityInner::Vertex => {}
+            EntityInner::Vertex => {},
             EntityInner::Edge(member_ids) => {
                 unimplemented!()
                 // for m in member_ids.iter() {
                 //     self.idx_entity_to_hyperedge.merge(m.0, &entity_id)?;
                 // }
-            }
+            },
             EntityInner::DirectedEdge(from_member_ids, to_member_ids) => {
                 unimplemented!()
                 // for m in from_member_ids.iter() {

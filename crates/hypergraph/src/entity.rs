@@ -7,7 +7,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    traits::{Symbol, Value},
+    traits::{TSymbol, TValue},
     Error,
 };
 
@@ -58,8 +58,8 @@ impl Debug for EntityId {
 #[derive(Debug)]
 pub struct Property<Sym, Val>
 where
-    Sym: Symbol,
-    Val: Value,
+    Sym: TSymbol,
+    Val: TValue,
 {
     pub key: Sym,
     pub value: Val,
@@ -68,8 +68,8 @@ where
 #[derive(Debug)]
 pub struct Entity<Sym, Val>
 where
-    Sym: Symbol,
-    Val: Value,
+    Sym: TSymbol,
+    Val: TValue,
 {
     pub properties: Vec<Property<Sym, Val>>,
     pub(crate) inner: EntityInner,
@@ -119,8 +119,8 @@ where
     PI: Into<Vec<Property<Sym, Val>>>,
     F: Into<Vec<EntityId>>,
     T: Into<Vec<EntityId>>,
-    Sym: Symbol,
-    Val: Value,
+    Sym: TSymbol,
+    Val: TValue,
 {
     Entity {
         properties: properties.into(),
@@ -131,8 +131,8 @@ pub fn undirected<'a, Sym, Val, PI, M>(properties: PI, members: M) -> Entity<Sym
 where
     PI: Into<Vec<Property<Sym, Val>>>,
     M: Into<Vec<EntityId>>,
-    Sym: Symbol,
-    Val: Value,
+    Sym: TSymbol,
+    Val: TValue,
 {
     Entity {
         properties: properties.into(),
@@ -143,8 +143,8 @@ where
 pub fn vertex<Sym, Val, PI>(properties: PI) -> Entity<Sym, Val>
 where
     PI: Into<Vec<Property<Sym, Val>>>,
-    Sym: Symbol,
-    Val: Value,
+    Sym: TSymbol,
+    Val: TValue,
 {
     Entity {
         properties: properties.into(),
